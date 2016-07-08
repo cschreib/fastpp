@@ -17,7 +17,7 @@ To install FAST++, you first need to build it. For this, you will need a recent 
 ## Eazy road
 
 1. Download the script [install.sh](wip) and save it anywhere (it does not matter where).
-2. If you do not have root access rights on your computer, open the script file and find the line:
+2. By default the script will install FAST++ in the standard directories of your operating system. This will probably require you to have root permission. If you do not have this permission, or if you want to install the program elsewhere, open the script file and find the line:
     ```
     INSTALL_ROOT_DIR=""
     ```
