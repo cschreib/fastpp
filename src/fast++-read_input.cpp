@@ -123,6 +123,13 @@ bool read_params(options_t& opts, const std::string& filename) {
         opts.auto_scale = false;
     }
 
+    for (double c : opts.c_interval) {
+        if (abs(c - 68.0) > 0.01 && abs(c - 95.0) > 0.01 && abs(c - 99.0) > 0.01) {
+            error("confidence interval must be one of 68, 95 or 99% (got ", c, ")");
+            return false;
+        }
+    }
+
     if (opts.metal.empty()) {
         if (opts.library == "bc03" || opts.library == "ma05") {
             opts.metal = {0.02};
@@ -314,7 +321,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
         }
 
         vec1s tr_from, tr_to;
-        file::read_table(translate_file, file::find_skip(translate_file), tr_from, tr_to);
+        ascii::read_table(translate_file, ascii::find_skip(translate_file), tr_from, tr_to);
 
         vec1u idh, idt;
         match(header, tr_from, idh, idt);
@@ -450,8 +457,8 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     // Convert photometry from fnu [uJy] to flambda [1e-19 x erg/s/cm2/A]
     vec1u idbb = uindgen(state.no_filt.size());
     for (uint_t i : range(state.id)) {
-        state.flux(i,idbb) = 1e19*abzp*uJy2cgs(state.lambda*1e-4, state.flux(i,idbb));
-        state.eflux(i,idbb) = 1e19*abzp*uJy2cgs(state.lambda*1e-4, state.eflux(i,idbb));
+        state.flux(i,idbb) = 1e19*abzp*astro::uJy2cgs(state.lambda*1e-4, state.flux(i,idbb));
+        state.eflux(i,idbb) = 1e19*abzp*astro::uJy2cgs(state.lambda*1e-4, state.eflux(i,idbb));
     }
 
     if (opts.verbose) {
@@ -887,7 +894,7 @@ bool read_template_error(const options_t& opts, input_state_t& state) {
         return false;
     }
 
-    file::read_table(opts.temp_err_file, file::find_skip(opts.temp_err_file),
+    ascii::read_table(opts.temp_err_file, ascii::find_skip(opts.temp_err_file),
         state.tplerr_lam, state.tplerr_err
     );
 

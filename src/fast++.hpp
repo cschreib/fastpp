@@ -1,12 +1,18 @@
 #ifndef FASTPP_HPP
 #define FASTPP_HPP
 
-#include <phypp/vec.hpp>
-#include <phypp/astro.hpp>
-#include <phypp/math.hpp>
-#include <phypp/string.hpp>
-#include <phypp/file.hpp>
-#include <phypp/error.hpp>
+#include <phypp/core/typedefs.hpp>
+#include <phypp/core/vec.hpp>
+#include <phypp/reflex/reflex.hpp>
+#include <phypp/core/error.hpp>
+#include <phypp/utility/generic.hpp>
+#include <phypp/utility/string.hpp>
+#include <phypp/utility/time.hpp>
+#include <phypp/math/base.hpp>
+#include <phypp/astro/astro.hpp>
+#include <phypp/io/ascii.hpp>
+
+using namespace phypp;
 
 // Program structures
 // ------------------
@@ -87,7 +93,7 @@ struct input_state_t {
     // Template error function
     vec1f tplerr_lam, tplerr_err;
 
-    // Backed catalog name
+    // Baked grid cache name
     std::string name;
 };
 

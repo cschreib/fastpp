@@ -41,7 +41,7 @@ grid_t::grid_t(const options_t& opts, const input_state_t& input, grid_t& grid) 
 
     // ... and only keep valid and unique values
     cz = cz[where(is_finite(cz))];
-    cz = cz[uniq(cz, sort(cz))];
+    cz = unique_values(cz, sort(cz));
 
     if (grid.z.size() < cz.size()) {
         grid.z = cz;
@@ -72,14 +72,14 @@ grid_t::grid_t(const options_t& opts, const input_state_t& input, grid_t& grid) 
 
 }
 
-bool grid_t::build_redshift(const options_t& opts, const input_state_t& input,
+bool grid_t::build(const options_t& opts, const input_state_t& input,
     grid_t& grid, uint_t iz) {
 
     return true;
 }
 
 bool fit_redshift(const options_t& opts, const input_state_t& input, const grid_t& grid,
-    uint_t iz, output_t& output) {
+    uint_t iz, output_state_t& output) {
 
     return true;
 }
