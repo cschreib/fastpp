@@ -72,50 +72,61 @@ bool read_params(options_t& opts, const std::string& filename) {
         std::string key = toupper(trim(line.substr(0, eqp)));
         std::string val = trim(line.substr(eqp+1));
 
-        if      (key == "CATALOG")       { if (!parse_value(key, val, opts.catalog))        return false; }
-        else if (key == "AB_ZEROPOINT")  { if (!parse_value(key, val, opts.ab_zeropoint))   return false; }
-        else if (key == "FILTERS_RES")   { if (!parse_value(key, val, opts.filters_res))    return false; }
-        else if (key == "FILTER_FORMAT") { if (!parse_value(key, val, opts.filters_format)) return false; }
-        else if (key == "TEMP_ERR_FILE") { if (!parse_value(key, val, opts.temp_err_file))  return false; }
-        else if (key == "NAME_ZPHOT")    { if (!parse_value(key, val, opts.name_zphot))     return false; }
-        else if (key == "SPECTRUM")      { if (!parse_value(key, val, opts.spectrum))       return false; }
-        else if (key == "AUTO_SCALE")    { if (!parse_value(key, val, opts.auto_scale))     return false; }
-        else if (key == "OUTPUT_DIR")    { if (!parse_value(key, val, opts.output_dir))     return false; }
-        else if (key == "OUTPUT_FILE")   { if (!parse_value(key, val, opts.output_file))    return false; }
-        else if (key == "N_SIM")         { if (!parse_value(key, val, opts.n_sim))          return false; }
-        else if (key == "C_INTERVAL")    { if (!parse_value(key, val, opts.c_interval))     return false; }
-        else if (key == "BEST_FIT")      { if (!parse_value(key, val, opts.best_fit))       return false; }
-        else if (key == "LIBRARY_DIR")   { if (!parse_value(key, val, opts.library_dir))    return false; }
-        else if (key == "LIBRARY")       { if (!parse_value(key, val, opts.library))        return false; }
-        else if (key == "RESOLUTION")    { if (!parse_value(key, val, opts.resolution))     return false; }
-        else if (key == "IMF")           { if (!parse_value(key, val, opts.imf))            return false; }
-        else if (key == "SFH")           { if (!parse_value(key, val, opts.sfh))            return false; }
-        else if (key == "DUST_LAW")      { if (!parse_value(key, val, opts.dust_law))       return false; }
-        else if (key == "MY_SFH")        { if (!parse_value(key, val, opts.my_sfh))         return false; }
-        else if (key == "LOG_TAU_MIN")   { if (!parse_value(key, val, opts.log_tau_min))    return false; }
-        else if (key == "LOG_TAU_MAX")   { if (!parse_value(key, val, opts.log_tau_max))    return false; }
-        else if (key == "LOG_TAU_STEP")  { if (!parse_value(key, val, opts.log_tau_step))   return false; }
-        else if (key == "LOG_AGE_MIN")   { if (!parse_value(key, val, opts.log_age_min))    return false; }
-        else if (key == "LOG_AGE_MAX")   { if (!parse_value(key, val, opts.log_age_max))    return false; }
-        else if (key == "LOG_AGE_STEP")  { if (!parse_value(key, val, opts.log_age_step))   return false; }
-        else if (key == "NO_MAX_AGE")    { if (!parse_value(key, val, opts.no_max_age))     return false; }
-        else if (key == "Z_MIN")         { if (!parse_value(key, val, opts.z_min))          return false; }
-        else if (key == "Z_MAX")         { if (!parse_value(key, val, opts.z_max))          return false; }
-        else if (key == "Z_STEP")        { if (!parse_value(key, val, opts.z_step))         return false; }
-        else if (key == "Z_STEP_TYPE")   { if (!parse_value(key, val, opts.z_step_type))    return false; }
-        else if (key == "A_V_MIN")       { if (!parse_value(key, val, opts.a_v_min))        return false; }
-        else if (key == "A_V_MAX")       { if (!parse_value(key, val, opts.a_v_max))        return false; }
-        else if (key == "A_V_STEP")      { if (!parse_value(key, val, opts.a_v_step))       return false; }
-        else if (key == "METAL")         { if (!parse_value(key, val, opts.metal))          return false; }
-        else if (key == "H0")            { if (!parse_value(key, val, opts.h0))             return false; }
-        else if (key == "OMEGA_M")       { if (!parse_value(key, val, opts.omega_m))        return false; }
-        else if (key == "OMEGA_L")       { if (!parse_value(key, val, opts.omega_l))        return false; }
-        else if (key == "SAVE_CHI_GRID") { if (!parse_value(key, val, opts.save_chi_grid))  return false; }
+        opts.cosmo = astro::get_cosmo("std");
+
+        if      (key == "CATALOG")       { if (!parse_value(key, val, opts.catalog))         return false; }
+        else if (key == "AB_ZEROPOINT")  { if (!parse_value(key, val, opts.ab_zeropoint))    return false; }
+        else if (key == "FILTERS_RES")   { if (!parse_value(key, val, opts.filters_res))     return false; }
+        else if (key == "FILTER_FORMAT") { if (!parse_value(key, val, opts.filters_format))  return false; }
+        else if (key == "TEMP_ERR_FILE") { if (!parse_value(key, val, opts.temp_err_file))   return false; }
+        else if (key == "NAME_ZPHOT")    { if (!parse_value(key, val, opts.name_zphot))      return false; }
+        else if (key == "SPECTRUM")      { if (!parse_value(key, val, opts.spectrum))        return false; }
+        else if (key == "AUTO_SCALE")    { if (!parse_value(key, val, opts.auto_scale))      return false; }
+        else if (key == "OUTPUT_DIR")    { if (!parse_value(key, val, opts.output_dir))      return false; }
+        else if (key == "OUTPUT_FILE")   { if (!parse_value(key, val, opts.output_file))     return false; }
+        else if (key == "N_SIM")         { if (!parse_value(key, val, opts.n_sim))           return false; }
+        else if (key == "C_INTERVAL")    { if (!parse_value(key, val, opts.c_interval))      return false; }
+        else if (key == "BEST_FIT")      { if (!parse_value(key, val, opts.best_fit))        return false; }
+        else if (key == "LIBRARY_DIR")   { if (!parse_value(key, val, opts.library_dir))     return false; }
+        else if (key == "LIBRARY")       { if (!parse_value(key, val, opts.library))         return false; }
+        else if (key == "RESOLUTION")    { if (!parse_value(key, val, opts.resolution))      return false; }
+        else if (key == "IMF")           { if (!parse_value(key, val, opts.imf))             return false; }
+        else if (key == "SFH")           { if (!parse_value(key, val, opts.sfh))             return false; }
+        else if (key == "DUST_LAW")      { if (!parse_value(key, val, opts.dust_law))        return false; }
+        else if (key == "E_B")           { if (!parse_value(key, val, opts.dust_noll_eb))    return false; }
+        else if (key == "DELTA")         { if (!parse_value(key, val, opts.dust_noll_delta)) return false; }
+        else if (key == "MY_SFH")        { if (!parse_value(key, val, opts.my_sfh))          return false; }
+        else if (key == "LOG_TAU_MIN")   { if (!parse_value(key, val, opts.log_tau_min))     return false; }
+        else if (key == "LOG_TAU_MAX")   { if (!parse_value(key, val, opts.log_tau_max))     return false; }
+        else if (key == "LOG_TAU_STEP")  { if (!parse_value(key, val, opts.log_tau_step))    return false; }
+        else if (key == "LOG_AGE_MIN")   { if (!parse_value(key, val, opts.log_age_min))     return false; }
+        else if (key == "LOG_AGE_MAX")   { if (!parse_value(key, val, opts.log_age_max))     return false; }
+        else if (key == "LOG_AGE_STEP")  { if (!parse_value(key, val, opts.log_age_step))    return false; }
+        else if (key == "NO_MAX_AGE")    { if (!parse_value(key, val, opts.no_max_age))      return false; }
+        else if (key == "Z_MIN")         { if (!parse_value(key, val, opts.z_min))           return false; }
+        else if (key == "Z_MAX")         { if (!parse_value(key, val, opts.z_max))           return false; }
+        else if (key == "Z_STEP")        { if (!parse_value(key, val, opts.z_step))          return false; }
+        else if (key == "Z_STEP_TYPE")   { if (!parse_value(key, val, opts.z_step_type))     return false; }
+        else if (key == "A_V_MIN")       { if (!parse_value(key, val, opts.a_v_min))         return false; }
+        else if (key == "A_V_MAX")       { if (!parse_value(key, val, opts.a_v_max))         return false; }
+        else if (key == "A_V_STEP")      { if (!parse_value(key, val, opts.a_v_step))        return false; }
+        else if (key == "METAL")         { if (!parse_value(key, val, opts.metal))           return false; }
+        else if (key == "H0")            { if (!parse_value(key, val, opts.cosmo.H0))        return false; }
+        else if (key == "OMEGA_M")       { if (!parse_value(key, val, opts.cosmo.wm))        return false; }
+        else if (key == "OMEGA_L")       { if (!parse_value(key, val, opts.cosmo.wL))        return false; }
+        else if (key == "SAVE_CHI_GRID") { if (!parse_value(key, val, opts.save_chi_grid))   return false; }
         // Not in original FAST
-        else if (key == "VERBOSE")       { if (!parse_value(key, val, opts.verbose))        return false; }
+        else if (key == "VERBOSE")       { if (!parse_value(key, val, opts.verbose))         return false; }
         else {
             warning("unknown parameter '", key, "'");
         }
+    }
+
+    opts.output_dir = file::directorize(opts.output_dir);
+    if (!file::mkdir(opts.output_dir)) {
+        error("could not create output directory '", opts.output_dir, "'");
+        error("make sure you have the proper rights");
+        return false;
     }
 
     // Now check for the consistency of the output and make corrections when necessary
@@ -151,7 +162,9 @@ bool read_params(options_t& opts, const std::string& filename) {
     }
 
     if (opts.library_dir.empty()) {
-        opts.library_dir = std::string(FASTPP_SHARE_DIR)+"/Libraries/";
+        opts.library_dir = std::string(FASTPP_SHARE_DIR)+"/libraries/";
+    } else {
+        opts.library_dir = file::directorize(opts.library_dir);
     }
 
     return true;
@@ -237,7 +250,7 @@ bool read_filters(const options_t& opts, input_state_t& state) {
 
         } else if (doread && spl.size() == 3) {
             // Reading the filter response
-            double wl, tr;
+            float wl, tr;
             if (!from_string(spl[1], wl) || !from_string(spl[2], tr)) {
                 error("could not parse values from line ", l);
                 note("reading '", opts.filters_res, "'");
@@ -265,7 +278,7 @@ bool read_filters(const options_t& opts, input_state_t& state) {
 
     // Make sure we are not missing any
     if (state.filters.size() != state.no_filt.size()) {
-        vec1u nfound;
+        vec1u notfound;
         for (uint_t b : state.no_filt) {
             bool found = false;
             for (auto& f : state.filters) {
@@ -276,17 +289,23 @@ bool read_filters(const options_t& opts, input_state_t& state) {
             }
 
             if (!found) {
-                nfound.push_back(b);
+                notfound.push_back(b);
             }
         }
 
-        error("filters ", nfound, " are missing from the filter library");
+        error("filters ", notfound, " are missing from the filter library");
         return false;
     }
 
     // Normalize filter and compute the central wavelength
     for (auto f : state.filters) {
-        f.tr /= integrate(f.wl, f.tr);
+        double ttot = integrate(f.wl, f.tr);
+        if (!is_finite(ttot) || ttot == 0) {
+            error("filter ", f.id, " has zero or invalid througput");
+            return false;
+        }
+
+        f.tr /= ttot;
 
         state.lambda.push_back(integrate(f.wl, f.wl*f.tr));
     }
@@ -719,13 +738,20 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
         fast_filter_t f;
         f.spectral = true;
         f.id = max(state.no_filt)+1 + b;
-        double dl = slam1[b] - slam0[b];
-        f.wl = {slam0[b]-dl, slam0[b]-1e-4*dl, slam0[b], slam1[b], slam1[b]+1e-4*dl, slam1[b]+dl};
-        f.tr = {0.0, 0.0, 1.0, 1.0, 0.0, 0.0};
-        f.tr /= integrate(f.wl, f.tr);
+        f.wl = {slam0[b], slam1[b]};
+        f.tr = {1.0f, 1.0f};
+
+        double ttot = integrate(f.wl, f.tr);
+        if (!is_finite(ttot) || ttot == 0) {
+            error("synthetic filter ", b, " for spectral data (wavelength ", slam0[b], " to ",
+                slam1[b], " A) has zero or invalid througput");
+            return false;
+        }
+
+        f.tr /= ttot;
 
         state.filters.push_back(f);
-        state.lambda.push_back(0.5*(slam0[b] + slam1[b]));
+        state.lambda.push_back(0.5f*(slam0[b] + slam1[b]));
     }
 
     // Merge the spectra into the flux catalog

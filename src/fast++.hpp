@@ -39,6 +39,8 @@ struct options_t {
     std::string sfh;
     std::string dust_law;
     std::string my_sfh;
+    float dust_noll_eb = 1.0;
+    float dust_noll_delta = -0.2;
     float log_tau_min = 6.5;
     float log_tau_max = 10.5;
     float log_tau_step = 0.5;
@@ -54,9 +56,7 @@ struct options_t {
     float a_v_max = 3;
     float a_v_step = 0.1;
     vec1f metal;
-    float h0 = 70.0;
-    float omega_m = 0.3;
-    float omega_l = 0.7;
+    astro::cosmo_t cosmo;
     bool save_chi_grid = false;
 
     // Not in original FAST
@@ -67,7 +67,7 @@ struct options_t {
 struct fast_filter_t {
     uint_t id = npos;
     bool spectral = false;
-    vec1d wl, tr;
+    vec1f wl, tr;
 };
 
 // Holds the input state of the program
@@ -99,7 +99,48 @@ struct input_state_t {
 
 // Holds the output state of the program
 struct output_state_t {
+    vec1f z, metal, av, age, tau;
+    vec5f chi2;
+};
 
+// Structure holding the integrated fluxes of a model and associated physical parameters
+struct model_t {
+    vec1f flux;
+    float mass = 0, sfr = 0;
+    uint_t im, it, ia, id, iz;
+};
+
+// Fit a model to observed fluxes
+struct fitter_t {
+    const options_t& opts;
+    const input_state_t& input;
+    output_state_t& output;
+
+    explicit fitter_t(const options_t& opts, const input_state_t& input, output_state_t& output);
+
+    void fit(model_t model);
+};
+
+// Build the grid of models and sends models to the fitter
+struct gridder_t {
+    const options_t& opts;
+    const input_state_t& input;
+    output_state_t& output;
+
+    struct cache_manager_t {
+        std::fstream cache_file;
+        std::string cache_filename;
+
+        void write_model(const model_t& model);
+        bool read_model(model_t& model);
+    };
+
+    bool read_from_cache = true;
+    cache_manager_t cache;
+
+    explicit gridder_t(const options_t& opts, const input_state_t& input, output_state_t& output);
+
+    bool build_and_send(fitter_t& fitter);
 };
 
 // Main functions
@@ -108,7 +149,7 @@ struct output_state_t {
 // fast++-read_input.cpp
 bool read_input(options_t& opts, input_state_t& state, const std::string& filename);
 
-// fast++-fit_data.cpp
+// fast++-fitter.cpp
 bool fit_data(const options_t& opts, const input_state_t& input, output_state_t& output);
 
 #endif
