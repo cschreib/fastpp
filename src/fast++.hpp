@@ -11,7 +11,6 @@
 #include <phypp/math/base.hpp>
 #include <phypp/astro/astro.hpp>
 #include <phypp/io/ascii.hpp>
-#include "xorshift.hpp"
 
 using namespace phypp;
 
