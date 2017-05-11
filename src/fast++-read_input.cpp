@@ -42,7 +42,7 @@ bool parse_value(const std::string& key, const std::string& val, T& out) {
     return true;
 }
 
-bool read_params(options_t& opts, const std::string& filename) {
+bool read_params(options_t& opts, input_state_t& state, const std::string& filename) {
     std::ifstream in(filename);
     if (!in.is_open()) {
         error("could not open parameter file '", filename, "'");
@@ -73,6 +73,8 @@ bool read_params(options_t& opts, const std::string& filename) {
         std::string val = trim(line.substr(eqp+1));
 
         opts.cosmo = astro::get_cosmo("std");
+
+        std::string best_method;
 
         if      (key == "CATALOG")       { if (!parse_value(key, val, opts.catalog))         return false; }
         else if (key == "AB_ZEROPOINT")  { if (!parse_value(key, val, opts.ab_zeropoint))    return false; }
@@ -116,18 +118,25 @@ bool read_params(options_t& opts, const std::string& filename) {
         else if (key == "OMEGA_L")       { if (!parse_value(key, val, opts.cosmo.wL))        return false; }
         else if (key == "SAVE_CHI_GRID") { if (!parse_value(key, val, opts.save_chi_grid))   return false; }
         // Not in original FAST
+        else if (key == "FORCE_ZPHOT")   { if (!parse_value(key, val, opts.force_zphot))     return false; }
+        else if (key == "ZPHOT_CONF")    { if (!parse_value(key, val, opts.zphot_conf))      return false; }
+        else if (key == "SAVE_SIM")      { if (!parse_value(key, val, opts.save_sim))        return false; }
         else if (key == "VERBOSE")       { if (!parse_value(key, val, opts.verbose))         return false; }
         else {
             warning("unknown parameter '", key, "'");
         }
     }
 
-    opts.output_dir = file::directorize(opts.output_dir);
-    if (!file::mkdir(opts.output_dir)) {
-        error("could not create output directory '", opts.output_dir, "'");
-        error("make sure you have the proper rights");
-        return false;
+    if (!opts.output_dir.empty()) {
+        opts.output_dir = file::directorize(opts.output_dir);
+        if (!file::mkdir(opts.output_dir)) {
+            error("could not create output directory '", opts.output_dir, "'");
+            error("make sure you have the proper rights");
+            return false;
+        }
     }
+
+    if (opts.output_file.empty()) opts.output_file = opts.catalog;
 
     // Now check for the consistency of the output and make corrections when necessary
     if (opts.spectrum.empty()) {
@@ -136,9 +145,33 @@ bool read_params(options_t& opts, const std::string& filename) {
 
     for (double c : opts.c_interval) {
         if (abs(c - 68.0) > 0.01 && abs(c - 95.0) > 0.01 && abs(c - 99.0) > 0.01) {
-            error("confidence interval must be one of 68, 95 or 99% (got ", c, ")");
+            error("confidence interval must be one of 50, 68, 95 or 99% (got ", c, ")");
             return false;
         }
+    }
+
+    inplace_sort(opts.c_interval);
+
+    if (opts.n_sim != 0) {
+        state.conf_interval = opts.c_interval/100.0;
+        vec1f cint = state.conf_interval;
+        state.conf_interval.clear();
+        for (float c : cint) {
+            if (abs(c - 0.5) < 0.01) {
+                state.conf_interval.push_back(c);
+            } else {
+                state.conf_interval.push_back(1.0 - c);
+                state.conf_interval.push_back(c);
+            }
+        }
+    } else {
+        opts.c_interval.clear();
+    }
+
+    if (opts.force_zphot) {
+        opts.zphot_conf = fnan;
+    } else {
+        opts.zphot_conf /= 100.0;
     }
 
     if (opts.metal.empty()) {
@@ -147,7 +180,7 @@ bool read_params(options_t& opts, const std::string& filename) {
         } else if (opts.library == "co11") {
             opts.metal = {0.019};
         } else {
-            // Uknown stellar library, simply guess what could be a good default value...
+            // Unknown stellar library, simply guess what could be a good default value...
             opts.metal = {0.02};
         }
     }
@@ -200,7 +233,7 @@ bool read_filters(const options_t& opts, input_state_t& state) {
     }
 
     if (opts.verbose) {
-        note("reading filters from ", opts.filters_res);
+        note("reading filters from '", opts.filters_res, "'");
     }
 
     std::ifstream in(opts.filters_res);
@@ -237,7 +270,7 @@ bool read_filters(const options_t& opts, input_state_t& state) {
             ++ntotfilt;
             filt.id = ntotfilt;
 
-            // Find if this filter is used in the catalog
+            // Determine if this filter is used in the catalog
             uint_t idfil = where_first(state.no_filt == filt.id);
             if (idfil != npos) {
                 // It is there, keep the ID aside for later sorting
@@ -298,7 +331,13 @@ bool read_filters(const options_t& opts, input_state_t& state) {
     }
 
     // Normalize filter and compute the central wavelength
-    for (auto f : state.filters) {
+    for (auto& f : state.filters) {
+        if (opts.filters_format == 1) {
+            f.tr *= f.wl;
+        } else {
+            f.tr *= sqr(f.wl);
+        }
+
         double ttot = integrate(f.wl, f.tr);
         if (!is_finite(ttot) || ttot == 0) {
             error("filter ", f.id, " has zero or invalid througput");
@@ -317,7 +356,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     std::string catalog_file = opts.catalog+".cat";
 
     if (opts.verbose) {
-        note("reading fluxes from ", catalog_file);
+        note("reading fluxes from '", catalog_file, "'");
     }
 
     if (!file::exists(catalog_file)) {
@@ -336,7 +375,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     std::string translate_file = opts.catalog+".translate";
     if (file::exists(translate_file)) {
         if (opts.verbose) {
-            note("using column translation file ", catalog_file);
+            note("using column translation file '", catalog_file, "'");
         }
 
         vec1s tr_from, tr_to;
@@ -396,14 +435,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
         vec1s spl = split_any_of(line, " \t\n\r");
 
         // Read the ID
-        uint_t tid;
-        if (!from_string(spl[col_id], tid)) {
-            error("could not read ID from line ", l);
-            note("must be a positive integer (>= 0), got: '", spl[col_id], "'");
-            return false;
-        }
-
-        state.id.push_back(tid);
+        state.id.push_back(spl[col_id]);
 
         // Read the zspec if any
         if (col_zspec != npos) {
@@ -444,10 +476,6 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
             return false;
         }
 
-        // Flag bad values
-        vec1u idb = where(err < 0 || !is_finite(flx) || !is_finite(err));
-        err[idb] = fnan; flx[idb] = 0;
-
         // Apply scaling to total fluxes if requested
         if (col_tot != npos) {
             float totcor;
@@ -460,6 +488,10 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
             flx *= totcor;
             err *= totcor;
         }
+
+        // Flag bad values
+        vec1u idb = where(err < 0 || !is_finite(flx) || !is_finite(err));
+        err[idb] = finf; flx[idb] = 0;
 
         // Save flux and uncertainties in the input state
         append<0>(state.flux, reform(flx, 1, flx.size()));
@@ -494,7 +526,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     }
 
     if (opts.verbose) {
-        note("reading spectra from ", opts.spectrum);
+        note("reading spectra from '", opts.spectrum, "'");
     }
 
     if (!file::exists(opts.spectrum)) {
@@ -538,8 +570,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     for (uint_t b : range(spec_header)) {
         vec2s ext = regex_extract(spec_header[b], "F([0-9]+)");
         if (ext.empty()) continue;
-        uint_t id;
-        from_string(ext[0], id);
+        std::string id = ext[0];
 
         uint_t cid = where_first(state.id == id);
         if (cid == npos) {
@@ -642,7 +673,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
 
         // Flag bad values
         vec1u idb = where(err < 0 || !is_finite(flx) || !is_finite(err));
-        err[idb] = fnan; flx[idb] = 0;
+        err[idb] = finf; flx[idb] = 0;
 
         // Add fluxes to the list
         append<1>(sflx, reform(flx, flx.size(), 1));
@@ -716,7 +747,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
         }
 
         vec1u idb = where(!is_finite(serr) || !is_finite(sflx));
-        serr[idb] = fnan; sflx[idb] = 0;
+        serr[idb] = finf; sflx[idb] = 0;
 
         if (opts.verbose) {
             if (oflx.dims[1] == sflx.dims[1]) {
@@ -798,22 +829,38 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
     // Check we have all the columns we need
     uint_t col_zphot = where_first(header == toupper(opts.name_zphot));
     uint_t col_zspec = where_first(header == "Z_SPEC");
-    uint_t col_id = where_first(header == "ID");
+    uint_t col_id    = where_first(header == "ID");
 
     vec1u col_up, col_low;
-    for (uint_t i : range(opts.c_interval)) {
-        uint_t cl = where_first(header == "L"+strn(opts.c_interval[i]));
-        uint_t cu = where_first(header == "U"+strn(opts.c_interval[i]));
-        if (cl == npos) {
-            error("could not find redshift confidence interval column L"+strn(opts.c_interval[i]));
-            return false;
-        } else if (cu == npos) {
-            error("could not find redshift confidence interval column U"+strn(opts.c_interval[i]));
-            return false;
+    if (is_finite(opts.zphot_conf)) {
+        for (float c : {0.68, 0.95, 0.99}) {
+            uint_t cl = where_first(header == "L"+strn(round(100.0*c)));
+            uint_t cu = where_first(header == "U"+strn(round(100.0*c)));
+            if (cl == npos) {
+                error("could not find redshift confidence interval column L"+strn(round(100.0*c)));
+                continue;
+            } else if (cu == npos) {
+                error("could not find redshift confidence interval column U"+strn(round(100.0*c)));
+                continue;
+            }
+
+            col_up.push_back(cu);
+            col_low.push_back(cl);
+            state.zphot_conf.push_back(c);
         }
 
-        col_up.push_back(cu);
-        col_low.push_back(cl);
+        {
+            vec1u ids = sort(state.zphot_conf);
+            state.zphot_conf = state.zphot_conf[ids];
+            col_up = col_up[ids];
+            col_low = col_low[ids];
+        }
+
+        if (!is_any_of(round(100*opts.zphot_conf), round(100*state.zphot_conf))) {
+            error("missing zphot confidence intervals (", round(100*opts.zphot_conf), "th "
+                "percentiles)");
+            return false;
+        }
     }
 
     if (col_zphot == npos) {
@@ -826,14 +873,12 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
     }
 
     // Initialize the zphot columns
-    state.zphot = replicate(fnan, state.id.size());
-    state.zphot_low = replicate(fnan, state.id.size(), opts.c_interval.size());
-    state.zphot_up = replicate(fnan, state.id.size(), opts.c_interval.size());
+    state.zphot = replicate(fnan, state.id.size(), 1 + 2*state.zphot_conf.size());
 
     // Read the catalog
     uint_t l = 0;
     uint_t i = 0;
-    std::ifstream in(opts.spectrum);
+    std::ifstream in(catalog_file);
     std::string line;
     while (std::getline(in, line)) {
         ++l;
@@ -842,12 +887,7 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
 
         vec1s spl = split_any_of(line, " \t\n\r");
 
-        uint_t id;
-        if (!from_string(spl[col_id], id)) {
-            error("could not read source ID from line ", l);
-            note("must be a positive integer (>= 0), got: '", spl[col_id], "'");
-            return false;
-        }
+        std::string id = spl[col_id];
 
         float zp;
         if (!from_string(spl[col_zphot], zp)) {
@@ -861,7 +901,7 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
             return false;
         }
 
-        state.zphot[i] = (zp > 0 ? zp : fnan);
+        state.zphot(i,0) = (zp > 0 ? zp : fnan);
 
         if (col_zspec != npos && !is_finite(state.zspec[i])) {
             if (!from_string(spl[col_zspec], zp)) {
@@ -875,31 +915,32 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
 
         for (uint_t c : range(col_low)) {
             if (!from_string(spl[col_low[c]], zp)) {
-                error("could not read photometric redshift ", opts.c_interval[c],
-                    "th confidence interval from line ", l);
+                error("could not read photometric redshift lower ", round(100.0*state.zphot_conf[c]),
+                    "th confidence boundary from line ", l);
                 note("must be a floating point number, got: '", spl[col_low[c]], "'");
                 return false;
             }
 
-            state.zphot_low(i,c) = (zp > 0 ? zp : fnan);
+            state.zphot(i,1+2*c+0) = (zp > 0 ? zp : fnan);
         }
 
         for (uint_t c : range(col_up)) {
             if (!from_string(spl[col_up[c]], zp)) {
-                error("could not read photometric redshift ", opts.c_interval[c],
-                    "th confidence interval from line ", l);
+                error("could not read photometric redshift upper ", round(100.0*state.zphot_conf[c]),
+                    "th confidence boundary from line ", l);
                 note("must be a floating point number, got: '", spl[col_up[c]], "'");
                 return false;
             }
 
-            state.zphot_up(i,c) = (zp > 0 ? zp : fnan);
+            state.zphot(i,1+2*c+1) = (zp > 0 ? zp : fnan);
         }
 
         ++i;
     }
 
     if (i != state.id.size()) {
-        error("photometric redshift and photometry catalogs do not match");
+        error("photometric redshift and photometry catalogs do not match (", i, " vs. ",
+            state.id.size(), ")");
         return false;
     }
 
@@ -934,7 +975,7 @@ bool read_template_error(const options_t& opts, input_state_t& state) {
 
 bool read_input(options_t& opts, input_state_t& state, const std::string& filename) {
     // First read options from the parameter file
-    if (!read_params(opts, filename)) {
+    if (!read_params(opts, state, filename)) {
         return false;
     }
 

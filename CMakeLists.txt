@@ -18,6 +18,12 @@ add_definitions(-DFASTPP_SHARE_DIR="${FASTPP_SHARE_DIR}")
 
 include_directories(${PHYPP_INCLUDE_DIRS})
 
-add_executable(fast++ src/fast++-read_input.cpp src/fast++-gridder.cpp src/fast++-fitter.cpp src/fast++.cpp)
+add_executable(fast++
+    src/fast++-read_input.cpp
+    src/fast++-gridder.cpp
+    src/fast++-fitter.cpp
+    src/xorshift.cpp
+    src/fast++-write_output.cpp
+    src/fast++.cpp)
 target_link_libraries(fast++ ${PHYPP_LIBRARIES})
 install(TARGETS fast++ DESTINATION bin)
