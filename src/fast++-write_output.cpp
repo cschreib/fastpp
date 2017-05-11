@@ -48,44 +48,49 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     std::ofstream fout(opts.output_dir+opts.output_file+".fout");
 
     // Print header
-    // fout << "# FAST++ version: " << fastpp_version << std::endl;
-    // fout << "# Photometric catalog file: " << opts.catalog << ".cat" << std::endl;
-    // if (!input.zphot.empty()) {
-    // fout << "# Photometric redshift file: " << opts.catalog << ".zout" << std::endl;
-    // }
-    // if (!opts.spectrum.empty()) {
-    // fout << "# Spectrum file: " << opts.spectrum << std::endl;
-    // }
-    // if (!opts.temp_err_file.empty()) {
-    // fout << "# Template error function: " << opts.temp_err_file << std::endl;
-    // }
-    // fout << "# AB ZP:       " << opts.ab_zeropoint << std::endl;
-    // fout << "# Library:     " << pretty_library(opts.library) << std::endl;
-    // if (opts.my_sfh.empty()) {
-    // fout << "# SFH:         " << pretty_sfh(opts.sfh) << std::endl;
-    // } else {
-    // fout << "# SFH:         " << "custom SFH: " << opts.my_sfh << std::endl;
-    // }
-    // fout << "# Stellar IMF: " << pretty_imf(opts.imf) << std::endl;
-    // fout << "# Dust law:    " <<
-    //     pretty_dust_law(opts.dust_law, opts.dust_noll_eb, opts.dust_noll_delta) << std::endl;
-    // fout << "# metallicity: " << collapse(strna(opts.metal), "  ") << std::endl;
-    // fout << "# log(tau/yr): " <<
-    //     pretty_grid(opts.log_tau_min, opts.log_tau_max, opts.log_tau_step, 2) << std::endl;
-    // fout << "# log(age/yr): " <<
-    //     pretty_grid(opts.log_age_min, opts.log_age_max, opts.log_age_step, 2) << std::endl;
-    // fout << "# A_V:         " <<
-    //     pretty_grid(opts.a_v_min, opts.a_v_max, opts.a_v_step, 2) << std::endl;
-    // fout << "# z:           " <<
-    //     pretty_grid(opts.z_min, opts.z_max, opts.z_step, 4) <<
-    //     " (" << (opts.z_step_type == 0 ? "linear" : "logarithmic") << ")" << std::endl;
-    // fout << "# Filters:     " << collapse(strna(input.no_filt), "  ") << std::endl;
-    // fout << "# ltau: log[tau/yr], lage: log[age/yr], lmass: log[mass/Msol], "
-    //     "lsfr: log[sfr/(Msol/yr)], lssfr: log[ssfr*yr], la2t: log[age/tau]" << std::endl;
-    // fout << "# For sfr=0. lsfr is set to -99" << std::endl;
+    fout << "# FAST++ version: " << fastpp_version << std::endl;
+    fout << "# Photometric catalog file: " << opts.catalog << ".cat" << std::endl;
+    if (!input.zphot.empty()) {
+    fout << "# Photometric redshift file: " << opts.catalog << ".zout" << std::endl;
+    }
+    if (!opts.spectrum.empty()) {
+    fout << "# Spectrum file: " << opts.spectrum << std::endl;
+    }
+    if (!opts.temp_err_file.empty()) {
+    fout << "# Template error function: " << opts.temp_err_file << std::endl;
+    }
+    fout << "# AB ZP:       " << opts.ab_zeropoint << std::endl;
+    fout << "# Library:     " << pretty_library(opts.library) << std::endl;
+    if (opts.my_sfh.empty()) {
+    fout << "# SFH:         " << pretty_sfh(opts.sfh) << std::endl;
+    } else {
+    fout << "# SFH:         " << "custom SFH: " << opts.my_sfh << std::endl;
+    }
+    fout << "# Stellar IMF: " << pretty_imf(opts.imf) << std::endl;
+    fout << "# Dust law:    " <<
+        pretty_dust_law(opts.dust_law, opts.dust_noll_eb, opts.dust_noll_delta) << std::endl;
+    fout << "# metallicity: " << collapse(strna(opts.metal), "  ") << std::endl;
+    fout << "# log(tau/yr): " <<
+        pretty_grid(opts.log_tau_min, opts.log_tau_max, opts.log_tau_step, 2) << std::endl;
+    fout << "# log(age/yr): " <<
+        pretty_grid(opts.log_age_min, opts.log_age_max, opts.log_age_step, 2) << std::endl;
+    fout << "# A_V:         " <<
+        pretty_grid(opts.a_v_min, opts.a_v_max, opts.a_v_step, 2) << std::endl;
+    fout << "# z:           " <<
+        pretty_grid(opts.z_min, opts.z_max, opts.z_step, 4) <<
+        " (" << (opts.z_step_type == 0 ? "linear" : "logarithmic") << ")" << std::endl;
+    fout << "# Filters:     " << collapse(strna(input.no_filt), "  ") << std::endl;
+    fout << "# ltau: log[tau/yr], lage: log[age/yr], lmass: log[mass/Msol], "
+        "lsfr: log[sfr/(Msol/yr)], lssfr: log[ssfr*yr], la2t: log[age/tau]" << std::endl;
+    fout << "# For sfr=0. lsfr is set to -99" << std::endl;
 
     vec1s param = {"id"};
-    vec1u cwidth = {min(max(length(input.id)), 7)};
+    uint_t maxid = 7;
+    if (!input.id.empty()) {
+        maxid = max(maxid, max(length(input.id)));
+    }
+
+    vec1u cwidth = {maxid};
     vec1s oparam = {"z", "ltau", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "la2t"};
     uint_t ocwidth = 10;
     if (!opts.c_interval.empty()) {
@@ -106,11 +111,11 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     param.push_back("chi2");
     cwidth.push_back(15);
 
-    // fout << "#";
-    // for (uint_t ip : range(param)) {
-    //     fout << align_right(param[ip], cwidth[ip]);
-    // }
-    // fout << std::endl;
+    fout << "#";
+    for (uint_t ip : range(param)) {
+        fout << align_right(param[ip], cwidth[ip]);
+    }
+    fout << std::endl;
 
     // Print data
     for (uint_t is : range(input.id)) {
