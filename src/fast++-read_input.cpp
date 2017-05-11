@@ -31,6 +31,22 @@ bool parse_value_impl(const std::string& val, std::string& out) {
     return true;
 }
 
+bool parse_value_impl(std::string val, parallel_choice& out) {
+    val = trim(tolower(remove_first_last(val, "\'\"")));
+    if (val == "none" || val.empty()) {
+        out = parallel_choice::none;
+    } else if (val == "sources") {
+        out = parallel_choice::sources;
+    } else if (val == "models") {
+        out = parallel_choice::models;
+    } else {
+        error("unknown parallelization choice '", val, "'");
+        error("must be one of 'none', sources' or 'models'");
+        return false;
+    }
+    return true;
+}
+
 template <typename T>
 bool parse_value(const std::string& key, const std::string& val, T& out) {
     if (!parse_value_impl(val, out)) {
@@ -121,6 +137,8 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         else if (key == "FORCE_ZPHOT")   { if (!parse_value(key, val, opts.force_zphot))     return false; }
         else if (key == "ZPHOT_CONF")    { if (!parse_value(key, val, opts.zphot_conf))      return false; }
         else if (key == "SAVE_SIM")      { if (!parse_value(key, val, opts.save_sim))        return false; }
+        else if (key == "BEST_FROM_SIM") { if (!parse_value(key, val, opts.best_from_sim))   return false; }
+        else if (key == "PARALLEL")      { if (!parse_value(key, val, opts.parallel))        return false; }
         else if (key == "VERBOSE")       { if (!parse_value(key, val, opts.verbose))         return false; }
         else {
             warning("unknown parameter '", key, "'");
@@ -138,6 +156,11 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
     if (opts.output_file.empty()) opts.output_file = opts.catalog;
 
+    if (opts.best_from_sim && opts.n_sim == 0) {
+        error("cannot use the option 'BEST_FROM_SIM' if simulations are not enabled (N_SIM > 0)");
+        return false;
+    }
+
     // Now check for the consistency of the output and make corrections when necessary
     if (opts.spectrum.empty()) {
         opts.auto_scale = false;
@@ -145,24 +168,19 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
     for (double c : opts.c_interval) {
         if (abs(c - 68.0) > 0.01 && abs(c - 95.0) > 0.01 && abs(c - 99.0) > 0.01) {
-            error("confidence interval must be one of 50, 68, 95 or 99% (got ", c, ")");
+            error("confidence interval must be one of 68, 95 or 99% (got ", c, ")");
             return false;
         }
     }
 
-    inplace_sort(opts.c_interval);
-
     if (opts.n_sim != 0) {
-        state.conf_interval = opts.c_interval/100.0;
+        state.conf_interval = 0.5*(1.0 - opts.c_interval/100.0);
+        inplace_sort(opts.c_interval);
         vec1f cint = state.conf_interval;
         state.conf_interval.clear();
         for (float c : cint) {
-            if (abs(c - 0.5) < 0.01) {
-                state.conf_interval.push_back(c);
-            } else {
-                state.conf_interval.push_back(1.0 - c);
-                state.conf_interval.push_back(c);
-            }
+            state.conf_interval.push_back(c);
+            state.conf_interval.push_back(1.0 - c);
         }
     } else {
         opts.c_interval.clear();

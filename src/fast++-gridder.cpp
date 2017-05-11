@@ -5,13 +5,10 @@ void gridder_t::cache_manager_t::write_model(const model_t& model) {
     if (!cache_file.is_open()) return;
 
     // TODO: Consider doing this in a worker thread if it slows down execution
-    std::uint32_t igrid = model.igrid;
-    cache_file.write(reinterpret_cast<const char*>(&igrid), sizeof(igrid));
-    cache_file.write(reinterpret_cast<const char*>(&model.mass), sizeof(model.mass));
-    cache_file.write(reinterpret_cast<const char*>(&model.sfr), sizeof(model.sfr));
-    cache_file.write(reinterpret_cast<const char*>(model.flux.data.data()),
-        model.flux.size()*sizeof(model.flux[0])
-    );
+    file::write_as<std::uint32_t>(cache_file, model.igrid);
+    file::write(cache_file, model.mass);
+    file::write(cache_file, model.sfr);
+    file::write(cache_file, model.flux);
 
     if (!cache_file) {
         warning("could not write to cache file anymore");
@@ -24,15 +21,10 @@ void gridder_t::cache_manager_t::write_model(const model_t& model) {
 bool gridder_t::cache_manager_t::read_model(model_t& model) {
     if (!cache_file.is_open()) return false;
 
-    std::uint32_t igrid;
-    cache_file.read(reinterpret_cast<char*>(&igrid), sizeof(igrid));
-    model.igrid = igrid;
-
-    cache_file.read(reinterpret_cast<char*>(&model.mass), sizeof(model.mass));
-    cache_file.read(reinterpret_cast<char*>(&model.sfr), sizeof(model.sfr));
-    cache_file.read(reinterpret_cast<char*>(model.flux.data.data()),
-        model.flux.size()*sizeof(model.flux[0])
-    );
+    file::read_as<std::uint32_t>(cache_file, model.igrid);
+    file::read(cache_file, model.mass);
+    file::read(cache_file, model.sfr);
+    file::read(cache_file, model.flux);
 
     if (!cache_file) {
         cache_file.close();

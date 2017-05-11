@@ -73,13 +73,32 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
     save_chi2 = opts.save_chi_grid;
     if (save_chi2) {
         // Create chi2 grid on disk
-        if (opts.verbose) note("initializing chi2 grid on disk...");
+        if (opts.verbose) {
+            double expsize = input.id.size()*3*sizeof(float);
+            for (uint_t i : range(5)) {
+                expsize *= gridder.dims[i];
+            }
+
+            std::string unit = "B";
+            vec1s units = vec1s{"k", "M", "G", "T", "P"}+"B";
+            for (uint_t i : range(units)) {
+                if (expsize > 1024) {
+                    expsize /= 1024;
+                    unit = units[i];
+                } else {
+                    break;
+                }
+            }
+            note("initializing chi2 grid on disk... (expected size ", expsize, " ", unit, ")");
+        }
+
         ochi2.out_filename = opts.output_dir+"chi2.grid";
-        ochi2.out_file.open(ochi2.out_filename);
+        ochi2.out_file.open(ochi2.out_filename, std::ios::binary | std::ios::out);
 
         // Write header
         // Format:
         // uint32: size of header in bytes (to skip it)
+        // uint32: number of galaxies
         // uint32: number of grid axis (5)
         // uint32: number of metallicities
         // float[*]: metallicities
@@ -91,38 +110,34 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
         // float[*]: av
         // uint32: number of z
         // float[*]: z
-        ochi2.out_file << gridder.dims.size();
-        ochi2.out_file << std::uint32_t(0);
-        ochi2.out_file << std::uint32_t(gridder.dims.size());
+        file::write_as<std::uint32_t>(ochi2.out_file, 0);
+        file::write_as<std::uint32_t>(ochi2.out_file, input.id.size());
+        file::write_as<std::uint32_t>(ochi2.out_file, gridder.dims.size());
         for (uint_t i : range(gridder.dims)) {
-            ochi2.out_file << std::uint32_t(gridder.dims[i]);
+            file::write_as<std::uint32_t>(ochi2.out_file, gridder.dims[i]);
 
-            vec1f* gp = nullptr;
             switch (i) {
-            case 0: gp = &output.metal; break;
-            case 1: gp = &output.tau;   break;
-            case 2: gp = &output.age;   break;
-            case 3: gp = &output.av;    break;
-            case 4: gp = &output.z;     break;
-            }
-
-            for (float v : *gp) {
-                ochi2.out_file << v;
+            case 0: file::write(ochi2.out_file, output.metal); break;
+            case 1: file::write(ochi2.out_file, output.tau);   break;
+            case 2: file::write(ochi2.out_file, output.age);   break;
+            case 3: file::write(ochi2.out_file, output.av);    break;
+            case 4: file::write(ochi2.out_file, output.z);     break;
+            default: break;
             }
         }
 
         ochi2.hpos = ochi2.out_file.tellp();
+
         ochi2.out_file.seekp(0);
-        ochi2.out_file << std::uint32_t(ochi2.hpos);
+        file::write_as<std::uint32_t>(ochi2.out_file, ochi2.hpos);
         ochi2.out_file.seekp(ochi2.hpos);
 
         // Populate the file with empty data now
         // For each point of the grid, we store 3 values: chi2, mass and sfr
-        uint_t nmodel1 = gridder.dims[0]*gridder.dims[1]*gridder.dims[2];
-        vec1f empty = replicate(fnan, gridder.dims[3]*gridder.dims[4]*3);
+        uint_t nmodel1 = gridder.dims[0]*gridder.dims[1]*gridder.dims[2]*gridder.dims[3];
+        vec1f junk = replicate(fnan, gridder.dims[4]*input.id.size()*3);
         for (uint_t im = 0; im < nmodel1; ++im) {
-            if (!ochi2.out_file.write(reinterpret_cast<const char*>(empty.data.data()),
-                empty.size()*sizeof(float))) {
+            if (!file::write(ochi2.out_file, junk)) {
                 warning("the chi2 grid could not be initialized");
                 ochi2.out_file.close();
                 file::remove(ochi2.out_filename);
@@ -136,9 +151,13 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
     }
 }
 
-void fitter_t::chi2_output_manager_t::write_chi2(uint_t igrid, float chi2, float mass, float sfr) {
-    out_file.seekp(hpos + igrid*3*sizeof(float));
-    out_file << chi2 << mass << sfr;
+void fitter_t::write_chi2(uint_t igrid, const vec1f& chi2, const vec1f& mass, const vec1f& sfr) {
+    // TODO: configer putting this in a worker thread if this is slowing down too much
+    ochi2.out_file.seekp(ochi2.hpos + igrid*input.id.size()*3*sizeof(float));
+
+    file::write(ochi2.out_file, chi2);
+    file::write(ochi2.out_file, mass);
+    file::write(ochi2.out_file, sfr);
 }
 
 void fitter_t::fit(model_t model) {
@@ -158,7 +177,7 @@ void fitter_t::fit(model_t model) {
 
     for (uint_t is : range(input.id)) {
         // Apply constraints on redshift
-        if ((idz.safe[is] != npos && model.iz != idz.safe[is]) ||
+        if ((idz.safe[is]  != npos && model.iz != idz.safe[is]) ||
             (idzl.safe[is] != npos && model.iz < idzl.safe[is]) ||
             (idzu.safe[is] != npos && model.iz > idzu.safe[is])) {
             continue;
@@ -197,13 +216,9 @@ void fitter_t::fit(model_t model) {
             tchi2 += sqr(wflux.safe[il] - scale*wmodel.safe[il]);
         }
 
-        if (save_chi2) {
-            ochi2.write_chi2(model.igrid, tchi2, scale*model.mass, scale*model.sfr);
-        }
-
         chi2.safe[is] = tchi2;
         mass.safe[is] = scale*model.mass;
-        sfr.safe[is] = scale*model.sfr;
+        sfr.safe[is]  = scale*model.sfr;
 
         // Do MC simulation
         if (opts.n_sim > 0) {
@@ -213,6 +228,7 @@ void fitter_t::fit(model_t model) {
                 // all models (and each galaxy) will use the same random numbers
                 double wfm = 0;
                 for (uint_t il : range(input.lambda)) {
+                    // In weighted units, the random perturbations have a sigma of unity
                     rflux.safe[il] = wflux.safe[il] + sim_rnd.safe(im,il);
 
                     wfm += wmodel.safe[il]*rflux.safe[il];
@@ -228,7 +244,7 @@ void fitter_t::fit(model_t model) {
 
                 mc_chi2.safe[im] = tchi2;
                 mc_mass.safe[im] = scale*model.mass;
-                mc_sfr.safe[im] = scale*model.sfr;
+                mc_sfr.safe[im]  = scale*model.sfr;
             }
 
             {
@@ -248,7 +264,11 @@ void fitter_t::fit(model_t model) {
         }
     }
 
-    {
+    if (save_chi2) {
+        write_chi2(model.igrid, chi2, mass, sfr);
+    }
+
+    if (!opts.best_from_sim) {
         // Compare to best
         // WARNING: read/modify shared resource
         std::lock_guard<std::mutex> lock(output.fit_result_mutex);
@@ -266,13 +286,15 @@ void fitter_t::fit(model_t model) {
 
 void fitter_t::find_best_fits() {
     for (uint_t is : range(input.id)) {
-        vec1u ids = gridder.grid_ids(output.best_model[is]);
-        output.best_ssfr(is,0)  = output.best_sfr(is,0)/output.best_mass(is,0);
-        output.best_metal(is,0) = output.metal[ids[0]];
-        output.best_tau(is,0)   = output.tau[ids[1]];
-        output.best_age(is,0)   = output.age[ids[2]];
-        output.best_av(is,0)    = output.av[ids[3]];
-        output.best_z(is,0)     = output.z[ids[4]];
+        if (!opts.best_from_sim) {
+            vec1u ids = gridder.grid_ids(output.best_model[is]);
+            output.best_ssfr(is,0)  = output.best_sfr(is,0)/output.best_mass(is,0);
+            output.best_metal(is,0) = output.metal[ids[0]];
+            output.best_tau(is,0)   = output.tau[ids[1]];
+            output.best_age(is,0)   = output.age[ids[2]];
+            output.best_av(is,0)    = output.av[ids[3]];
+            output.best_z(is,0)     = output.z[ids[4]];
+        }
 
         if (opts.n_sim > 0) {
             vec1f bmass, bsfr, bssfr, bmetal, btau, bage, bav, bz;
@@ -303,6 +325,17 @@ void fitter_t::find_best_fits() {
                         "tau", btau, "age", bage, "av", bav, "z", bz, "chi2", output.mc_best_chi2
                     );
                 }
+            }
+
+            if (opts.best_from_sim) {
+                output.best_mass(is,0)  = inplace_median(bmass);
+                output.best_sfr(is,0)   = inplace_median(bsfr);
+                output.best_ssfr(is,0)  = inplace_median(bssfr);
+                output.best_metal(is,0) = inplace_median(bmetal);
+                output.best_tau(is,0)   = inplace_median(btau);
+                output.best_age(is,0)   = inplace_median(bage);
+                output.best_av(is,0)    = inplace_median(bav);
+                output.best_z(is,0)     = inplace_median(bz);
             }
 
             for (uint_t ic : range(input.conf_interval)) {

@@ -19,6 +19,10 @@ extern const char* fastpp_version;
 // Program structures
 // ------------------
 
+enum class parallel_choice {
+    none, sources, models, automatic
+}
+
 // Program options read from parameter file
 struct options_t {
     // Input catalog parameters
@@ -80,6 +84,8 @@ struct options_t {
     float zphot_conf = fnan;
     bool verbose = false;
     bool save_sim = false;
+    bool best_from_sim = false;
+    parallel_choice parallel = parallel_choice::none;
 };
 
 // Filter passband
@@ -205,8 +211,6 @@ struct fitter_t {
         std::string out_filename;
 
         uint_t hpos;
-
-        void write_chi2(uint_t igrid, float chi2, float mass, float sfr);
     };
 
     bool save_chi2 = false;
@@ -221,6 +225,9 @@ struct fitter_t {
 
     void fit(model_t model);
     void find_best_fits();
+
+private :
+    void write_chi2(uint_t igrid, const vec1f& chi2, const vec1f& mass, const vec1f& sfr);
 };
 
 // Main functions
@@ -232,5 +239,54 @@ bool read_input(options_t& opts, input_state_t& state, const std::string& filena
 // fast++-write_output.cpp
 void write_output(const options_t& opts, const input_state_t& state, const gridder_t& gridder,
     const output_state_t& output);
+
+
+// Helper functions
+// ----------------
+
+namespace phypp {
+namespace file {
+    template<typename S, typename T>
+    bool write(S& s, const T& t) {
+        s.write(reinterpret_cast<const char*>(&t), sizeof(t));
+        return !s.fail();
+    }
+
+    template<typename R, typename S, typename T>
+    bool write_as(S& s, const T& t) {
+        R r = t;
+        s.write(reinterpret_cast<const char*>(&r), sizeof(r));
+        return !s.fail();
+    }
+
+    template<typename S, std::size_t D, typename T>
+    bool write(S& s, const vec<D,T>& t) {
+        s.write(reinterpret_cast<const char*>(t.data.data()), sizeof(t[0])*t.size());
+        return !s.fail();
+    }
+
+    template<typename S, typename T>
+    bool read(S& s, T& t) {
+        s.read(reinterpret_cast<char*>(&t), sizeof(t));
+        return !s.fail();
+    }
+
+    template<typename R, typename S, typename T>
+    bool read_as(S& s, T& t) {
+        R r;
+        if (s.read(reinterpret_cast<char*>(&r), sizeof(r))) {
+            t = r;
+        }
+
+        return !s.fail();
+    }
+
+    template<typename S, std::size_t D, typename T>
+    bool read(S& s, vec<D,T>& t) {
+        s.read(reinterpret_cast<char*>(t.data.data()), sizeof(t[0])*t.size());
+        return !s.fail();
+    }
+}
+}
 
 #endif

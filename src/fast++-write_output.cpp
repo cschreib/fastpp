@@ -98,7 +98,8 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
             param.push_back(oparam[i]);
             cwidth.push_back(ocwidth);
             for (float c : input.conf_interval) {
-                std::string is = (c < 0.5 ? "l"+strn(round(100*(1-c))) : "u"+strn(round(100*c)));
+                float cc = 100*(1-2*c);
+                std::string is = (cc < 0.0 ? "u" : "l")+strn(round(abs(cc)));
                 param.push_back(is+"_"+oparam[i]);
                 cwidth.push_back(ocwidth);
             }
