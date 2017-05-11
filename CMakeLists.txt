@@ -22,7 +22,6 @@ add_executable(fast++
     src/fast++-read_input.cpp
     src/fast++-gridder.cpp
     src/fast++-fitter.cpp
-    src/xorshift.cpp
     src/fast++-write_output.cpp
     src/fast++.cpp)
 target_link_libraries(fast++ ${PHYPP_LIBRARIES})
