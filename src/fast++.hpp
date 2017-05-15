@@ -11,6 +11,7 @@
 #include <phypp/math/base.hpp>
 #include <phypp/astro/astro.hpp>
 #include <phypp/io/ascii.hpp>
+#include "thread_worker_pool.hpp"
 
 using namespace phypp;
 
@@ -20,8 +21,8 @@ extern const char* fastpp_version;
 // ------------------
 
 enum class parallel_choice {
-    none, sources, models, automatic
-}
+    none, sources, models
+};
 
 // Program options read from parameter file
 struct options_t {
@@ -81,11 +82,14 @@ struct options_t {
     // NB: parameters below were not in original FAST
 
     bool force_zphot = false;
+    bool best_at_zphot = false;
     float zphot_conf = fnan;
     bool verbose = false;
     bool save_sim = false;
     bool best_from_sim = false;
     parallel_choice parallel = parallel_choice::none;
+    uint_t n_thread = 0;
+    uint_t max_queued_fits = 500;
 };
 
 // Filter passband
@@ -209,25 +213,57 @@ struct fitter_t {
     struct chi2_output_manager_t {
         std::fstream out_file;
         std::string out_filename;
+        uint_t hpos = 0;
 
-        uint_t hpos;
+        // For thread safety
+        std::mutex write_mutex;
     };
 
     bool save_chi2 = false;
     chi2_output_manager_t ochi2;
 
+    struct model_source_pair {
+        model_t model;
+        uint_t i0 = 0, i1 = 0;
+
+        model_source_pair() = default;
+        explicit model_source_pair(const model_t& m, uint_t ti0, uint_t ti1) :
+            model(m), i0(ti0), i1(ti1) {}
+    };
+
+    struct workers_multi_source_t {
+        fitter_t& fitter;
+        thread::worker_pool<model_source_pair> workers;
+
+        explicit workers_multi_source_t(fitter_t& f);
+        void process(const model_t& model);
+    };
+
+    struct workers_multi_model_t {
+        fitter_t& fitter;
+        thread::worker_pool<model_t> workers;
+
+        explicit workers_multi_model_t(fitter_t& f);
+        void process(const model_t& model);
+    };
+
+    std::unique_ptr<workers_multi_source_t> workers_multi_source;
+    std::unique_ptr<workers_multi_model_t> workers_multi_model;
+
     vec2d tpl_err;         // [nz,nfilt+nspec]
-    vec1u idz, idzl, idzu; // [ngal]
+    vec1u idz, idzp, idzl, idzu; // [ngal]
     vec2d sim_rnd;         // [nsim,nfilt]
 
     explicit fitter_t(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
         output_state_t& output);
 
-    void fit(model_t model);
+    void fit(const model_t& model);
     void find_best_fits();
 
 private :
-    void write_chi2(uint_t igrid, const vec1f& chi2, const vec1f& mass, const vec1f& sfr);
+    inline void write_chi2(uint_t igrid, const vec1f& chi2, const vec1f& mass, const vec1f& sfr,
+        uint_t i0, uint_t i1);
+    inline void fit_galaxies(const model_t& model, uint_t i0, uint_t i1);
 };
 
 // Main functions
@@ -248,33 +284,33 @@ namespace phypp {
 namespace file {
     template<typename S, typename T>
     bool write(S& s, const T& t) {
-        s.write(reinterpret_cast<const char*>(&t), sizeof(t));
+        s.write(reinterpret_cast<const char*>(&t), sizeof(T));
         return !s.fail();
     }
 
     template<typename R, typename S, typename T>
     bool write_as(S& s, const T& t) {
         R r = t;
-        s.write(reinterpret_cast<const char*>(&r), sizeof(r));
+        s.write(reinterpret_cast<const char*>(&r), sizeof(R));
         return !s.fail();
     }
 
     template<typename S, std::size_t D, typename T>
     bool write(S& s, const vec<D,T>& t) {
-        s.write(reinterpret_cast<const char*>(t.data.data()), sizeof(t[0])*t.size());
+        s.write(reinterpret_cast<const char*>(t.data.data()), sizeof(T)*t.size());
         return !s.fail();
     }
 
     template<typename S, typename T>
     bool read(S& s, T& t) {
-        s.read(reinterpret_cast<char*>(&t), sizeof(t));
+        s.read(reinterpret_cast<char*>(&t), sizeof(T));
         return !s.fail();
     }
 
     template<typename R, typename S, typename T>
     bool read_as(S& s, T& t) {
         R r;
-        if (s.read(reinterpret_cast<char*>(&r), sizeof(r))) {
+        if (s.read(reinterpret_cast<char*>(&r), sizeof(R))) {
             t = r;
         }
 
@@ -283,7 +319,7 @@ namespace file {
 
     template<typename S, std::size_t D, typename T>
     bool read(S& s, vec<D,T>& t) {
-        s.read(reinterpret_cast<char*>(t.data.data()), sizeof(t[0])*t.size());
+        s.read(reinterpret_cast<char*>(t.data.data()), sizeof(T)*t.size());
         return !s.fail();
     }
 }
