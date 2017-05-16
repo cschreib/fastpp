@@ -1,5 +1,35 @@
 # FAST++
 
+<!-- MarkdownTOC depth=0 -->
+
+- [Description](#description)
+- [Install instructions](#install-instructions)
+- [Benchmarks](#benchmarks)
+    - [Hardware/software](#hardwaresoftware)
+    - [Run 1: a catalog of galaxies with broadband fluxes](#run-1-a-catalog-of-galaxies-with-broadband-fluxes)
+        - [Parameters](#parameters)
+        - [Runs](#runs)
+        - [Recorded times](#recorded-times)
+        - [Memory consumption](#memory-consumption)
+    - [Run 2: one galaxy with a high resolution spectrum](#run-2-one-galaxy-with-a-high-resolution-spectrum)
+        - [Parameters](#parameters-1)
+        - [Recorded times](#recorded-times-1)
+        - [Memory consumption](#memory-consumption-1)
+- [What is the trick?](#what-is-the-trick)
+    - [Why is it faster?](#why-is-it-faster)
+    - [Why does it use so little memory?](#why-does-it-use-so-little-memory)
+    - [There must be a price to pay... did the code become more complex in C++?](#there-must-be-a-price-to-pay-did-the-code-become-more-complex-in-c)
+- [Additional features](#additional-features)
+    - [Controling output to the terminal](#controling-output-to-the-terminal)
+    - [Multithreading](#multithreading)
+    - [Photometric redshifts from EAzY](#photometric-redshifts-from-eazy)
+    - [Monte Carlo simulations](#monte-carlo-simulations)
+    - [Controling the cache](#controling-the-cache)
+
+<!-- /MarkdownTOC -->
+
+# Description
+
 This is a C++ version of the popular SED fitting code [FAST](http://w.astro.berkeley.edu/~mariska/FAST.html) (Kriek et al. 2009). Below is a list of the main selling points:
 
  - FAST++ is free software and does not require an IDL license.
@@ -12,60 +42,21 @@ There are two main differences with the original FAST: in dealing with redshifts
 
 If you use this code for your own work, please cite this repository, as well as Kriek et al. (2009) where FAST was first introduced.
 
+
 # Install instructions
 
-To install FAST++, you first need to build it. For this, you will need a recent C++ compiler and [CMake](https://cmake.org/). From there you ave two choices: the easy "do it for me" road, and the more expert "I know how to install and build stuff" road.
+To install FAST++, you first need to build it. For this, you will need a recent C++ compiler, [git](https://git-scm.com/) and [CMake](https://cmake.org/). All of these tools are available by default on most modern linux distributions, and for MacOS you may need to install them with MacPorts. From there installing FAST++ is very easy. Navigate to a directory of your choosing where the code will be downloaded (it will be placed in a subdirectory called ```fastpp```), then execute the following commands:
+```
+# Download the code and dependencies
+git clone --recursive https://github.com/cschreib/fastpp.git
 
-## Easy road
+# Compile
+mkdir build && cd build
+cmake ../
+make
+```
 
-1. Download the script [install.sh](wip) and save it anywhere (it does not matter where).
-2. By default the script will install FAST++ in the standard directories of your operating system. This will probably require you to have root permission. If you do not have this permission, or if you want to install the program elsewhere, open the script file and find the line:
-    ```
-    INSTALL_ROOT_DIR=""
-    ```
-
-   Then replace the ```""``` with a path to a directory of your choice where the program will be installed. For example:
-    ```
-    INSTALL_ROOT_DIR="/home/cschreib/programming/fastpp"
-    ```
-
-   In this case, the FAST++ executable will be placed in ```/home/cschreib/programming/fastpp/bin```. Then save the file.
-
-3. Make the script file executable and run it:
-    ```
-    chmod +x install.sh
-    ./install.sh
-    ```
-4. If necessary (i.e., if you have done step 2 above), do not forget to add the path to the FAST++ executable to your ```$PATH``` environment variable.
-
-## Expert road
-### With root access rights
-
-1. Install the C library [cfitsio](http://heasarc.gsfc.nasa.gov/fitsio/fitsio.html) from your distribution's repositories.
-2. Manually install the [phy++](http://cschreib.github.io/phypp/) library. You can disable all optional components, as they will not be used by FAST++.
-3. Download the latest FAST++ release from [here](https://github.com/cschreib/fastpp/releases).
-4. Extract the content of this archive to a directory of your choice.
-5. Navigate inside the extracted directory with a terminal and run the following commands:
-
-    ```
-    mkdir build && cd build
-    cmake ../
-    make
-    sudo make install
-    ```
-
-### Without root access rights
-
-1. Download the libraries [cfitsio](http://heasarc.gsfc.nasa.gov/fitsio/fitsio.html) and [phy++](http://cschreib.github.io/phypp/) and configure them to be installed in a directory of your choice, which we will refer to as ```$DIR``` in the following. You can disable all optional components of the phy++ library, as they will not be used by FAST++.
-2. Download the latest FAST++ release from [here](https://github.com/cschreib/fastpp/releases).
-3. Extract the content of this archive to a directory of your choice.
-4. Navigate inside the extracted directory with a terminal and run the following commands:
-
-    ```
-    mkdir build && cd build
-    cmake ../ -DCMAKE_INSTALL_PREFIX=$DIR -DPHYPP_ROOT_DIR=$DIR -DCFITSIO_ROOT_DIR=$DIR
-    make install
-    ```
+This will create an executable called ```fast++``` in the ```fastpp/build``` directory, which you can use immediately to replace FAST.
 
 
 # Benchmarks
@@ -179,3 +170,30 @@ The end result is that, in both runs described above, FAST++ never uses more tha
 FAST++ is about 104 kB (including comments and empty lines), while FAST-IDL weights 82 kB. The size of the C++ code is thus mildly larger (27% more characters). In fact, 33% of the C++ code is dedicated to read the inputs (flux catalogs, redshifts and filter database), while this makes up only 16% of the IDL version. The reason why is that the C++ code includes many consistency checks and detailed error messages so the user can solve issues with their input; most of these checks are absent in the IDL version. Taking out the input reading code, the code of FAST++ is actually 2% *smaller* than that of FAST-IDL.
 
 At similar code size, deciding if a code is more complex than another is a subjective question, especially if the languages are not the same. While C++ has suffered from a reputation of being an obscure language for many years, the situation has vastly improved with the 2011 version of the C++ standard, on which FAST++ relies greatly. These changes made C++ much more expressive and clear, and as always without compromising on performances. It is therefore my opinion that the code of FAST++ is *not* complex nor obscure, at least not more than that of FAST-IDL, but this is the opinion of one who has always programmed in C++.
+
+
+# Additional features
+
+In addition to the base feature set provided by FAST-IDL, FAST++ has a number of additional feature which you can enable in the parameter file:
+
+## Controling output to the terminal
+ * ```VERBOSE```: possible values are ```1``` or ```0```. The default is ```0```, and the program will not print anything in the terminal. To enable terminal output this variable must be set to ```1```.
+
+## Multithreading
+ * ```N_THREAD```: possible values are ```0``` or any positive number. The default is ```0```. This determines the number of concurrent threads that the program can use to speed up calculations. The best value to choose depends on a number of parameters, but as a rule of thumb you should not set it to a number larger than the number of independent CPU cores available on your machine (e.g., ```4``` for a quad-core CPU), and it should be at least ```2``` to start seeing significant improvements. Using a value of ```1``` will still enable parallel execution for some of the code, but the overheads generated by the use of threads will probably make it less performant than using no thread at all.
+ * ```PARALLEL```: possible values are ```'none'```, ```'sources'``` or ```'models'```. The default is ```'none'```. This determines which part of the code to paralellize (i.e., execute in multiple threads to go faster). Using ```'none'``` will disable parallel execution. Setting the value to ```'models'``` will use the available threads (see ```N_THREAD``` above) to fit multiple models from the grid simultaneously. This is the optimal setup if you have many models in your grid but little computation to do per model (e.g., if you have very few sources, or no Monte Carlo simulations). If you have a large input catalog (more than a few hundred souces) and especially if you have enabled Monte Carlo simulations, you can set this value to ```'sources'```, in which case the code will divide the input catalog in equal parts that will be fit simultaneously.
+ * ```MAX_QUEUED_FITS```: possible values are ```0``` or any positive number. The default value is ```1000```. This defines the maximum number of models that are produced and waiting to be fit at any given instant. It is only used if multithreading is enabled, since single-threaded execution will always have a single model in memory at a time. Setting this to ```0``` will remove the restriction. The goal of this parameter is to limit the amount of consumed memory: the higher the value, the more models can be present in memory at once, waiting to be processed. The default value of ```1000``` has a *very* slight impact on performances (less than 10%), so you can most often ignore this parameter. Else, you can disable it if you know your model grid has modest size and memory usage will not be an issue, on on the contrary decrease the value if your models are very large.
+
+## Photometric redshifts from EAzY
+ * ```FORCE_ZPHOT```: possible values are ```0``` or ```1```. The default is ```0```, and FAST++ will ignore the photometric redshifts obtained by EAzY. This is different from the behavior of FAST-IDL, which always forces the redshift to that derived by EAzY (except for Monte Carlo simulations). You can recover the FAST-IDL behavior by setting this value to ```1```, but note that contrary to FAST-IDL this will also affect the Monte Carlo simulations. In practice, this option amounts to treating photometric redshifts as spectroscopic redshifts. It makes more sense than the FAST-IDL behavior if you really want to enforce the EAzY redshifts.
+ * ```BEST_AT_ZPHOT```: possible values are ```0``` or ```1```. The default is ```0```. Setting this to ```1``` will get you closer to the FAST-IDL behavior. This will force the best-fitting solution to be taken at the photometric redshift determined by EAzY, but the Monte Carlo simulations will still use the entire redshift range allowed (or the one constrained by the EAzY confidence intervals). This will give the closest output compared to FAST-IDL, however note that the derived confidence intervals will be determined on the entire redshift grid, and will be centered on a solution which may not be at the redshift derived by EAzY.
+ * ```ZPHOT_CONF```: possible values are ```0```, ```68```, ```95``` or ```99```. The default is ```0```. If set to anything else than ```0```, this will read the corresponding confidence interval on the photometric redshift determined by EAzY, and restrict the redshift grid to this interval for each source. So if the entire redshift grid ranges from ```0.1``` to ```8.5```, but a source has ```l68 = 2.2``` and ```u68 = 3.5```, then FAST++ will only consider redshifts between ```2.2``` and ```3.5``` for this source.
+
+To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68```, ```BEST_AT_ZPHOT=1``` and ```ZPHOT_CONF=68``` (you can replace ```68``` by ```95``` or ```99```).
+
+## Monte Carlo simulations
+ * ```SAVE_SIM```: possible values are ```0``` or ```1```. The default is ```0```. If set to ```1```, the program will save the best fitting parameters in the Monte Carlo simulations of each galaxy in a FITS table located at ```best_fits/[catalog]_[source].sim.fits```. This table contains the values of all fitting parameters and the chi2. This will consume some more disk space, but will not slow down the program significantly. It can be useful to identify covariances and degeneracies that are not apparent from the confidence intervals printed in the output catalog.
+ * ```BEST_FROM_SIM```: possible values are ```0``` or ```1```. The default is ```0```, and the best fitting solution will be chosen as the one providing the smallest chi2 value in the grid. If set to ```1```, the program will instead determine the best solution from the median of all the Monte Carlo simulations. This will ensure that the "best fit" values are more consistent with the confidence intervals (i.e., usually more centered), and erases large fluctuations when multiple solutions with very different fit parameters lead to very close chi2 values. This typically happens for galaxies with poor photometry: there are a large number of models which give similarly good chi2, but one of them has a chi2 better by a very small amount (say 0.001) and it thus picked as the "best fit".
+
+## Controling the cache
+ * ```NO_CACHE```: possible values are ```0``` or ```1```. The default is ```0```, and the program will read and/or create a cache file, storing the pre-computed model fluxes for reuse. If you are changing your grid often or if the grid is very large and you do not want to store it on the disk, you can set this value to ```1``` and the program will neither read from nor write to the cache. Because it avoids some IO operations, it may make the program faster when the grid has to be rebuilt.
