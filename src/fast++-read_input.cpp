@@ -176,6 +176,11 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         opts.parallel = parallel_choice::none;
     }
 
+    if (opts.best_at_zphot && opts.force_zphot) {
+        note("BEST_AT_ZPHOT=1 is automatically true if FORCE_ZPHOT=1, "
+            "so you do not have to specify both");
+    }
+
     for (double c : opts.c_interval) {
         if (abs(c - 68.0) > 0.01 && abs(c - 95.0) > 0.01 && abs(c - 99.0) > 0.01) {
             error("confidence interval must be one of 68, 95 or 99% (got ", c, ")");
@@ -196,7 +201,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         opts.c_interval.clear();
     }
 
-    if (opts.force_zphot) {
+    if (opts.force_zphot || abs(opts.zphot_conf) < 0.1) {
         opts.zphot_conf = fnan;
     } else {
         opts.zphot_conf /= 100.0;
@@ -733,10 +738,21 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     // Compute upper/lower wavelength if only WL was provided, assuming contiguous coverage and
     // mostly uniform binning as advised in the FAST documentation
     if (col_wl != npos) {
-        slam1 = slam0;
-        slam1[1-_] += 0.5*(slam0[1-_] - slam0[_-(slam0.size()-2)]);
-        slam1[0] += 0.5*(slam0[1] - slam0[0]);
-        slam0 -= slam1 - slam0;
+        double lam0 = slam0.front();
+        double lam1 = slam0.back();
+        double dlam_whole = (slam0.back()-slam0.first())/(slam0.size()-1);
+
+        for (uint_t il : range(1, slam0.size())) {
+            if (abs((slam0[il]-slam0[il-1])/dlam_whole - 1.0) > 0.05) {
+                error("the wavelength grid of the input spectrum is not uniform");
+                error("if this was intended, please use the new WL_LOW/WL_UP synthax to "
+                    "specify each spectral element unambiguously");
+                return false;
+            }
+        }
+
+        slam0 = rgen(lam0, lam1, slam0.size()) - dlam_whole*0.5;
+        slam1 = slam0 + dlam_whole;
     }
 
     // Apply binning if required
