@@ -114,45 +114,47 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         out.mc_best_model = replicate(npos, input.id.size(), opts.n_sim);
     }
 
-    // Base library properties
-    cache.cache_filename = opts.output_dir+opts.library+"_"+opts.resolution+"_"+opts.imf+
-        "_"+opts.sfh+"_"+opts.dust_law+"_";
-    // Grid parameters
-    cache.cache_filename += hash(output.z, output.metal, output.av, output.age, output.tau,
-        input.lambda, opts.dust_noll_eb, opts.dust_noll_delta, opts.cosmo.H0, opts.cosmo.wm,
-        opts.cosmo.wL)+".grid";
+    if (opts.no_cache) {
+        // Base library properties
+        cache.cache_filename = opts.output_dir+opts.library+"_"+opts.resolution+"_"+opts.imf+
+            "_"+opts.sfh+"_"+opts.dust_law+"_";
+        // Grid parameters
+        cache.cache_filename += hash(output.z, output.metal, output.av, output.age, output.tau,
+            input.lambda, opts.dust_noll_eb, opts.dust_noll_delta, opts.cosmo.H0, opts.cosmo.wm,
+            opts.cosmo.wL)+".grid";
 
-    if (opts.verbose) {
-        note("cache file is '", cache.cache_filename, "'");
-    }
-
-    // Open grid file
-    if (file::exists(cache.cache_filename)) {
-        if (opts.verbose) note("checking cache integrity...");
-        cache.cache_file.open(cache.cache_filename, std::ios::binary | std::ios::in);
-
-        cache.cache_file.seekg(0, std::ios_base::end);
-        uint_t size = cache.cache_file.tellg();
-        uint_t size_expected = (sizeof(std::uint32_t)+sizeof(float)*(2+input.lambda.size()))*nmodel;
-
-        if (size != size_expected) {
-            warning("cache file is corrupted or invalid, will overwrite it");
-            cache.cache_file.close();
-            read_from_cache = false;
-        } else {
-            if (opts.verbose) note("cache file exists and seems valid, will use it");
-            cache.cache_file.seekg(0, std::ios_base::beg);
+        if (opts.verbose) {
+            note("cache file is '", cache.cache_filename, "'");
         }
-    } else {
-        read_from_cache = false;
-    }
 
-    if (!read_from_cache) {
-        cache.cache_file.open(cache.cache_filename, std::ios::binary | std::ios::out);
+        // Open grid file
+        if (file::exists(cache.cache_filename)) {
+            if (opts.verbose) note("checking cache integrity...");
+            cache.cache_file.open(cache.cache_filename, std::ios::binary | std::ios::in);
 
-        if (!cache.cache_file.is_open()) {
-            warning("cache file could not be created");
-            warning("the program will not use the cache");
+            cache.cache_file.seekg(0, std::ios_base::end);
+            uint_t size = cache.cache_file.tellg();
+            uint_t size_expected = (sizeof(std::uint32_t)+sizeof(float)*(2+input.lambda.size()))*nmodel;
+
+            if (size != size_expected) {
+                warning("cache file is corrupted or invalid, will overwrite it");
+                cache.cache_file.close();
+                read_from_cache = false;
+            } else {
+                if (opts.verbose) note("cache file exists and seems valid, will use it");
+                cache.cache_file.seekg(0, std::ios_base::beg);
+            }
+        } else {
+            read_from_cache = false;
+        }
+
+        if (!read_from_cache) {
+            cache.cache_file.open(cache.cache_filename, std::ios::binary | std::ios::out);
+
+            if (!cache.cache_file.is_open()) {
+                warning("cache file could not be created");
+                warning("the program will not use the cache");
+            }
         }
     }
 }

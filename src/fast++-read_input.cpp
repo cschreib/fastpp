@@ -139,6 +139,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         else if (key == "ZPHOT_CONF")      { if (!parse_value(key, val, opts.zphot_conf))      return false; }
         else if (key == "SAVE_SIM")        { if (!parse_value(key, val, opts.save_sim))        return false; }
         else if (key == "BEST_FROM_SIM")   { if (!parse_value(key, val, opts.best_from_sim))   return false; }
+        else if (key == "NO_CACHE")        { if (!parse_value(key, val, opts.no_cache))        return false; }
         else if (key == "PARALLEL")        { if (!parse_value(key, val, opts.parallel))        return false; }
         else if (key == "N_THREAD")        { if (!parse_value(key, val, opts.n_thread))        return false; }
         else if (key == "MAX_QUEUED_FITS") { if (!parse_value(key, val, opts.max_queued_fits)) return false; }
