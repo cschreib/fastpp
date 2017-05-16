@@ -152,7 +152,7 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
         }
 
         uint_t nobs = count(is_finite(input.eflux(is,_)));
-        float chi2 = output.best_chi2[is]/max(1, nobs > gridder.nparam ? nobs - gridder.nparam : 1);
+        float chi2 = output.best_chi2[is]/max(1u, nobs > gridder.nparam ? nobs - gridder.nparam : 1u);
         fout << align_right(strn_sci(chi2), cwidth.back());
         fout << "\n";
     }
