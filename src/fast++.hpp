@@ -87,9 +87,10 @@ struct options_t {
     bool verbose = false;
     bool save_sim = false;
     bool best_from_sim = false;
+    bool no_cache = false;
     parallel_choice parallel = parallel_choice::none;
     uint_t n_thread = 0;
-    uint_t max_queued_fits = 500;
+    uint_t max_queued_fits = 1000;
 };
 
 // Filter passband
