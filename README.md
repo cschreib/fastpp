@@ -5,10 +5,10 @@ This is a C++ version of the popular SED fitting code [FAST](http://w.astro.berk
  - FAST++ is free software and does not require an IDL license.
  - FAST++ can be used as a drop-in replacement for FAST (same input and output formats).
  - FAST++ is on average 5 times faster, and up to 30 times with multi-threading.
- - FAST++ uses 5 to 60 times less memory.
+ - FAST++ uses 5 to 600 times less memory.
  - FAST++ can handle *much* larger parameter grids.
 
-There are two main differences with the original FAST: in dealing with redshifts from EAzY, and in estimating uncertainties. First, the EAzY redshifts and confidence intervals are used differently: by default the photo-z will not be enforced for the best-fitting solution, and only the EAzY confidence interval is used to restrict the parameter space. The Monte Carlo simulations then use the same constraints on the redshift as the true observations. Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid.
+There are two main differences with the original FAST: in dealing with redshifts from EAzY, and in estimating uncertainties. First, the EAzY redshifts and confidence intervals are used differently: by default the photo-z will not be enforced for the best-fitting solution, and only the confidence intervals are used to restrict the parameter space. The Monte Carlo simulations always use the same constraints on the redshift as the true observations. Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid.
 
 If you use this code for your own work, please cite this repository, as well as Kriek et al. (2009) where FAST was first introduced.
 
@@ -158,8 +158,6 @@ FAST++ is from **2** to **30** times faster in a single thread, and **1.5** to *
 | no_z, with_sim, with_cache  | 6089          | 19.1 (**319** times less) | 25.3 (**241** times less)     |
 
 FAST++ consumes from **240** to **600** times less memory. The amount required is actually almost the same as for the other run, about 10 to 30 MB, while FAST-IDL requires 6 GB! If we had asked for a finer grid, FAST-IDL would not have been able to run.
-
-FAST++ consumes from **x** to **x** times less memory.
 
 # What is the trick?
 ## Why is it faster?
