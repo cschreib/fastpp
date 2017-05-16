@@ -1,0 +1,6 @@
+[submodule "cfitsio"]
+	path = cfitsio
+	url = https://github.com/HEASARC/cfitsio
+[submodule "phypp"]
+	path = phypp
+	url = https://github.com/cschreib/phypp.git
