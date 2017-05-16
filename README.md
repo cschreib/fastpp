@@ -39,7 +39,7 @@ This is a C++ version of the popular SED fitting code [FAST](http://w.astro.berk
  - FAST++ uses 5 to 600 times less memory.
  - FAST++ can handle *much* larger parameter grids.
 
-There are two main differences with the original FAST: in dealing with redshifts from EAzY, and in estimating uncertainties. First, the EAzY redshifts and confidence intervals are used differently: by default the photo-z will not be enforced for the best-fitting solution, and only the confidence intervals are used to restrict the parameter space. The Monte Carlo simulations always use the same constraints on the redshift as the true observations. Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid.
+There are two main differences with the original FAST: in dealing with redshifts from EAzY, and in estimating uncertainties. First, the EAzY redshifts and confidence intervals are used differently: by default the photo-z will not be enforced for the best-fitting solution, and only the confidence intervals are used to restrict the parameter space (this can be changed in the parameter file). The Monte Carlo simulations always use the same constraints on the redshift as the true observations. Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid.
 
 If you use this code for your own work, please cite this repository, as well as Kriek et al. (2009) where FAST was first introduced.
 
@@ -229,4 +229,4 @@ Spectrum file (FAST++ format):
 
 In this example the information in both catalogs in the same. But the new syntax allows more possibilities, for example adaptive binning, or combining spectra from different instruments (or passbands) with large gaps in between or different spectral resolutions. The ```tr``` (transmission) column, which is just a binary "use/don't use" flag becomes useless since the grid does not need to be uniform anymore.
 
-Even when using the old format, the treatment of these spectrum files is also more correct in FAST++. The ```bin``` column correctly combines multiple data points into a single measurement (using inverse variance weighting) rather than simply using the first value of a bin (why this is implemented in this way in FAST-IDL, I do not know).
+Even when using the old format, the treatment of these spectrum files is also more correct in FAST++. The ```bin``` column correctly combines multiple data points into a single measurement (using inverse variance weighting) rather than simply using the first value of a bin (why this is implemented in this way in FAST-IDL, I do not know). The order of the columns in the file do not matter, while FAST-IDL assumes a fixed format (but does not tell you).
