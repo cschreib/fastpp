@@ -68,6 +68,7 @@ This will create an executable called ```fast++``` in the ```fastpp/build``` dir
 * Fedora
 * C++ compiler: gcc 6.3.1 (-O3 -std=c++11)
 * IDL: 8.4
+* When run multithreaded, FAST++ is set to ```PARALLEL='models'```, ```MAX_QUEUED_FITS=1000``` and ```N_THREAD=8```.
 
 ## Run 1: a catalog of galaxies with broadband fluxes
 ### Parameters
@@ -95,9 +96,9 @@ For each run, execution times are given in seconds, as measured by ```/usr/bin/t
 
 | Run name                    | FAST-IDL      | FAST++ (single thread)       | FAST++ (8 threads)          |
 | --------------------------- | ------------- | ---------------------------- | --------------------------- |
-| no_z, no_sim, no_cache      | 117           | 24.9 (**4.7** times faster)  | 17.0 (**6.8** times faster) |
-| no_z, no_sim, with_cache    | 99.4          | 11.8 (**8.4** times faster)  | 4.2 (**24** times faster)   |
-| no_z, with_sim, with_cache  | 1992          | 209 (**9.5** times faster)   | 58.6 (**34** times faster)  |
+| no_sim, no_cache            | 117           | 24.9 (**4.7** times faster)  | 17.0 (**6.8** times faster) |
+| no_sim, with_cache          | 99.4          | 11.8 (**8.4** times faster)  | 4.2 (**24** times faster)   |
+| with_sim, with_cache        | 1992          | 209 (**9.5** times faster)   | 58.6 (**34** times faster)  |
 
 FAST++ is from **5** to **10** times faster in a single thread, and **7** to **34** times faster with multi-threading enabled.
 
@@ -107,9 +108,9 @@ For each run, peak memory consumption of the process is given in MB, as measured
 
 | Run name                    | FAST-IDL      | FAST++ (single thread)    | FAST++ (8 threads)            |
 | --------------------------- | ------------- | ------------------------- | ----------------------------- |
-| no_z, no_sim, no_cache      | 195           | 22.9 (**8.5** times less) | 23.0 (**8.5** times less)     |
-| no_z, no_sim, with_cache    | 43.6          | 9.9 (**4.4** times less)  | 10.1 (**4.3** times less)     |
-| no_z, with_sim, with_cache  | 48.2          | 11.6 (**4.2** times less) | 12.1 (**4.0** times less)     |
+| no_sim, no_cache            | 195           | 22.9 (**8.5** times less) | 23.0 (**8.5** times less)     |
+| no_sim, with_cache          | 43.6          | 9.9 (**4.4** times less)  | 10.1 (**4.3** times less)     |
+| with_sim, with_cache        | 48.2          | 11.6 (**4.2** times less) | 12.1 (**4.0** times less)     |
 
 FAST++ consumes from **4** to **9** times less memory.
 
@@ -134,9 +135,9 @@ This run is meant to test the memory consumption using a large model flux grid. 
 
 | Run name                    | FAST-IDL      | FAST++ (single thread)       | FAST++ (8 threads)          |
 | --------------------------- | ------------- | ---------------------------- | --------------------------- |
-| no_z, no_sim, no_cache      | 208           | 95.2 (**2.2** times faster)  | 140 (**1.5** times faster)  |
-| no_z, no_sim, with_cache    | 15.0          | 3.1 (**4.8** times faster)   | 0.9 (**17** times faster)   |
-| no_z, with_sim, with_cache  | 11733         | 432 (**27.2** times faster)  | 74.4 (**158** times faster) |
+| no_sim, no_cache            | 208           | 95.2 (**2.2** times faster)  | 140 (**1.5** times faster)  |
+| no_sim, with_cache          | 15.0          | 3.1 (**4.8** times faster)   | 0.9 (**17** times faster)   |
+| with_sim, with_cache        | 11733         | 432 (**27.2** times faster)  | 74.4 (**158** times faster) |
 
 FAST++ is from **2** to **30** times faster in a single thread, and **1.5** to **160** times faster with multi-threading enabled. When the cache is not created yet, the multi-threaded version is actually *slower* than the single-threaded version because the main performance bottleneck is generating models, rather than fitting them. When a thread is given a model to fit, it finishes to do so before the gridder is able to provide the next model to fit, and the thread thus has to wait. If the cache is already created (and/or if Monte Carlo simulations are enabled), the fitting stage becomes the most time-consuming process, and the advantage of the multi-threaded version becomes clear.
 
@@ -144,9 +145,9 @@ FAST++ is from **2** to **30** times faster in a single thread, and **1.5** to *
 
 | Run name                    | FAST-IDL      | FAST++ (single thread)    | FAST++ (8 threads)            |
 | --------------------------- | ------------- | ------------------------- | ----------------------------- |
-| no_z, no_sim, no_cache      | 6216          | 16.9 (**368** times less) | 17.7 (**351** times less)     |
-| no_z, no_sim, with_cache    | 6081          | 10.2 (**596** times less) | 15.7 (**387** times less)     |
-| no_z, with_sim, with_cache  | 6089          | 19.1 (**319** times less) | 25.3 (**241** times less)     |
+| no_sim, no_cache            | 6216          | 16.9 (**368** times less) | 17.7 (**351** times less)     |
+| no_sim, with_cache          | 6081          | 10.2 (**596** times less) | 15.7 (**387** times less)     |
+| with_sim, with_cache        | 6089          | 19.1 (**319** times less) | 25.3 (**241** times less)     |
 
 FAST++ consumes from **240** to **600** times less memory. The amount required is actually almost the same as for the other run, about 10 to 30 MB, while FAST-IDL requires 6 GB! If we had asked for a finer grid, FAST-IDL would not have been able to run.
 
@@ -163,7 +164,7 @@ It should be noted that FAST++ was compiled with the default options of GCC, i.e
 
 Reducing memory usage was the main reason behind the creation of FAST++. The architecture of the program was therefore designed from the start to avoid having to store all models in memory at once: models are generated and adjusted to the observed data one by one (or in parallel), and are discarded immediately after, when they are no longer needed. For this reason the program also does not keep the entire chi2 grid in memory.
 
-The end result is that, in both runs described above, FAST++ never uses more than 30MB. This is less than any of the IDL runs. FAST-IDL is limited mostly by the model flux grid size, namely, the product of the number of observations (observed fluxes) by the number of templates in the library. In the case of FAST++, the main limitation will be the number of galaxies in the input catalog. For a single-threaded run on a 64bit machine, without Monte Carlo simulations, and a 30 band catalog with photo-z from EAzY, the required memory will be about 360 bytes per galaxy. If you have 8 GB of RAM to spare, this corresponds to 24 million galaxies. Actually, most of this space (66%) is used by the input fluxes and uncertainties, so as a rule of thumb if your entire photometry catalog in binary format would occupy less than half your available RAM memory (only fluxes and uncertainties), you can fit it with FAST++. If you also ask for "N" Monte Carlo simulations, the memory per galaxy is increased by 20 times "N" bytes, so 100 simulations will roughly double the required memory per galaxy.
+The end result is that, in both runs described above, FAST++ never uses more than 30MB. This is less than any of the IDL runs. FAST-IDL is limited mostly by the model flux grid size, namely, the product of the number of observations (observed fluxes) by the number of templates in the library. In the case of FAST++, the main limitation will be the number of galaxies in the input catalog. For a single-threaded run on a 64bit machine, without Monte Carlo simulations, and a 30 band catalog with photo-z from EAzY, the required memory will be about 360 bytes per galaxy. If you have 8 GB of RAM to spare, this corresponds to 24 million galaxies. Actually, most of this space (66%) is used by the input fluxes and uncertainties, so as a rule of thumb if your entire photometry catalog in binary format would occupy less than half your available RAM memory (only fluxes and uncertainties), you can fit it with FAST++. If you also ask for ```N``` Monte Carlo simulations, the memory per galaxy is increased by 20 times ```N``` bytes, so 100 simulations will roughly double the required memory per galaxy.
 
 ## There must be a price to pay... did the code become more complex in C++?
 
