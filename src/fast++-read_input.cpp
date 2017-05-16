@@ -556,14 +556,14 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
         note("reading spectra from '", opts.spectrum, "'");
     }
 
-    if (!file::exists(opts.spectrum)) {
-        error("could not open spectral catalog '", opts.spectrum, "'");
+    if (!file::exists(opts.spectrum+".spec")) {
+        error("could not open spectral catalog '", opts.spectrum, ".spec'");
         return false;
     }
 
     // Read the header
     vec1s spec_header;
-    if (!read_header(opts.spectrum, spec_header)) {
+    if (!read_header(opts.spectrum+".spec", spec_header)) {
         return false;
     }
 
@@ -572,24 +572,26 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     // Check we have the right columns there
     uint_t col_wl0 = where_first(spec_header == "WL_LOW");
     uint_t col_wl1 = where_first(spec_header == "WL_UP");
+    uint_t col_wl = where_first(spec_header == "WL");
     uint_t col_tr = where_first(spec_header == "TR");
     uint_t col_bin = where_first(spec_header == "BIN");
 
-    // First check if the user is not using the FAST-IDL format
-    if ((col_wl0 == npos || col_wl1 == npos) && count(spec_header == "WL") != 0) {
-        error("FAST++ requires WL_LOW and WL_UP columns for spectra instead of WL");
-        note("WL_LOW and WL_UP define the width of the spectral element");
-        return false;
-    }
+    // First check if the user is using the FAST-IDL format
+    if ((col_wl0 == npos || col_wl1 == npos) && col_wl != npos) {
+        col_wl0 = npos;
+        col_wl1 = npos;
+    } else {
+        col_wl = npos;
 
-    // Then check for missing wavelength columns
-    if (col_wl0 == npos) {
-        error("missing lower wavelength column (WL_LOW) in spectral catalog");
-        return false;
-    }
-    if (col_wl1 == npos) {
-        error("missing upper wavelength column (WL_UP) in spectral catalog");
-        return false;
+        // Then check for missing wavelength columns
+        if (col_wl0 == npos) {
+            error("missing lower wavelength column (WL_LOW) in spectral catalog");
+            return false;
+        }
+        if (col_wl1 == npos) {
+            error("missing upper wavelength column (WL_UP) in spectral catalog");
+            return false;
+        }
     }
 
     vec1u sid;
@@ -624,7 +626,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     vec1f slam0, slam1;
 
     uint_t l = 0;
-    std::ifstream in(opts.spectrum);
+    std::ifstream in(opts.spectrum+".spec");
     std::string line;
     while (std::getline(in, line)) {
         ++l;
@@ -656,23 +658,38 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
             bin.push_back(tbin);
         }
 
-        double wl0;
-        if (!from_string(spl[col_wl0], wl0)) {
-            error("could not read spectral lower wavelength from line ", l);
-            note("must be a floating point number, got: '", spl[col_wl0], "'");
-            return false;
+        if (col_wl0 != npos) {
+            double wl0;
+            if (!from_string(spl[col_wl0], wl0)) {
+                error("could not read spectral lower wavelength from line ", l);
+                note("must be a floating point number, got: '", spl[col_wl0], "'");
+                return false;
+            }
+
+            slam0.push_back(wl0);
         }
 
-        slam0.push_back(wl0);
+        if (col_wl1 != npos) {
+            double wl1;
+            if (!from_string(spl[col_wl1], wl1)) {
+                error("could not read spectral upper wavelength from line ", l);
+                note("must be a floating point number, got: '", spl[col_wl1], "'");
+                return false;
+            }
 
-        double wl1;
-        if (!from_string(spl[col_wl1], wl1)) {
-            error("could not read spectral upper wavelength from line ", l);
-            note("must be a floating point number, got: '", spl[col_wl1], "'");
-            return false;
+            slam1.push_back(wl1);
         }
 
-        slam1.push_back(wl1);
+        if (col_wl != npos) {
+            double wl;
+            if (!from_string(spl[col_wl], wl)) {
+                error("could not read spectral wavelength from line ", l);
+                note("must be a floating point number, got: '", spl[col_wl], "'");
+                return false;
+            }
+
+            slam0.push_back(wl);
+        }
 
         // Read the fluxes and uncertainties
         vec1f flx, err;
@@ -710,6 +727,15 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     if (opts.verbose) {
         note("found ", sflx.dims[0], " spectr", (sflx.dims[0] > 1 ? "a" : "um"),
             " with ", sflx.dims[1], " spectral elements", (sflx.dims[0] > 1 ? " each" : ""));
+    }
+
+    // Compute upper/lower wavelength if only WL was provided, assuming contiguous coverage and
+    // mostly uniform binning as advised in the FAST documentation
+    if (col_wl != npos) {
+        slam1 = slam0;
+        slam1[1-_] += 0.5*(slam0[1-_] - slam0[_-(slam0.size()-2)]);
+        slam1[0] += 0.5*(slam0[1] - slam0[0]);
+        slam0 -= slam1 - slam0;
     }
 
     // Apply binning if required

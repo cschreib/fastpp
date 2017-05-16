@@ -541,7 +541,6 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
 
             // Load SSP in galaxev ised format
             std::string filename = get_library_file(im, it);
-
             if (!ised.read(filename)) {
                 return false;
             }
