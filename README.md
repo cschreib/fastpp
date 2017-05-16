@@ -57,7 +57,7 @@ cmake ../
 make
 ```
 
-This will create an executable called ```fast++``` in the ```fastpp/build``` directory, which you can use immediately to replace FAST.
+This will create an executable called ```fast++``` in the ```fastpp/build``` directory, which you can use immediately to replace FAST. If you have not installed FAST, you will have to download some template libraries from [the FAST website](http://w.astro.berkeley.edu/~mariska/FAST_Download.html) before you can start fitting galaxies. The latest FAST template error function and EAzY filter response database are provided with FAST++ in the ```share``` directory.
 
 
 # Benchmarks
