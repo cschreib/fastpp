@@ -64,9 +64,9 @@ This will create an executable called ```fast++``` in the ```fastpp/build``` dir
 ## Hardware/software
 
 * 16 GB of RAM
-* 3.4 TB hard drive disk
-* 8 core 64bit Intel CPU
-* Fedora
+* 3.4 TB free hard drive disk space
+* 12 core 64bit Intel Xeon CPU (3.5 GHz)
+* Fedora 26
 * C++ compiler: gcc 6.3.1 (-O3 -std=c++11)
 * IDL: 8.4
 * When run multithreaded, FAST++ is set to ```PARALLEL='models'```, ```MAX_QUEUED_FITS=1000``` and ```N_THREAD=8```.
