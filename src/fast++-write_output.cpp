@@ -40,6 +40,32 @@ std::string pretty_grid(T x0, T x1, T step, uint_t ndecimal) {
            strn(round(dd*step)/dd);
 }
 
+template<typename T>
+std::string pretty_strn(T v) {
+    return strn(v);
+}
+
+template<typename T>
+std::string pretty_strn_float(T f) {
+    if (!is_nan(f) && !is_finite(f)) {
+        if (f < 0) {
+            return "-99";
+        } else {
+            return "99";
+        }
+    } else {
+        return strn(f);
+    }
+}
+
+std::string pretty_strn(float f) {
+    return pretty_strn_float(f);
+}
+
+std::string pretty_strn(double f) {
+    return pretty_strn_float(f);
+}
+
 void write_catalog(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
     const output_state_t& output) {
 
@@ -80,33 +106,36 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
         pretty_grid(opts.z_min, opts.z_max, opts.z_step, 4) <<
         " (" << (opts.z_step_type == 0 ? "linear" : "logarithmic") << ")" << std::endl;
     fout << "# Filters:     " << collapse(strna(input.no_filt), "  ") << std::endl;
+
+    std::string additional_abbrev;
+    if (opts.output_ldust) {
+        additional_abbrev += ", lldust: log[ldust/Lsol]";
+    }
+
     fout << "# ltau: log[tau/yr], lage: log[age/yr], lmass: log[mass/Msol], "
-        "lsfr: log[sfr/(Msol/yr)], lssfr: log[ssfr*yr], la2t: log[age/tau]" << std::endl;
+        "lsfr: log[sfr/(Msol/yr)], lssfr: log[ssfr*yr], la2t: log[age/tau]"+additional_abbrev << std::endl;
     fout << "# For sfr=0. lsfr is set to -99" << std::endl;
 
     vec1s param = {"id"};
     uint_t maxid = 7;
     if (!input.id.empty()) {
-        maxid = max(maxid, max(length(input.id)));
+        maxid = max(maxid, max(length(input.id)+1));
     }
-
     vec1u cwidth = {maxid};
+
     vec1s oparam = {"z", "ltau", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "la2t"};
     uint_t ocwidth = 10;
-    if (!opts.c_interval.empty()) {
-        for (uint_t i : range(oparam)) {
-            param.push_back(oparam[i]);
-            cwidth.push_back(ocwidth);
+    for (uint_t i : range(oparam)) {
+        param.push_back(oparam[i]);
+        cwidth.push_back(max(ocwidth, param.back().size()+1));
+        if (!opts.c_interval.empty()) {
             for (float c : input.conf_interval) {
                 float cc = 100*(1-2*c);
                 std::string is = (cc < 0.0 ? "u" : "l")+strn(round(abs(cc)));
                 param.push_back(is+"_"+oparam[i]);
-                cwidth.push_back(ocwidth);
+                cwidth.push_back(max(ocwidth, param.back().size()+1));
             }
         }
-    } else {
-        append(param, oparam);
-        append(cwidth, replicate(ocwidth, oparam.size()));
     }
 
     param.push_back("chi2");
@@ -121,40 +150,48 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     // Print data
     for (uint_t is : range(input.id)) {
         fout << " ";
-        fout << align_right(input.id[is], cwidth[0]);
+        uint_t c = 0;
+        fout << align_right(input.id[is], cwidth[c]); ++c;
+
         for (uint_t ip : range(output.best_z.dims[1])) {
-            fout << align_right(strn(round(1e4*output.best_z(is,ip))/1e4), ocwidth);
+            fout << align_right(pretty_strn(round(1e4*output.best_z(is,ip))/1e4), cwidth[c]); ++c;
         }
         for (uint_t ip : range(output.best_tau.dims[1])) {
-            fout << align_right(strn(round(1e2*output.best_tau(is,ip))/1e2), ocwidth);
+            fout << align_right(pretty_strn(round(1e2*output.best_tau(is,ip))/1e2), cwidth[c]); ++c;
         }
         for (uint_t ip : range(output.best_metal.dims[1])) {
-            fout << align_right(strn(round(1e4*output.best_metal(is,ip))/1e4), ocwidth);
+            fout << align_right(pretty_strn(round(1e4*output.best_metal(is,ip))/1e4), cwidth[c]); ++c;
         }
         for (uint_t ip : range(output.best_age.dims[1])) {
-            fout << align_right(strn(round(1e2*output.best_age(is,ip))/1e2), ocwidth);
+            fout << align_right(pretty_strn(round(1e2*output.best_age(is,ip))/1e2), cwidth[c]); ++c;
         }
         for (uint_t ip : range(output.best_av.dims[1])) {
-            fout << align_right(strn(round(1e2*output.best_av(is,ip))/1e2), ocwidth);
+            fout << align_right(pretty_strn(round(1e2*output.best_av(is,ip))/1e2), cwidth[c]); ++c;
         }
         for (uint_t ip : range(output.best_mass.dims[1])) {
-            fout << align_right(strn(round(1e2*log10(output.best_mass(is,ip)))/1e2), ocwidth);
+            fout << align_right(pretty_strn(round(1e2*log10(output.best_mass(is,ip)))/1e2), cwidth[c]); ++c;
         }
         for (uint_t ip : range(output.best_sfr.dims[1])) {
-            fout << align_right(strn(round(1e2*log10(output.best_sfr(is,ip)))/1e2), ocwidth);
+            fout << align_right(pretty_strn(round(1e2*log10(output.best_sfr(is,ip)))/1e2), cwidth[c]); ++c;
         }
         for (uint_t ip : range(output.best_ssfr.dims[1])) {
-            fout << align_right(strn(round(1e2*log10(output.best_ssfr(is,ip)))/1e2), ocwidth);
+            fout << align_right(pretty_strn(round(1e2*log10(output.best_ssfr(is,ip)))/1e2), cwidth[c]); ++c;
         }
         for (uint_t ip : range(output.best_tau.dims[1])) {
             float la2t = output.best_age(is,ip) - output.best_tau(is,ip);
-            fout << align_right(strn(round(1e2*la2t)/1e2), ocwidth);
+            fout << align_right(pretty_strn(round(1e2*la2t)/1e2), cwidth[c]); ++c;
         }
 
         uint_t nobs = count(is_finite(input.eflux(is,_)));
         float chi2 = output.best_chi2[is]/max(1u, nobs > gridder.nparam ? nobs - gridder.nparam : 1u);
-        fout << align_right(strn_sci(chi2), cwidth.back());
+        fout << align_right(strn_sci(chi2), cwidth[c]);
         fout << "\n";
+        ++c;
+
+        if (c != cwidth.size()) {
+            error("mismatch in column writing code, please report!");
+            return;
+        }
     }
 }
 
