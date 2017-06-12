@@ -278,7 +278,7 @@ bool read_filters(const options_t& opts, input_state_t& state) {
     // Read the required filters from the database
     std::string line; uint_t l = 0;
     fast_filter_t filt;
-    vec1u idcat;
+    vec1u idcat, idfil;
     bool doread = false;
     uint_t ntotfilt = 0;
     while (std::getline(in, line)) {
@@ -304,10 +304,11 @@ bool read_filters(const options_t& opts, input_state_t& state) {
             filt.id = ntotfilt;
 
             // Determine if this filter is used in the catalog
-            uint_t idfil = where_first(state.no_filt == filt.id);
-            if (idfil != npos) {
+            vec1u idused = where(state.no_filt == filt.id);
+            if (!idused.empty()) {
                 // It is there, keep the ID aside for later sorting
-                idcat.push_back(idfil);
+                append(idcat, idused);
+                append(idfil, replicate(state.filters.size(), idused.size()));
                 doread = true;
             } else {
                 // If not, discard its values
@@ -339,8 +340,7 @@ bool read_filters(const options_t& opts, input_state_t& state) {
     }
 
     // Sort the filter list as in the catalog
-    vec1u sid = sort(idcat);
-    state.filters = state.filters[sid];
+    state.filters = state.filters[idfil[sort(idcat)]];
 
     // Make sure we are not missing any
     if (state.filters.size() != state.no_filt.size()) {
@@ -578,8 +578,8 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     // Check we have the right columns there
     uint_t col_wl0 = where_first(spec_header == "WL_LOW");
     uint_t col_wl1 = where_first(spec_header == "WL_UP");
-    uint_t col_wl = where_first(spec_header == "WL");
-    uint_t col_tr = where_first(spec_header == "TR");
+    uint_t col_wl  = where_first(spec_header == "WL");
+    uint_t col_tr  = where_first(spec_header == "TR");
     uint_t col_bin = where_first(spec_header == "BIN");
 
     // First check if the user is using the FAST-IDL format
