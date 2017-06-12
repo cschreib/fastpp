@@ -71,9 +71,13 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         output.z = max(cz, 0.00001);
     }
 
-    // Pre-compute distances
-    lum2fl = 4018.5161/(4.0*dpi*(1.0+output.z)*
-        sqr(astro::lumdist(output.z, opts.cosmo)));
+    // Pre-compute distances (galaxev templates are in Lsun/A)
+    {
+        const double dist_Mpc_to_cgs = 3.0856e24; // [cm/Mpc]
+        const double lum_sol_to_cgs  = 3.839e33;  // [erg/s/Lsol]
+        const double factor = 1e19*lum_sol_to_cgs/sqr(dist_Mpc_to_cgs);
+        lum2fl = factor/(4.0*dpi*(1.0+output.z)*sqr(astro::lumdist(output.z, opts.cosmo)));
+    }
 
     // Pre-compute age of Universe
     auniv = log10(lookback_time(1000.0, opts.cosmo) - lookback_time(output.z, opts.cosmo)) + 9;
