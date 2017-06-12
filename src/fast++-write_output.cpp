@@ -88,9 +88,14 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     fout << "# AB ZP:       " << opts.ab_zeropoint << std::endl;
     fout << "# Library:     " << pretty_library(opts.library) << std::endl;
     if (opts.my_sfh.empty()) {
-    fout << "# SFH:         " << pretty_sfh(opts.sfh) << std::endl;
+    fout << "# SFH:         " << pretty_sfh(opts.sfh);
     } else {
-    fout << "# SFH:         " << "custom SFH: " << opts.my_sfh << std::endl;
+    fout << "# SFH:         " << "custom SFH: " << opts.my_sfh;
+    }
+    if (opts.sfr_avg > 0) {
+        fout << " (<SFR> over " << opts.sfr_avg/1e6 << " Myr)" << std::endl;
+    } else {
+        fout << " (inst. SFR)" << std::endl;
     }
     fout << "# Stellar IMF: " << pretty_imf(opts.imf) << std::endl;
     fout << "# Dust law:    " <<

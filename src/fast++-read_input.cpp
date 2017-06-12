@@ -175,6 +175,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
             note("averaging SFRs over ", opts.sfr_avg, " Myr");
         }
     }
+
     opts.sfr_avg *= 1e6;
 
     if (opts.best_from_sim && opts.n_sim == 0) {
