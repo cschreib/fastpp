@@ -740,7 +740,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     if (col_wl != npos) {
         double lam0 = slam0.front();
         double lam1 = slam0.back();
-        double dlam_whole = (slam0.back()-slam0.first())/(slam0.size()-1);
+        double dlam_whole = (slam0.back()-slam0.front())/(slam0.size()-1);
 
         for (uint_t il : range(1, slam0.size())) {
             if (abs((slam0[il]-slam0[il-1])/dlam_whole - 1.0) > 0.05) {
