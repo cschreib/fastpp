@@ -254,7 +254,7 @@ private :
     vec2f extras;
 
 public :
-    bool read(std::string filename) {
+    bool read(std::string filename, bool noflux = false) {
         std::string state;
         try {
             file_wrapper lib(filename);
@@ -284,6 +284,9 @@ public :
                 state = "read time steps";
                 age.resize(ntime);
                 lib.read(age);
+
+                // Make sure input is correct
+                phypp_check(is_sorted(age), "galaxev age array is not sorted: ", age);
             }
 
             // Read through info section (variable total size)
@@ -307,22 +310,29 @@ public :
             }
 
             // Read wavelength grid
-            {
+            std::int32_t nwave = 0; {
                 state = "read wavelength grid";
-                std::int32_t nwave = 0;
                 if (nwave < 0) {
                     error("invalid library file: number of wavelength values is negative");
                     return false;
                 }
                 lib.read(nwave);
-                lambda.resize(nwave);
-                lib.read(lambda);
+                if (noflux) {
+                    lib.seekg(nwave*4, std::ios::cur);
+                } else {
+                    lambda.resize(nwave);
+                    lib.read(lambda);
+                }
             }
 
             // Read fluxes
             {
                 state = "read model fluxes";
-                fluxes.resize(age.size(), lambda.size());
+
+                if (!noflux) {
+                    fluxes.resize(age.size(), lambda.size());
+                }
+
                 for (uint_t i : range(age)) {
                     // Discard extra data
                     lib.seekg(2*4, std::ios::cur);
@@ -335,13 +345,17 @@ public :
                             "is negative for time step id=", i);
                         return false;
                     }
-                    if (uint_t(nlam) > lambda.size()) {
+                    if (nlam > nwave) {
                         error("invalid library file: too many wavelength values "
                             "at time step id=", i);
                         return false;
                     }
 
-                    lib.read(&fluxes(i,0), nlam);
+                    if (noflux) {
+                        lib.seekg(nlam*4, std::ios::cur);
+                    } else {
+                        lib.read(&fluxes(i,0), nlam);
+                    }
 
                     // Discard extra data
                     std::int32_t nspec = 0;
@@ -510,6 +524,31 @@ std::string gridder_t::get_library_file(uint_t im, uint_t it) const {
         "_z"+replace(strn(output.metal[im]), "0.", "")+"_ltau"+stau+".ised";
 }
 
+bool get_age_bounds(const vec1f& ised_age, float nage, std::array<uint_t,2>& p, double& x) {
+    p = bounds(nage, ised_age);
+
+    if (p[0] == npos) {
+        error("requested age is lower than allowed by the template library (",
+            log10(nage), " vs. ", log10(ised_age.safe[p[1]]), ")");
+        return false;
+    } else if (p[1] == npos) {
+        if (nage > ised_age.safe[p[0]]) {
+            error("requested age is larger than allowed by the template library (",
+                log10(nage), " vs. ", log10(ised_age.safe[p[0]]), ")");
+            return false;
+        }
+
+        // We picked exactly the oldest age of the library
+        p[1] = p[0];
+        p[0] = p[1]-1;
+    }
+
+    x = (log10(nage) - log10(ised_age.safe[p[0]]))/
+        (log10(ised_age.safe[p[1]]) - log10(ised_age.safe[p[0]]));
+
+    return true;
+}
+
 bool gridder_t::build_and_send(fitter_t& fitter) {
     model_t model;
     model.flux.resize(input.lambda.size());
@@ -555,9 +594,6 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
                 return false;
             }
 
-            // Make sure input is correct
-            phypp_check(is_sorted(ised.age), "galaxev age array is not sorted: ", ised.age);
-
             // Pre-compute dust law
             vec1d dust_law = build_dust_law(ised.lambda);
 
@@ -573,25 +609,12 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
                 // Interpolate the galaxev grid at the requested age
                 vec1f tpl_flux;
                 double nage = e10(output.age[ia]);
-                auto p = bounds(nage, ised.age);
-                if (p[0] == npos) {
-                    error("requested age is lower than allowed by the template library (",
-                        output.age[ia], " vs. ", log10(ised.age.safe[p[1]]), ")");
+
+                std::array<uint_t,2> p;
+                double x;
+                if (!get_age_bounds(ised.age, nage, p, x)) {
                     return false;
-                } else if (p[1] == npos) {
-                    if (nage > ised.age.safe[p[0]]) {
-                        error("requested age is larger than allowed by the template library (",
-                            output.age[ia], " vs. ", log10(ised.age.safe[p[0]]), ")");
-                        return false;
-                    }
-
-                    // We picked exactly the oldest age of the library
-                    p[1] = p[0];
-                    p[0] = p[1]-1;
                 }
-
-                double x = (output.age.safe[ia] - log10(ised.age.safe[p[0]]))/
-                    (log10(ised.age.safe[p[1]]) - log10(ised.age.safe[p[0]]));
 
                 tpl_flux   = (1.0 - x)*ised.fluxes.safe(p[0],_) + x*ised.fluxes.safe(p[1],_);
                 model.mass = (1.0 - x)*ised.mass.safe[p[0]]     + x*ised.mass.safe[p[1]];
@@ -681,33 +704,17 @@ bool gridder_t::build_template(uint_t im, uint_t it, uint_t ia, uint_t id, uint_
         return false;
     }
 
-    // Make sure input is correct
-    phypp_check(is_sorted(ised.age), "galaxev age array is not sorted: ", ised.age);
-
     // Interpolate the galaxev grid at the requested age
     double nage = e10(output.age[ia]);
-    auto p = bounds(nage, ised.age);
-    double mass = 0;
-    if (p[0] == npos) {
-        error("requested age is lower than allowed by the template library (",
-            output.age[ia], " vs. ", log10(ised.age[p[1]]), ")");
+
+    std::array<uint_t,2> p;
+    double x;
+    if (!get_age_bounds(ised.age, nage, p, x)) {
         return false;
-    } else if (p[1] == npos) {
-        if (nage > ised.age[p[0]]) {
-            error("requested age is larger than allowed by the template library (",
-                output.age[ia], " vs. ", log10(ised.age[p[0]]), ")");
-            return false;
-        }
-
-        flux = ised.fluxes(p[0],_);
-        mass = ised.mass[p[0]];
-    } else {
-        double x = (output.age[ia] - log10(ised.age[p[0]]))/
-            (log10(ised.age[p[1]]) - log10(ised.age[p[0]]));
-
-        flux = ised.fluxes(p[0],_)*(1.0 - x) + ised.fluxes(p[1],_)*x;
-        mass = ised.mass[p[0]]*(1.0 - x) + ised.mass[p[1]]*x;
     }
+
+    flux = ised.fluxes(p[0],_)*(1.0 - x) + ised.fluxes(p[1],_)*x;
+    float mass = ised.mass[p[0]]*(1.0 - x) + ised.mass[p[1]]*x;
 
     // Apply dust reddening
     if (output.av[id] > 0) {
@@ -743,6 +750,61 @@ bool gridder_t::build_template(uint_t im, uint_t it, uint_t ia, uint_t id, uint_
 bool gridder_t::build_template(uint_t igrid, vec1f& lam, vec1f& flux, vec1f& iflux) const {
     vec1u ids = grid_ids(igrid);
     return build_template(ids[0], ids[1], ids[2], ids[3], ids[4], lam, flux, iflux);
+}
+
+
+bool gridder_t::get_sfh(uint_t im, uint_t it, uint_t ia, uint_t id, uint_t iz,
+    const vec1f& t, float mass, vec1f& sfh) const {
+
+    galaxev_ised ised;
+
+    // Load SSP in galaxev ised format
+    std::string filename = get_library_file(im, it);
+
+    if (!ised.read(filename, true)) {
+        return false;
+    }
+
+    double nage = e10(output.age[ia]);
+    double age_obs = e10(auniv[iz]);
+    double age_born = age_obs - nage;
+
+    uint_t i0 = upper_bound(age_born, t);
+    uint_t i1 = upper_bound(age_obs, t);
+
+    if (i1 == npos) {
+        i1 = t.size()-1;
+    }
+    if (i0 == npos) {
+        i0 = 0;
+    }
+
+    if (opts.sfh_output == "sfr") {
+        sfh = replicate(0.0f, t.size());
+        sfh[i0-_-i1] = interpolate(ised.sfr, ised.age, t[i0-_-i1] - age_born);
+
+        // Interpolate the galaxev grid at the requested age
+        std::array<uint_t,2> p;
+        double x;
+        if (!get_age_bounds(ised.age, nage, p, x)) {
+            return false;
+        }
+
+        double ised_mass = ised.mass[p[0]]*(1.0 - x) + ised.mass[p[1]]*x;
+        sfh *= mass/ised_mass;
+    } else {
+        sfh = replicate(0.0f, t.size());
+        sfh[i0-_-i1] = interpolate(ised.mass, ised.age, t[i0-_-i1] - age_born);
+        sfh *= mass/interpolate(sfh, t, age_obs);
+        sfh[i1-_] = mass; // NB: ignores mass loss after time of observations!
+    }
+
+    return true;
+}
+
+bool gridder_t::get_sfh(uint_t igrid, const vec1f& t, float mass, vec1f& sfh) const {
+    vec1u ids = grid_ids(igrid);
+    return get_sfh(ids[0], ids[1], ids[2], ids[3], ids[4], t, mass, sfh);
 }
 
 uint_t gridder_t::model_id(uint_t im, uint_t it, uint_t ia, uint_t id, uint_t iz) const {

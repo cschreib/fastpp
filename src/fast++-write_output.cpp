@@ -268,6 +268,95 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
                  << align_right(strn(input.eflux(is,il)), 13) << "\n";
         }
         fout.close();
+
+        if (opts.verbose) progress(pg, 13);
+    }
+}
+
+void write_sfhs(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
+    const output_state_t& output) {
+
+    if (opts.verbose) note("saving star formation histories");
+
+    std::string odir = opts.output_dir+"best_fits/";
+    if (!file::mkdir(odir)) {
+        warning("could not save best fit SFHs");
+        warning("the output directory '", odir, "' could not be created");
+        return;
+    }
+
+    std::string quantity = "SFR";
+    std::string unit = "Msol/yr";
+    if (opts.sfh_output == "mass") {
+        quantity = "Mstar";
+        unit = "Msol";
+    }
+
+    std::string header = "# t "+quantity+"(t) ("+unit+")";
+    if (!opts.c_interval.empty()) {
+        header += " med_"+quantity;
+        for (float c : input.conf_interval) {
+            float cc = 100*(1-2*c);
+            std::string is = (cc < 0.0 ? "u" : "l")+strn(round(abs(cc)));
+            header += " "+is+"_"+quantity;
+        }
+    }
+
+    header += "\n";
+
+    auto pg = progress_start(input.id.size());
+    for (uint_t is : range(input.id)) {
+        vec1u idm = gridder.grid_ids(output.best_model[is]);
+        vec1f t = rgen_step(1e6, e10(gridder.auniv[idm[4]]), opts.sfh_step);
+
+        // Get best fit SFH
+        vec2f sfh(t.size(), 1+input.conf_interval.size()+(input.conf_interval.empty() ? 0 : 1)); {
+            vec1f tsfh;
+            if (!gridder.get_sfh(output.best_model[is], t, output.best_mass(is,0), tsfh)) {
+                return;
+            }
+
+            sfh(_,0) = tsfh;
+        }
+
+        // Get confidence intervals
+        if (!opts.c_interval.empty()) {
+            vec2f sim_sfh(t.size(), opts.n_sim);
+            for (uint_t ir : range(opts.n_sim)) {
+                vec1f tsfh;
+                if (!gridder.get_sfh(output.mc_best_model(is,ir), t, output.mc_best_mass(is,ir), tsfh)) {
+                    return;
+                }
+
+                sim_sfh(_,ir) = tsfh;
+            }
+
+            for (uint_t it : range(t)) {
+                vec1f tsfh = sim_sfh(it,_);
+                sfh(it,1) = inplace_median(tsfh);
+                for (uint_t ic : range(input.conf_interval)) {
+                    sfh(it,2+ic) = inplace_percentile(tsfh, input.conf_interval[ic]);
+                }
+            }
+        }
+
+        // Save SFH
+        // TODO: use a more efficient serialization code
+        std::ofstream fout(odir+opts.catalog+"_"+input.id[is]+".sfh");
+        fout << header;
+
+        for (uint_t it : range(t)) {
+            fout << align_right(strn_sci(t.safe[it]), 13);
+
+            for (uint_t ic : range(sfh.dims[1])) {
+                fout << align_right(strn_sci(sfh.safe(it,ic)), 13);
+            }
+
+            fout << "\n";
+        }
+
+        fout.close();
+
         if (opts.verbose) progress(pg, 13);
     }
 }
@@ -279,5 +368,9 @@ void write_output(const options_t& opts, const input_state_t& input, const gridd
 
     if (opts.best_fit) {
         write_best_fits(opts, input, gridder, output);
+    }
+
+    if (opts.best_sfhs) {
+        write_sfhs(opts, input, gridder, output);
     }
 }

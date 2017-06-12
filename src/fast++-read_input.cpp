@@ -127,6 +127,9 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(output_ldust)
         PARSE_OPTION(sfr_avg)
         PARSE_OPTION(intrinsic_best_fit)
+        PARSE_OPTION(best_sfhs)
+        PARSE_OPTION(sfh_step)
+        PARSE_OPTION(sfh_output)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
@@ -180,6 +183,17 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         opts.sfr_avg = 0;
     }
 
+    if (opts.sfh_step < 0) {
+        error("step of output SFH cannot be negative");
+        return false;
+    } else if (opts.sfh_step > 1e4) {
+        error("step of output SFH must be given in Myr");
+        error("(you gave ", opts.sfh_step, " which is larger than the age of the Universe)");
+        return false;
+    }
+
+    opts.sfh_step *= 1e6;
+
     if (opts.verbose) {
         if (opts.sfr_avg == 0) {
             note("using instantaneous SFRs");
@@ -188,7 +202,23 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         }
     }
 
+    opts.sfh_output = tolower(opts.sfh_output);
+
+    if (!(opts.sfh_output == "sfr" || opts.sfh_output == "mass")) {
+        error("'SFH_OUTPUT' must be either 'sfr' or 'mass'");
+        return false;
+    }
+
     opts.sfr_avg *= 1e6;
+
+    if (opts.intrinsic_best_fit && !opts.best_fit) {
+        warning("'INTRINSIC_BEST_FIT' has no effect if 'BEST_SIM' is not set to 1");
+    }
+
+    if (opts.best_sfhs && !opts.my_sfh.empty()) {
+        warning("cannot output best fit SFH when using custom SFH");
+        opts.best_sfhs = false;
+    }
 
     if (opts.best_from_sim && opts.n_sim == 0) {
         error("cannot use the option 'BEST_FROM_SIM' if simulations are not enabled (set N_SIM > 0)");

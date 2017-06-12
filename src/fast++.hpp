@@ -94,6 +94,9 @@ struct options_t {
     bool output_ldust = false;
     float sfr_avg = 0.0;
     bool intrinsic_best_fit = false;
+    bool best_sfhs = false;
+    std::string sfh_output = "sfr";
+    float sfh_step = 10.0;
 
     // Simulations
     bool save_sim = false;
@@ -215,6 +218,10 @@ struct gridder_t {
     uint_t model_id(const vec1u& ids) const;
     uint_t model_id(uint_t im, uint_t it, uint_t ia, uint_t id, uint_t iz) const;
     vec1u grid_ids(uint_t iflat) const;
+
+    bool get_sfh(uint_t im, uint_t it, uint_t ia, uint_t id, uint_t iz,
+        const vec1f& t, float mass, vec1f& sfh) const;
+    bool get_sfh(uint_t iflat, const vec1f& t, float mass, vec1f& sfh) const;
 
 private :
     std::string get_library_file(uint_t im, uint_t it) const;
