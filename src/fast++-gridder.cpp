@@ -41,7 +41,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
 
     // First build a new array from the provided parameters
     if (opts.verbose) note("define redshift grid...");
-    if (opts.z_step == 0.0 || abs(opts.z_max - opts.z_min) < opts.z_step) {
+    if (opts.z_step == 0.0 || abs(opts.z_max - opts.z_min) < 0.5*opts.z_step) {
         // A single redshift
         output.z = {opts.z_min};
     } else {
