@@ -118,7 +118,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         out.mc_best_model = replicate(npos, input.id.size(), opts.n_sim);
     }
 
-    if (opts.no_cache) {
+    if (!opts.no_cache) {
         // Base library properties
         cache.cache_filename = opts.output_dir+opts.library+"_"+opts.resolution+"_"+opts.imf+
             "_"+opts.sfh+"_"+opts.dust_law+"_";
@@ -160,6 +160,8 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
                 warning("the program will not use the cache");
             }
         }
+    } else {
+        read_from_cache = false;
     }
 }
 
