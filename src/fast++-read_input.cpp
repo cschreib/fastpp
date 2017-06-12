@@ -144,6 +144,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         else if (key == "N_THREAD")        { if (!parse_value(key, val, opts.n_thread))        return false; }
         else if (key == "MAX_QUEUED_FITS") { if (!parse_value(key, val, opts.max_queued_fits)) return false; }
         else if (key == "VERBOSE")         { if (!parse_value(key, val, opts.verbose))         return false; }
+        else if (key == "OUTPUT_LDUST")    { if (!parse_value(key, val, opts.output_ldust))    return false; }
         else {
             warning("unknown parameter '", key, "'");
         }

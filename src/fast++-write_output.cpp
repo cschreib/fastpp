@@ -124,6 +124,10 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     vec1u cwidth = {maxid};
 
     vec1s oparam = {"z", "ltau", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "la2t"};
+    if (opts.output_ldust) {
+        oparam.push_back("lldust");
+    }
+
     uint_t ocwidth = 10;
     for (uint_t i : range(oparam)) {
         param.push_back(oparam[i]);
@@ -182,6 +186,11 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
             fout << align_right(pretty_strn(round(1e2*la2t)/1e2), cwidth[c]); ++c;
         }
 
+        if (opts.output_ldust) {
+            for (uint_t ip : range(output.best_ldust.dims[1])) {
+                fout << align_right(pretty_strn(round(1e2*log10(output.best_ldust(is,ip)))/1e2), cwidth[c]); ++c;
+            }
+        }
         uint_t nobs = count(is_finite(input.eflux(is,_)));
         float chi2 = output.best_chi2[is]/max(1u, nobs > gridder.nparam ? nobs - gridder.nparam : 1u);
         fout << align_right(strn_sci(chi2), cwidth[c]);

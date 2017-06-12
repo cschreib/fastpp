@@ -80,14 +80,27 @@ struct options_t {
     bool best_fit = false;
 
     // NB: parameters below were not in original FAST
+    // ----------------------------------------------
 
+    // z-phot behavior
     bool force_zphot = false;
     bool best_at_zphot = false;
     float zphot_conf = fnan;
-    bool verbose = false;
+
+    // Miscelaneous
+    bool verbose = true;
+
+    // Outputs
+    bool output_ldust = false;
+
+    // Simulations
     bool save_sim = false;
     bool best_from_sim = false;
+
+    // Cache
     bool no_cache = false;
+
+    // Multithreading
     parallel_choice parallel = parallel_choice::none;
     uint_t n_thread = 0;
     uint_t max_queued_fits = 1000;
@@ -138,6 +151,7 @@ struct output_state_t {
     // Best fits
     vec2f best_mass;                 // [ngal,1+nconf]
     vec2f best_sfr;                  // [ngal,1+nconf]
+    vec2f best_ldust;                // [ngal,1+nconf]
     vec2f best_ssfr;                 // [ngal,1+nconf]
     vec2f best_z;                    // [ngal,1+nconf]
     vec2f best_metal;                // [ngal,1+nconf]
@@ -150,6 +164,7 @@ struct output_state_t {
     // Monte Carlo simulations
     vec2f mc_best_mass;              // [ngal,nsim]
     vec2f mc_best_sfr;               // [ngal,nsim]
+    vec2f mc_best_ldust;             // [ngal,nsim]
     vec2f mc_best_chi2;              // [ngal,nsim]
     vec2u mc_best_model;             // [ngal,nsim]
 
@@ -160,7 +175,7 @@ struct output_state_t {
 // Structure holding the integrated fluxes of a model and associated physical parameters
 struct model_t {
     vec1f flux; // [nfilt+nspec]
-    float mass = 0, sfr = 0;
+    float mass = 0, sfr = 0, ldust = 0;
     uint_t im, it, ia, id, iz, igrid;
 };
 
@@ -251,9 +266,9 @@ struct fitter_t {
     std::unique_ptr<workers_multi_source_t> workers_multi_source;
     std::unique_ptr<workers_multi_model_t> workers_multi_model;
 
-    vec2d tpl_err;         // [nz,nfilt+nspec]
+    vec2d tpl_err;               // [nz,nfilt+nspec]
     vec1u idz, idzp, idzl, idzu; // [ngal]
-    vec2d sim_rnd;         // [nsim,nfilt]
+    vec2d sim_rnd;               // [nsim,nfilt]
 
     explicit fitter_t(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
         output_state_t& output);
@@ -263,7 +278,7 @@ struct fitter_t {
 
 private :
     inline void write_chi2(uint_t igrid, const vec1f& chi2, const vec1f& mass, const vec1f& sfr,
-        uint_t i0, uint_t i1);
+        const vec1f& ldust, uint_t i0, uint_t i1);
     inline void fit_galaxies(const model_t& model, uint_t i0, uint_t i1);
 };
 

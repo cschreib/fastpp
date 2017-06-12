@@ -8,6 +8,7 @@ void gridder_t::cache_manager_t::write_model(const model_t& model) {
     file::write_as<std::uint32_t>(cache_file, model.igrid);
     file::write(cache_file, model.mass);
     file::write(cache_file, model.sfr);
+    file::write(cache_file, model.ldust);
     file::write(cache_file, model.flux);
 
     if (!cache_file) {
@@ -24,6 +25,7 @@ bool gridder_t::cache_manager_t::read_model(model_t& model) {
     file::read_as<std::uint32_t>(cache_file, model.igrid);
     file::read(cache_file, model.mass);
     file::read(cache_file, model.sfr);
+    file::read(cache_file, model.ldust);
     file::read(cache_file, model.flux);
 
     if (!cache_file) {
@@ -107,14 +109,14 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
 
     output.best_mass = output.best_sfr = output.best_z = output.best_metal =
         output.best_av = output.best_age = output.best_tau = output.best_ssfr =
-        replicate(fnan, input.id.size(), 1+input.conf_interval.size());
+        output.best_ldust = replicate(fnan, input.id.size(), 1+input.conf_interval.size());
 
     output.best_chi2 = replicate(finf, input.id.size());
     output.best_model = replicate(npos, input.id.size());
 
     if (opts.n_sim > 0) {
         out.mc_best_chi2 = replicate(finf, input.id.size(), opts.n_sim);
-        out.mc_best_mass = out.mc_best_sfr = replicate(fnan, input.id.size(), opts.n_sim);
+        out.mc_best_mass = out.mc_best_sfr = out.mc_best_ldust = replicate(fnan, input.id.size(), opts.n_sim);
         out.mc_best_model = replicate(npos, input.id.size(), opts.n_sim);
     }
 
@@ -138,7 +140,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
 
             cache.cache_file.seekg(0, std::ios_base::end);
             uint_t size = cache.cache_file.tellg();
-            uint_t size_expected = (sizeof(std::uint32_t)+sizeof(float)*(2+input.lambda.size()))*nmodel;
+            uint_t size_expected = (sizeof(std::uint32_t)+sizeof(float)*(3+input.lambda.size()))*nmodel;
 
             if (size != size_expected) {
                 warning("cache file is corrupted or invalid, will overwrite it");
@@ -583,17 +585,19 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
                         return false;
                     }
 
-                    tpl_flux = ised.fluxes.safe(p[0],_);
-                    model.sfr = ised.sfr.safe[p[0]];
+                    tpl_flux   = ised.fluxes.safe(p[0],_);
+                    model.sfr  = ised.sfr.safe[p[0]];
                     model.mass = ised.mass.safe[p[0]];
                 } else {
                     double x = (output.age.safe[ia] - log10(ised.age.safe[p[0]]))/
                         (log10(ised.age.safe[p[1]]) - log10(ised.age.safe[p[0]]));
 
-                    tpl_flux = ised.fluxes.safe(p[0],_)*(1.0 - x) + ised.fluxes.safe(p[1],_)*x;
-                    model.sfr = ised.sfr.safe[p[0]]*(1.0 - x) + ised.sfr.safe[p[1]]*x;
-                    model.mass = ised.mass.safe[p[0]]*(1.0 - x) + ised.mass.safe[p[1]]*x;
+                    tpl_flux   = (1.0 - x)*ised.fluxes.safe(p[0],_) + x*ised.fluxes.safe(p[1],_);
+                    model.sfr  = (1.0 - x)*ised.sfr.safe[p[0]]      + x*ised.sfr.safe[p[1]];
+                    model.mass = (1.0 - x)*ised.mass.safe[p[0]]     + x*ised.mass.safe[p[1]];
                 }
+
+                double lbol = integrate(ised.lambda, tpl_flux);
 
                 for (uint_t id : range(output.av)) {
                     model.id = id;
@@ -604,6 +608,12 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
                         for (uint_t il : range(tpl_att_flux)) {
                             tpl_att_flux.safe[il] *= e10(-0.4*output.av[id]*dust_law.safe[il]);
                         }
+
+                        // Compute absorbed energy
+                        double lobs = integrate(ised.lambda, tpl_att_flux);
+                        model.ldust = lbol - lobs;
+                    } else {
+                        model.ldust = 0;
                     }
 
                     for (uint_t iz : range(output.z)) {

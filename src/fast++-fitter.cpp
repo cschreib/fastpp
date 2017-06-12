@@ -141,9 +141,9 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
         ochi2.out_file.seekp(ochi2.hpos);
 
         // Populate the file with empty data now
-        // For each point of the grid, we store 3 values: chi2, mass and sfr
+        // For each point of the grid, we store 3 values: chi2, mass, sfr, and ldust
         uint_t nmodel1 = gridder.dims[0]*gridder.dims[1]*gridder.dims[2]*gridder.dims[3];
-        vec1f chunk = replicate(fnan, gridder.dims[4]*input.id.size()*3);
+        vec1f chunk = replicate(fnan, gridder.dims[4]*input.id.size()*4);
         for (uint_t im = 0; im < nmodel1; ++im) {
             if (!file::write(ochi2.out_file, chunk)) {
                 warning("the chi2 grid could not be initialized");
@@ -207,34 +207,37 @@ void fitter_t::workers_multi_model_t::process(const model_t& model) {
 }
 
 void fitter_t::write_chi2(uint_t igrid, const vec1f& chi2, const vec1f& mass, const vec1f& sfr,
-    uint_t i0, uint_t) {
+    const vec1f& ldust, uint_t i0, uint_t) {
 
     // TODO: consider putting this in a worker thread if this is slowing down too much
-    auto p0 = ochi2.hpos + igrid*input.id.size()*3*sizeof(float);
+    auto p0 = ochi2.hpos + igrid*input.id.size()*4*sizeof(float);
     ochi2.out_file.seekp(p0 + i0*sizeof(float));
     file::write(ochi2.out_file, chi2);
     ochi2.out_file.seekp(p0 + (input.id.size() + i0)*sizeof(float));
     file::write(ochi2.out_file, mass);
     ochi2.out_file.seekp(p0 + (2*input.id.size() + i0)*sizeof(float));
     file::write(ochi2.out_file, sfr);
+    ochi2.out_file.seekp(p0 + (3*input.id.size() + i0)*sizeof(float));
+    file::write(ochi2.out_file, ldust);
 }
 
 struct fitter_workspace {
     // Loop local, per source
-    char*   pool    = nullptr;
-    double* weight  = nullptr;
-    double* wflux   = nullptr;
-    double* wmodel  = nullptr;
-    double* rflux   = nullptr;
-    float*  mc_chi2 = nullptr;
-    float*  mc_mass = nullptr;
-    float*  mc_sfr  = nullptr;
+    char*   pool     = nullptr;
+    double* weight   = nullptr;
+    double* wflux    = nullptr;
+    double* wmodel   = nullptr;
+    double* rflux    = nullptr;
+    float*  mc_chi2  = nullptr;
+    float*  mc_mass  = nullptr;
+    float*  mc_sfr   = nullptr;
+    float*  mc_ldust = nullptr;
 
     // For all sources
-    vec1f chi2, mass, sfr;
+    vec1f chi2, mass, sfr, ldust;
 
     fitter_workspace(uint_t ngal, uint_t nflux, uint_t nsim) {
-        pool = new char[sizeof(double)*nflux*(3 + (nsim > 0 ? 1 : 0)) + sizeof(float)*nsim*3];
+        pool = new char[sizeof(double)*nflux*(3 + (nsim > 0 ? 1 : 0)) + sizeof(float)*nsim*4];
 
         std::ptrdiff_t off = 0;
         weight = reinterpret_cast<double*>(pool + off); off += nflux*sizeof(double);
@@ -242,13 +245,14 @@ struct fitter_workspace {
         wmodel = reinterpret_cast<double*>(pool + off); off += nflux*sizeof(double);
 
         if (nsim > 0) {
-            rflux   = reinterpret_cast<double*>(pool + off); off += nflux*sizeof(double);
-            mc_chi2 = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
-            mc_mass = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
-            mc_sfr  = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
+            rflux    = reinterpret_cast<double*>(pool + off); off += nflux*sizeof(double);
+            mc_chi2  = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
+            mc_mass  = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
+            mc_sfr   = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
+            mc_ldust = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
         }
 
-        chi2 = mass = sfr = vec1f(ngal);
+        chi2 = mass = sfr = ldust = vec1f(ngal);
     }
 
     fitter_workspace(const fitter_workspace&) = delete;
@@ -270,9 +274,10 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
         // Apply constraints on redshift
         if ((idz.safe[is] != npos && model.iz != idz.safe[is]) ||
             model.iz < idzl.safe[is] || model.iz > idzu.safe[is]) {
-            wsp.chi2.safe[i] = finf;
-            wsp.mass.safe[i] = fnan;
-            wsp.sfr.safe[i]  = fnan;
+            wsp.chi2.safe[i]  = finf;
+            wsp.mass.safe[i]  = fnan;
+            wsp.sfr.safe[i]   = fnan;
+            wsp.ldust.safe[i] = fnan;
             continue;
         }
 
@@ -309,19 +314,21 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             tchi2 += sqr(wsp.wflux[il] - scale*wsp.wmodel[il]);
         }
 
-        wsp.chi2.safe[i] = tchi2;
-        wsp.mass.safe[i] = scale*model.mass;
-        wsp.sfr.safe[i]  = scale*model.sfr;
+        wsp.chi2.safe[i]  = tchi2;
+        wsp.mass.safe[i]  = scale*model.mass;
+        wsp.sfr.safe[i]   = scale*model.sfr;
+        wsp.ldust.safe[i] = scale*model.ldust;
 
         if (!opts.best_from_sim && opts.parallel == parallel_choice::none) {
             // Compare to best
             // WARNING: read/modify shared resource
-            if (output.best_chi2.safe[is]   > wsp.chi2.safe[i] &&
+            if (output.best_chi2.safe[is]    > wsp.chi2.safe[i] &&
                 (!opts.best_at_zphot || idzp.safe[is] == npos || model.iz == idzp.safe[is])) {
-                output.best_chi2.safe[is]   = wsp.chi2.safe[i];
-                output.best_mass.safe(is,0) = wsp.mass.safe[i];
-                output.best_sfr.safe(is,0)  = wsp.sfr.safe[i];
-                output.best_model.safe[is]  = model.igrid;
+                output.best_chi2.safe[is]    = wsp.chi2.safe[i];
+                output.best_mass.safe(is,0)  = wsp.mass.safe[i];
+                output.best_sfr.safe(is,0)   = wsp.sfr.safe[i];
+                output.best_ldust.safe(is,0) = wsp.ldust.safe[i];
+                output.best_model.safe[is]   = model.igrid;
             }
         }
 
@@ -354,14 +361,16 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
                         output.mc_best_chi2.safe(is,im)  = tchi2;
                         output.mc_best_mass.safe(is,im)  = scale*model.mass;
                         output.mc_best_sfr.safe(is,im)   = scale*model.sfr;
+                        output.mc_best_ldust.safe(is,im) = scale*model.ldust;
                         output.mc_best_model.safe(is,im) = model.igrid;
                     }
                 } else {
                     // If multithreaded, accumulate simulated values and commit
                     // them to the shared array in one batch
-                    wsp.mc_chi2[im] = tchi2;
-                    wsp.mc_mass[im] = scale*model.mass;
-                    wsp.mc_sfr[im]  = scale*model.sfr;
+                    wsp.mc_chi2[im]  = tchi2;
+                    wsp.mc_mass[im]  = scale*model.mass;
+                    wsp.mc_sfr[im]   = scale*model.sfr;
+                    wsp.mc_ldust[im] = scale*model.ldust;
                 }
             }
 
@@ -375,6 +384,7 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
                         output.mc_best_chi2.safe(is,im)  = wsp.mc_chi2[im];
                         output.mc_best_mass.safe(is,im)  = wsp.mc_mass[im];
                         output.mc_best_sfr.safe(is,im)   = wsp.mc_sfr[im];
+                        output.mc_best_ldust.safe(is,im) = wsp.mc_ldust[im];
                         output.mc_best_model.safe(is,im) = model.igrid;
                     }
                 }
@@ -384,11 +394,11 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
     if (save_chi2) {
         if (opts.parallel == parallel_choice::none) {
-            write_chi2(model.igrid, wsp.chi2, wsp.mass, wsp.sfr, i0, i1);
+            write_chi2(model.igrid, wsp.chi2, wsp.mass, wsp.sfr, wsp.ldust, i0, i1);
         } else {
             // For thread safety
             std::lock_guard<std::mutex> lock(ochi2.write_mutex);
-            write_chi2(model.igrid, wsp.chi2, wsp.mass, wsp.sfr, i0, i1);
+            write_chi2(model.igrid, wsp.chi2, wsp.mass, wsp.sfr, wsp.ldust, i0, i1);
         }
     }
 
@@ -399,12 +409,13 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
         for (uint_t i : range(i1-i0)) {
             uint_t is = i + i0;
-            if (output.best_chi2.safe[is]   > wsp.chi2[i] &&
+            if (output.best_chi2.safe[is]    > wsp.chi2[i] &&
                 (!opts.best_at_zphot || idzp.safe[is] == npos || model.iz == idzp.safe[is])) {
-                output.best_chi2.safe[is]   = wsp.chi2[i];
-                output.best_mass.safe(is,0) = wsp.mass[i];
-                output.best_sfr.safe(is,0)  = wsp.sfr[i];
-                output.best_model.safe[is]  = model.igrid;
+                output.best_chi2.safe[is]    = wsp.chi2[i];
+                output.best_mass.safe(is,0)  = wsp.mass[i];
+                output.best_sfr.safe(is,0)   = wsp.sfr[i];
+                output.best_ldust.safe(is,0) = wsp.ldust[i];
+                output.best_model.safe[is]   = model.igrid;
             }
         }
     }
@@ -442,10 +453,11 @@ void fitter_t::find_best_fits() {
         }
 
         if (opts.n_sim > 0) {
-            vec1f bmass, bsfr, bssfr, bmetal, btau, bage, bav, bz;
+            vec1f bmass, bsfr, bldust, bssfr, bmetal, btau, bage, bav, bz;
 
             bmass = output.mc_best_mass(is,_);
             bsfr = output.mc_best_sfr(is,_);
+            bldust = output.mc_best_ldust(is,_);
             bssfr = bsfr/bmass;
 
             vec1u bmodel = output.mc_best_model(is,_);
@@ -466,7 +478,7 @@ void fitter_t::find_best_fits() {
                     warning("the output directory '", odir, "' could not be created");
                 } else {
                     fits::write_table(odir+opts.catalog+"_"+input.id[is]+".sims.fits",
-                        "mass", bmass, "sfr", bsfr, "ssfr", bssfr, "metal", bmetal,
+                        "mass", bmass, "sfr", bsfr, "ldust", bldust, "ssfr", bssfr, "metal", bmetal,
                         "tau", btau, "age", bage, "av", bav, "z", bz, "chi2", output.mc_best_chi2
                     );
                 }
@@ -475,6 +487,7 @@ void fitter_t::find_best_fits() {
             if (opts.best_from_sim) {
                 output.best_mass(is,0)  = inplace_median(bmass);
                 output.best_sfr(is,0)   = inplace_median(bsfr);
+                output.best_ldust(is,0) = inplace_median(bldust);
                 output.best_ssfr(is,0)  = inplace_median(bssfr);
                 output.best_metal(is,0) = inplace_median(bmetal);
                 output.best_tau(is,0)   = inplace_median(btau);
@@ -486,6 +499,7 @@ void fitter_t::find_best_fits() {
             for (uint_t ic : range(input.conf_interval)) {
                 output.best_mass(is,1+ic)  = inplace_percentile(bmass,  input.conf_interval[ic]);
                 output.best_sfr(is,1+ic)   = inplace_percentile(bsfr,   input.conf_interval[ic]);
+                output.best_ldust(is,1+ic) = inplace_percentile(bldust, input.conf_interval[ic]);
                 output.best_ssfr(is,1+ic)  = inplace_percentile(bssfr,  input.conf_interval[ic]);
                 output.best_metal(is,1+ic) = inplace_percentile(bmetal, input.conf_interval[ic]);
                 output.best_tau(is,1+ic)   = inplace_percentile(btau,   input.conf_interval[ic]);
