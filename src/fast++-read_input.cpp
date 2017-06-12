@@ -65,6 +65,75 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         return false;
     }
 
+    opts.cosmo = astro::get_cosmo("std");
+
+    auto do_parse = [&](const std::string& key, const std::string& val) {
+        #define PARSE_OPTION(name) if (key == #name) { return parse_value(key, val, opts.name); }
+        #define PARSE_OPTION_RENAME(opt, name) if (key == name) { return parse_value(key, val, opts.opt); }
+
+        PARSE_OPTION(catalog)
+        PARSE_OPTION(ab_zeropoint)
+        PARSE_OPTION(filters_res)
+        PARSE_OPTION_RENAME(filters_format, "filter_format")
+        PARSE_OPTION(temp_err_file)
+        PARSE_OPTION(name_zphot)
+        PARSE_OPTION(spectrum)
+        PARSE_OPTION(auto_scale)
+        PARSE_OPTION(output_dir)
+        PARSE_OPTION(output_file)
+        PARSE_OPTION(n_sim)
+        PARSE_OPTION(c_interval)
+        PARSE_OPTION(best_fit)
+        PARSE_OPTION(library_dir)
+        PARSE_OPTION(library)
+        PARSE_OPTION(resolution)
+        PARSE_OPTION(imf)
+        PARSE_OPTION(sfh)
+        PARSE_OPTION(dust_law)
+        PARSE_OPTION_RENAME(dust_noll_eb, "e_b")
+        PARSE_OPTION_RENAME(dust_noll_delta, "delta")
+        PARSE_OPTION(my_sfh)
+        PARSE_OPTION(log_tau_min)
+        PARSE_OPTION(log_tau_max)
+        PARSE_OPTION(log_tau_step)
+        PARSE_OPTION(log_age_min)
+        PARSE_OPTION(log_age_max)
+        PARSE_OPTION(log_age_step)
+        PARSE_OPTION(no_max_age)
+        PARSE_OPTION(z_min)
+        PARSE_OPTION(z_max)
+        PARSE_OPTION(z_step)
+        PARSE_OPTION(z_step_type)
+        PARSE_OPTION(a_v_min)
+        PARSE_OPTION(a_v_max)
+        PARSE_OPTION(a_v_step)
+        PARSE_OPTION(metal)
+        PARSE_OPTION_RENAME(cosmo.H0, "h0")
+        PARSE_OPTION_RENAME(cosmo.wm, "omega_m")
+        PARSE_OPTION_RENAME(cosmo.wL, "omega_l")
+        PARSE_OPTION(save_chi_grid)
+
+        // Not in original FAST
+        PARSE_OPTION(force_zphot)
+        PARSE_OPTION(best_at_zphot)
+        PARSE_OPTION(zphot_conf)
+        PARSE_OPTION(save_sim)
+        PARSE_OPTION(best_from_sim)
+        PARSE_OPTION(no_cache)
+        PARSE_OPTION(parallel)
+        PARSE_OPTION(n_thread)
+        PARSE_OPTION(max_queued_fits)
+        PARSE_OPTION(verbose)
+        PARSE_OPTION(output_ldust)
+        PARSE_OPTION(sfr_avg)
+
+        #undef  PARSE_OPTION
+        #undef  PARSE_OPTION_RENAME
+
+        warning("unknown parameter '", key, "'");
+        return true;
+    };
+
     // Read the parameter file line by line
     std::string line;
     while (std::getline(in, line)) {
@@ -85,69 +154,11 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
             return false;
         }
 
-        std::string key = toupper(trim(line.substr(0, eqp)));
+        std::string key = tolower(trim(line.substr(0, eqp)));
         std::string val = trim(line.substr(eqp+1));
 
-        opts.cosmo = astro::get_cosmo("std");
-
-        std::string best_method;
-
-        if      (key == "CATALOG")         { if (!parse_value(key, val, opts.catalog))         return false; }
-        else if (key == "AB_ZEROPOINT")    { if (!parse_value(key, val, opts.ab_zeropoint))    return false; }
-        else if (key == "FILTERS_RES")     { if (!parse_value(key, val, opts.filters_res))     return false; }
-        else if (key == "FILTER_FORMAT")   { if (!parse_value(key, val, opts.filters_format))  return false; }
-        else if (key == "TEMP_ERR_FILE")   { if (!parse_value(key, val, opts.temp_err_file))   return false; }
-        else if (key == "NAME_ZPHOT")      { if (!parse_value(key, val, opts.name_zphot))      return false; }
-        else if (key == "SPECTRUM")        { if (!parse_value(key, val, opts.spectrum))        return false; }
-        else if (key == "AUTO_SCALE")      { if (!parse_value(key, val, opts.auto_scale))      return false; }
-        else if (key == "OUTPUT_DIR")      { if (!parse_value(key, val, opts.output_dir))      return false; }
-        else if (key == "OUTPUT_FILE")     { if (!parse_value(key, val, opts.output_file))     return false; }
-        else if (key == "N_SIM")           { if (!parse_value(key, val, opts.n_sim))           return false; }
-        else if (key == "C_INTERVAL")      { if (!parse_value(key, val, opts.c_interval))      return false; }
-        else if (key == "BEST_FIT")        { if (!parse_value(key, val, opts.best_fit))        return false; }
-        else if (key == "LIBRARY_DIR")     { if (!parse_value(key, val, opts.library_dir))     return false; }
-        else if (key == "LIBRARY")         { if (!parse_value(key, val, opts.library))         return false; }
-        else if (key == "RESOLUTION")      { if (!parse_value(key, val, opts.resolution))      return false; }
-        else if (key == "IMF")             { if (!parse_value(key, val, opts.imf))             return false; }
-        else if (key == "SFH")             { if (!parse_value(key, val, opts.sfh))             return false; }
-        else if (key == "DUST_LAW")        { if (!parse_value(key, val, opts.dust_law))        return false; }
-        else if (key == "E_B")             { if (!parse_value(key, val, opts.dust_noll_eb))    return false; }
-        else if (key == "DELTA")           { if (!parse_value(key, val, opts.dust_noll_delta)) return false; }
-        else if (key == "MY_SFH")          { if (!parse_value(key, val, opts.my_sfh))          return false; }
-        else if (key == "LOG_TAU_MIN")     { if (!parse_value(key, val, opts.log_tau_min))     return false; }
-        else if (key == "LOG_TAU_MAX")     { if (!parse_value(key, val, opts.log_tau_max))     return false; }
-        else if (key == "LOG_TAU_STEP")    { if (!parse_value(key, val, opts.log_tau_step))    return false; }
-        else if (key == "LOG_AGE_MIN")     { if (!parse_value(key, val, opts.log_age_min))     return false; }
-        else if (key == "LOG_AGE_MAX")     { if (!parse_value(key, val, opts.log_age_max))     return false; }
-        else if (key == "LOG_AGE_STEP")    { if (!parse_value(key, val, opts.log_age_step))    return false; }
-        else if (key == "NO_MAX_AGE")      { if (!parse_value(key, val, opts.no_max_age))      return false; }
-        else if (key == "Z_MIN")           { if (!parse_value(key, val, opts.z_min))           return false; }
-        else if (key == "Z_MAX")           { if (!parse_value(key, val, opts.z_max))           return false; }
-        else if (key == "Z_STEP")          { if (!parse_value(key, val, opts.z_step))          return false; }
-        else if (key == "Z_STEP_TYPE")     { if (!parse_value(key, val, opts.z_step_type))     return false; }
-        else if (key == "A_V_MIN")         { if (!parse_value(key, val, opts.a_v_min))         return false; }
-        else if (key == "A_V_MAX")         { if (!parse_value(key, val, opts.a_v_max))         return false; }
-        else if (key == "A_V_STEP")        { if (!parse_value(key, val, opts.a_v_step))        return false; }
-        else if (key == "METAL")           { if (!parse_value(key, val, opts.metal))           return false; }
-        else if (key == "H0")              { if (!parse_value(key, val, opts.cosmo.H0))        return false; }
-        else if (key == "OMEGA_M")         { if (!parse_value(key, val, opts.cosmo.wm))        return false; }
-        else if (key == "OMEGA_L")         { if (!parse_value(key, val, opts.cosmo.wL))        return false; }
-        else if (key == "SAVE_CHI_GRID")   { if (!parse_value(key, val, opts.save_chi_grid))   return false; }
-        // Not in original FAST
-        else if (key == "FORCE_ZPHOT")     { if (!parse_value(key, val, opts.force_zphot))     return false; }
-        else if (key == "BEST_AT_ZPHOT")   { if (!parse_value(key, val, opts.best_at_zphot))   return false; }
-        else if (key == "ZPHOT_CONF")      { if (!parse_value(key, val, opts.zphot_conf))      return false; }
-        else if (key == "SAVE_SIM")        { if (!parse_value(key, val, opts.save_sim))        return false; }
-        else if (key == "BEST_FROM_SIM")   { if (!parse_value(key, val, opts.best_from_sim))   return false; }
-        else if (key == "NO_CACHE")        { if (!parse_value(key, val, opts.no_cache))        return false; }
-        else if (key == "PARALLEL")        { if (!parse_value(key, val, opts.parallel))        return false; }
-        else if (key == "N_THREAD")        { if (!parse_value(key, val, opts.n_thread))        return false; }
-        else if (key == "MAX_QUEUED_FITS") { if (!parse_value(key, val, opts.max_queued_fits)) return false; }
-        else if (key == "VERBOSE")         { if (!parse_value(key, val, opts.verbose))         return false; }
-        else if (key == "OUTPUT_LDUST")    { if (!parse_value(key, val, opts.output_ldust))    return false; }
-        else if (key == "SFR_AVG")         { if (!parse_value(key, val, opts.sfr_avg))         return false; }
-        else {
-            warning("unknown parameter '", key, "'");
+        if (!do_parse(key, val)) {
+            return false;
         }
     }
 
