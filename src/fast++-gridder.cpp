@@ -749,6 +749,10 @@ uint_t gridder_t::model_id(uint_t im, uint_t it, uint_t ia, uint_t id, uint_t iz
     return flat_id(dims, im, it, ia, id, iz);
 }
 
+uint_t gridder_t::model_id(const vec1u& ids) const {
+    return flat_id(dims, ids[0], ids[1], ids[2], ids[3], ids[4]);
+}
+
 vec1u gridder_t::grid_ids(uint_t iflat) const {
     return mult_ids(dims, iflat);
 }

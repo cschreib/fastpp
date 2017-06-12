@@ -221,10 +221,18 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         return;
     }
 
-    vec1f lam, sed, flx;
+    vec1f lam, sed, sed_nodust, flx;
     auto pg = progress_start(input.id.size());
     for (uint_t is : range(input.id)) {
         // Get model
+        if (opts.intrinsic_best_fit) {
+            vec1u idm = gridder.grid_ids(output.best_model[is]);
+            idm[3] = 0; // no dust
+            uint_t nodust_model = gridder.model_id(idm);
+            gridder.build_template(nodust_model, lam, sed_nodust, flx);
+            sed_nodust *= output.best_mass(is,0);
+        }
+
         gridder.build_template(output.best_model[is], lam, sed, flx);
         sed *= output.best_mass(is,0);
         flx *= output.best_mass(is,0);
@@ -232,11 +240,21 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         // Save model
         // TODO: use a more efficient serialization code
         std::ofstream fout(odir+opts.catalog+"_"+input.id[is]+".fit");
-        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+        if (opts.intrinsic_best_fit) {
+            fout << "# wl fl fl_nodust (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+        } else {
+            fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+        }
+
         for (uint_t il : range(lam)) {
             fout << align_right(strn(lam.safe[il]), 13)
-                 << align_right(strn(sed.safe[il]), 13)
-                 << "\n";
+                 << align_right(strn(sed.safe[il]), 13);
+
+            if (opts.intrinsic_best_fit) {
+            fout << align_right(strn(sed_nodust.safe[il]), 13);
+            }
+
+            fout << "\n";
         }
         fout.close();
 

@@ -93,6 +93,7 @@ struct options_t {
     // Outputs
     bool output_ldust = false;
     float sfr_avg = 0.0;
+    bool intrinsic_best_fit = false;
 
     // Simulations
     bool save_sim = false;
@@ -211,6 +212,7 @@ struct gridder_t {
         vec1f& lam, vec1f& flux, vec1f& iflux) const;
     bool build_template(uint_t igrid, vec1f& lam, vec1f& flux, vec1f& iflux) const;
 
+    uint_t model_id(const vec1u& ids) const;
     uint_t model_id(uint_t im, uint_t it, uint_t ia, uint_t id, uint_t iz) const;
     vec1u grid_ids(uint_t iflat) const;
 
