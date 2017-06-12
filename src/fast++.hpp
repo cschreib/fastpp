@@ -92,6 +92,7 @@ struct options_t {
 
     // Outputs
     bool output_ldust = false;
+    float sfr_avg = 0.0;
 
     // Simulations
     bool save_sim = false;

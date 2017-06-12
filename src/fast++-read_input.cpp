@@ -145,6 +145,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         else if (key == "MAX_QUEUED_FITS") { if (!parse_value(key, val, opts.max_queued_fits)) return false; }
         else if (key == "VERBOSE")         { if (!parse_value(key, val, opts.verbose))         return false; }
         else if (key == "OUTPUT_LDUST")    { if (!parse_value(key, val, opts.output_ldust))    return false; }
+        else if (key == "SFR_AVG")         { if (!parse_value(key, val, opts.sfr_avg))         return false; }
         else {
             warning("unknown parameter '", key, "'");
         }
@@ -161,12 +162,26 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
     if (opts.output_file.empty()) opts.output_file = opts.catalog;
 
+    // Now check for the consistency of the output and make corrections when necessary
+
+    if (opts.sfr_avg < 0 || !is_finite(opts.sfr_avg)) {
+        opts.sfr_avg = 0;
+    }
+
+    if (opts.verbose) {
+        if (opts.sfr_avg == 0) {
+            note("using instantaneous SFRs");
+        } else {
+            note("averaging SFRs over ", opts.sfr_avg, " Myr");
+        }
+    }
+    opts.sfr_avg *= 1e6;
+
     if (opts.best_from_sim && opts.n_sim == 0) {
         error("cannot use the option 'BEST_FROM_SIM' if simulations are not enabled (set N_SIM > 0)");
         return false;
     }
 
-    // Now check for the consistency of the output and make corrections when necessary
     if (opts.spectrum.empty()) {
         opts.auto_scale = false;
     }

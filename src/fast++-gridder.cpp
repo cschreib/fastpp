@@ -126,8 +126,8 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
             "_"+opts.sfh+"_"+opts.dust_law+"_";
         // Grid parameters
         cache.cache_filename += hash(output.z, output.metal, output.av, output.age, output.tau,
-            input.lambda, opts.dust_noll_eb, opts.dust_noll_delta, opts.cosmo.H0, opts.cosmo.wm,
-            opts.cosmo.wL)+".grid";
+            input.lambda, opts.dust_noll_eb, opts.sfr_avg, opts.dust_noll_delta, opts.cosmo.H0,
+            opts.cosmo.wm, opts.cosmo.wL)+".grid";
 
         if (opts.verbose) {
             note("cache file is '", cache.cache_filename, "'");
@@ -585,18 +585,28 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
                         return false;
                     }
 
-                    tpl_flux   = ised.fluxes.safe(p[0],_);
-                    model.sfr  = ised.sfr.safe[p[0]];
-                    model.mass = ised.mass.safe[p[0]];
-                } else {
-                    double x = (output.age.safe[ia] - log10(ised.age.safe[p[0]]))/
-                        (log10(ised.age.safe[p[1]]) - log10(ised.age.safe[p[0]]));
-
-                    tpl_flux   = (1.0 - x)*ised.fluxes.safe(p[0],_) + x*ised.fluxes.safe(p[1],_);
-                    model.sfr  = (1.0 - x)*ised.sfr.safe[p[0]]      + x*ised.sfr.safe[p[1]];
-                    model.mass = (1.0 - x)*ised.mass.safe[p[0]]     + x*ised.mass.safe[p[1]];
+                    // We picked exactly the oldest age of the library
+                    p[1] = p[0];
+                    p[0] = p[1]-1;
                 }
 
+                double x = (output.age.safe[ia] - log10(ised.age.safe[p[0]]))/
+                    (log10(ised.age.safe[p[1]]) - log10(ised.age.safe[p[0]]));
+
+                tpl_flux   = (1.0 - x)*ised.fluxes.safe(p[0],_) + x*ised.fluxes.safe(p[1],_);
+                model.mass = (1.0 - x)*ised.mass.safe[p[0]]     + x*ised.mass.safe[p[1]];
+
+                if (opts.sfr_avg > 0) {
+                    // Average SFR over the past X yr
+                    double t1 = e10(output.age.safe[ia]);
+                    double t0 = max(t1 - opts.sfr_avg, ised.age[0]);
+                    model.sfr = integrate(ised.age, ised.sfr, t0, t1)/opts.sfr_avg;
+                } else {
+                    // Use instantaneous SFR
+                    model.sfr = (1.0 - x)*ised.sfr.safe[p[0]] + x*ised.sfr.safe[p[1]];
+                }
+
+                // Pre-compute bolometric luminosity
                 double lbol = integrate(ised.lambda, tpl_flux);
 
                 for (uint_t id : range(output.av)) {
