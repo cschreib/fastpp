@@ -197,6 +197,8 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
             }
         }
         uint_t nobs = count(is_finite(input.eflux(is,_)));
+        if (!input.lir.empty() && is_finite(input.lir[is])) ++nobs;
+
         float chi2 = output.best_chi2[is]/max(1u, nobs > gridder.nparam ? nobs - gridder.nparam : 1u);
         fout << align_right(strn_sci(chi2), cwidth[c]);
         fout << "\n";

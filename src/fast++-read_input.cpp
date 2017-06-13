@@ -130,6 +130,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(best_sfhs)
         PARSE_OPTION(sfh_step)
         PARSE_OPTION(sfh_output)
+        PARSE_OPTION(use_lir)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
@@ -506,7 +507,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     uint_t col_tot = where_first(is_any_of(header_trans, "TOT"+strna(state.no_filt)));
 
     if (col_id == npos) {
-        error("missing ID column from photometric catalog");
+        error("missing ID column in photometric catalog");
         return false;
     }
 
@@ -1076,6 +1077,99 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
     return true;
 }
 
+
+bool read_lir(const options_t& opts, input_state_t& state) {
+    if (!opts.use_lir) return true;
+
+    std::string catalog_file = opts.catalog+".lir";
+    if (!file::exists(catalog_file)) {
+        return true;
+    }
+
+    if (opts.verbose) {
+        note("reading infrared luminosities from '", catalog_file, "'");
+    }
+
+    // Read the header
+    vec1s header;
+    if (!read_header(catalog_file, header)) {
+        return false;
+    }
+
+    header = toupper(header);
+
+    // Check we have all the columns we need
+    uint_t col_lir = where_first(header == "LIR");
+    uint_t col_err = where_first(header == "ELIR");
+    uint_t col_id  = where_first(header == "ID");
+
+    if (col_lir == npos) {
+        error("missing LIR column in infrared luminosity file");
+        return false;
+    }
+    if (col_err == npos) {
+        error("missing ELIR column in infrared luminosity file");
+        return false;
+    }
+    if (col_id == npos) {
+        error("missing ID column in infrared luminosity file");
+        return false;
+    }
+
+    // Initialize the lir columns
+    state.lir = replicate(fnan, state.id.size());
+    state.lir_err = replicate(fnan, state.id.size());
+
+    // Read the catalog
+    uint_t l = 0;
+    uint_t i = 0;
+    std::ifstream in(catalog_file);
+    std::string line;
+    while (std::getline(in, line)) {
+        ++l;
+        line = trim(line);
+        if (line.empty() || line[0] == '#') continue;
+
+        vec1s spl = split_any_of(line, " \t\n\r");
+
+        std::string id = spl[col_id];
+
+        float lir;
+        if (!from_string(spl[col_lir], lir)) {
+            error("could not read infrared luminosity from line ", l);
+            note("must be a floating point number, got: '", spl[col_lir], "'");
+            return false;
+        }
+
+        float err;
+        if (!from_string(spl[col_err], err)) {
+            error("could not read infrared luminosity uncertainty from line ", l);
+            note("must be a floating point number, got: '", spl[col_err], "'");
+            return false;
+        }
+
+        if (id != state.id[i]) {
+            error("infrared luminosity and photometry catalogs do not match");
+            return false;
+        }
+
+        if (err > 0) {
+            state.lir[i] = lir;
+            state.lir_err[i] = err;
+        }
+
+        ++i;
+    }
+
+    if (i != state.id.size()) {
+        error("infrared luminosity and photometry catalogs do not match (", i, " vs. ",
+            state.id.size(), ")");
+        return false;
+    }
+
+    return true;
+}
+
 bool read_template_error(const options_t& opts, input_state_t& state) {
     if (opts.temp_err_file.empty()) {
         return true;
@@ -1120,6 +1214,11 @@ bool read_input(options_t& opts, input_state_t& state, const std::string& filena
 
     // Read the photometric redshift catalog from EAzY, if any
     if (!read_photoz(opts, state)) {
+        return false;
+    }
+
+    // Read infrared luminosities, if any
+    if (!read_lir(opts, state)) {
         return false;
     }
 

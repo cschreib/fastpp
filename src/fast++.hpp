@@ -87,6 +87,9 @@ struct options_t {
     bool best_at_zphot = false;
     float zphot_conf = fnan;
 
+    // LIR prior
+    bool use_lir = false;
+
     // Miscelaneous
     bool verbose = true;
 
@@ -132,6 +135,7 @@ struct input_state_t {
     vec1f zspec;                        // [ngal]
     vec2f zphot;                        // [ngal,1+2*nzconf]
     vec1f zphot_conf;                   // [nzconf]
+    vec1f lir, lir_err;                 // [ngal]
     vec2f flux, eflux;                  // [ngal,nfilt+nspec]
     vec1u nobs;                         // [ngal]
     vec1f conf_interval;                // [nconf]

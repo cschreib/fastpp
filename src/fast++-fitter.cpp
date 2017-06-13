@@ -74,7 +74,7 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
     // Pre-generate random fluctuations
     if (opts.n_sim > 0) {
         auto seed = make_seed(42);
-        sim_rnd = randomn(seed, opts.n_sim, input.lambda.size());
+        sim_rnd = randomn(seed, opts.n_sim, input.lambda.size()+1);
     }
 
     // Initialize chi2 grid if asked
@@ -240,12 +240,12 @@ struct fitter_workspace {
         pool = new char[sizeof(double)*nflux*(3 + (nsim > 0 ? 1 : 0)) + sizeof(float)*nsim*4];
 
         std::ptrdiff_t off = 0;
-        weight = reinterpret_cast<double*>(pool + off); off += nflux*sizeof(double);
-        wflux  = reinterpret_cast<double*>(pool + off); off += nflux*sizeof(double);
-        wmodel = reinterpret_cast<double*>(pool + off); off += nflux*sizeof(double);
+        weight = reinterpret_cast<double*>(pool + off); off += (1+nflux)*sizeof(double);
+        wflux  = reinterpret_cast<double*>(pool + off); off += (1+nflux)*sizeof(double);
+        wmodel = reinterpret_cast<double*>(pool + off); off += (1+nflux)*sizeof(double);
 
         if (nsim > 0) {
-            rflux    = reinterpret_cast<double*>(pool + off); off += nflux*sizeof(double);
+            rflux    = reinterpret_cast<double*>(pool + off); off += (1+nflux)*sizeof(double);
             mc_chi2  = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
             mc_mass  = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
             mc_sfr   = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
@@ -283,6 +283,8 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
         // Compute weights and scaling factor
         double wfm = 0, wmm = 0;
+
+        uint_t ndata = input.lambda.size();
         if (opts.temp_err_file.empty()) {
             for (uint_t il : range(input.lambda)) {
                 wsp.weight[il] = 1.0/input.eflux.safe(is,il);
@@ -306,11 +308,23 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             }
         }
 
+        if (!input.lir.empty() && is_finite(input.lir.safe[is])) {
+            // Add LIR as a data point in the fit
+            wsp.weight[ndata] = 1.0/input.lir_err.safe[is];
+            wsp.wflux[ndata] = input.lir.safe[is]*wsp.weight[ndata];
+            wsp.wmodel[ndata] = model.ldust*wsp.weight[ndata];
+
+            wfm += wsp.wmodel[ndata]*wsp.wflux[ndata];
+            wmm += sqr(wsp.wmodel[ndata]);
+
+            ++ndata;
+        }
+
         double scale = wfm/wmm;
 
         // Compute chi2
         double tchi2 = 0;
-        for (uint_t il : range(input.lambda)) {
+        for (uint_t il : range(ndata)) {
             tchi2 += sqr(wsp.wflux[il] - scale*wsp.wmodel[il]);
         }
 
@@ -339,10 +353,9 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
                 // NB: since we create the randomness just once at the beginning of the fit
                 // all models (and each galaxy) will use the same random numbers
                 wfm = 0;
-                for (uint_t il : range(input.lambda)) {
+                for (uint_t il : range(ndata)) {
                     // In weighted units, the random perturbations have a sigma of unity
                     wsp.rflux[il] = wsp.wflux[il] + sim_rnd.safe(im,il);
-
                     wfm += wsp.wmodel[il]*wsp.rflux[il];
                 }
 
@@ -350,7 +363,7 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
                 // Compute chi2
                 tchi2 = 0;
-                for (uint_t il : range(input.lambda)) {
+                for (uint_t il : range(ndata)) {
                     tchi2 += sqr(wsp.rflux[il] - scale*wsp.wmodel[il]);
                 }
 

@@ -26,6 +26,7 @@
     - [Monte Carlo simulations](#monte-carlo-simulations)
     - [Controlling the cache](#controlling-the-cache)
     - [More output options](#more-output-options)
+    - [Using priors on the infrared luminosity](#using-priors-on-the-infrared-luminosity)
     - [Better treatment of spectra](#better-treatment-of-spectra)
 
 <!-- /MarkdownTOC -->
@@ -208,6 +209,17 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
  * ```BEST_SFHS```: possible values are ```0``` or ```1```. The default is ```0```. If set to ```1``, the program will output the best fit star formation history (SFH) to a file, in the ```best_fits``` directory (as for the best fit SEDs). If Monte Carlo simulations are enabled, the program will also output confidence intervals on the SFH for each time step, as well as the median SFH among all Monte Carlo simulations. This median may not correspond to any analytical form allowed by your chosen SFH model.
  * ```SFH_STEP```: possible values are any strictly positive number, which defines the size of a time step in the output SFH (in Myr). The default is ```10``` Myr.
  * ```SFH_OUTPUT```: possible values are ```'sfr'``` or ```'mass'```. The default is ```'sfr'```, and the program outputs as "SFH" the evolution of the instantaneous SFR of each galaxy with time. If set to ```'mass'```, the program will output instead the evolution of the stellar mass with time (which is usually better behaved, see Glazebrook et al. 2017). Note that the evolution of the mass accounts for mass loss, so the mass slowly _decreases_ with time after a galaxy has quenched.
+
+## Using priors on the infrared luminosity
+One of the main degeneracy that arises when fitting UV-to-NIR data is that of dust versus age. When a galaxy has a red SED, unless the signal to noise and the wavelength sampling are high, it is very difficult to say if this is caused by a large amount of dust, or by an older stellar population, or a combination of both. It is for this reason that SFRs obtained from such fits are very uncertain (for red galaxies), and that SFRs determined from the far-IR are preferred.
+
+The typical approach is thus to use the UV-to-NIR data to determine the photometric redshift and the stellar mass, and the FIR data for the SFR. But this is inconsistent: by not using all the available information in a single fit, we may be using a stellar mass derived assuming the galaxy is very old, while it was actually dusty. It turns out that the stellar mass does not change dramatically under the age-dust degeneracy, but other parameters do (such as the star formation history, but also the redshift!).
+
+Therefore in FAST++ you have the option to use the information of the FIR luminosity to constrain the fit and break the age-dust degeneracy. This is done by adding the FIR luminosity as an additional "data point" in the SED, and comparing it to the predicted dust luminosity (see ```OUTPUT_LDUST``` above). The FIR luminosity will therefore participate in determining both the normalization of a template and its chi squared.
+
+To do this you must enable the ```USE_LIR``` option, and provide a luminosity catalog file with extension ```.lir```. This file must contain three columns: ```ID``` as in the photometric catalog (sources must be in the same order), ```LIR``` is the 8-to-1000um luminosity expressed in units of solar luminosity (Lsun), and ```ELIR``` is the associated uncertainty, which is assumed to be Gaussian. If you could not measure the luminosity for a galaxy, simply set ```LIR``` and ```ELIR``` to zero or any invalid value (a negative number such as -99, or NaN).
+
+Since you have to provide the luminosity, this implicitly assumes that you know the redshift of the galaxy... In the future FAST++ may be able to fit the FIR photometry directly, so this restriction will eventually be removed.
 
 ## Better treatment of spectra
 The file format for spectra in FAST-IDL is not well defined. The spectra must be given on a wavelength grid where only the central wavelength of each spectral element is specified. FAST-IDL then assumes that this wavelength grid is contiguous (no gap) and uniform (all spectral elements are defined on the same delta_lambda). No check is made to ensure this is true.
