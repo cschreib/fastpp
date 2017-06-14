@@ -50,14 +50,16 @@ To install FAST++, you first need to build it. For this, you will need a recent 
 ```
 # Download the code and dependencies
 git clone --recursive https://github.com/cschreib/fastpp.git
+cd fastpp
 
 # Compile
-mkdir build && cd build
+mkdir build
+cd build
 cmake ../
-make
+make install
 ```
 
-This will create an executable called ```fast++``` in the ```fastpp/build``` directory, which you can use immediately to replace FAST. If you have not installed FAST, you will have to download some template libraries from [the FAST website](http://w.astro.berkeley.edu/~mariska/FAST_Download.html) before you can start fitting galaxies. The latest FAST template error function and EAzY filter response database are provided with FAST++ in the ```share``` directory.
+This will create an executable called ```fast++``` in the ```fastpp/bin``` directory, which you can use immediately to replace FAST. If you have not installed FAST, you will have to download some template libraries from [the FAST website](http://w.astro.berkeley.edu/~mariska/FAST_Download.html) before you can start fitting galaxies. The latest FAST template error function and EAzY filter response database are provided with FAST++ in the ```fastpp/share``` directory.
 
 
 # Benchmarks
