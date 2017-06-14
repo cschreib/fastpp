@@ -107,13 +107,8 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
         " (" << (opts.z_step_type == 0 ? "linear" : "logarithmic") << ")" << std::endl;
     fout << "# Filters:     " << collapse(strna(input.no_filt), "  ") << std::endl;
 
-    std::string additional_abbrev;
-    if (opts.output_ldust) {
-        additional_abbrev += ", lldust: log[ldust/Lsol]";
-    }
-
     fout << "# ltau: log[tau/yr], lage: log[age/yr], lmass: log[mass/Msol], "
-        "lsfr: log[sfr/(Msol/yr)], lssfr: log[ssfr*yr], la2t: log[age/tau]"+additional_abbrev << std::endl;
+        "lsfr: log[sfr/(Msol/yr)], lssfr: log[ssfr*yr], la2t: log[age/tau]" << std::endl;
     fout << "# For sfr=0. lsfr is set to -99" << std::endl;
 
     vec1s param = {"id"};
