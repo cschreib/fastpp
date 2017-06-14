@@ -74,6 +74,8 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
     opts.cosmo = astro::get_cosmo("std");
 
+    vec1s unparsed_key, unparsed_val;
+
     auto do_parse = [&](const std::string& key, const std::string& val) {
         #define PARSE_OPTION(name) if (key == #name) { return parse_value(key, val, opts.name); }
         #define PARSE_OPTION_RENAME(opt, name) if (key == name) { return parse_value(key, val, opts.opt); }
@@ -138,11 +140,16 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(sfh_output)
         PARSE_OPTION(use_lir)
         PARSE_OPTION(output_columns)
+        PARSE_OPTION(custom_sfh)
+        PARSE_OPTION(custom_params)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
 
-        warning("unknown parameter '", key, "'");
+        // warning("unknown parameter '", key, "'");
+        unparsed_key.push_back(key);
+        unparsed_val.push_back(val);
+
         return true;
     };
 
@@ -174,6 +181,42 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         }
     }
 
+    // Initialize custom parameter grid
+    opts.custom_params_min = opts.custom_params_max = opts.custom_params_step =
+        replicate(fnan, opts.custom_params.size());
+
+    // Check unparsed key/value pairs for additional options we couldn't parse before
+    for (uint_t p : range(unparsed_key)) {
+        std::string key = unparsed_key[p];
+        std::string val = unparsed_val[p];
+        bool read = false;
+
+        // Read custom grid parameters
+        for (uint_t c : range(opts.custom_params)) {
+            if (key == tolower(opts.custom_params[c])+"_min") {
+                read = true;
+                if (!parse_value(key, val, opts.custom_params_min[c])) {
+                    return false;
+                }
+            } else if (key == tolower(opts.custom_params[c])+"_max") {
+                read = true;
+                if (!parse_value(key, val, opts.custom_params_max[c])) {
+                    return false;
+                }
+            } else if (key == tolower(opts.custom_params[c])+"_step") {
+                read = true;
+                if (!parse_value(key, val, opts.custom_params_step[c])) {
+                    return false;
+                }
+            }
+        }
+
+        if (!read) {
+            warning("unknown parameter '", toupper(key), "'");
+        }
+    }
+
+    // Create output directory, if it doesn't exist
     if (!opts.output_dir.empty()) {
         opts.output_dir = file::directorize(opts.output_dir);
         if (!file::mkdir(opts.output_dir)) {
@@ -233,10 +276,12 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         return false;
     }
 
-    if (opts.my_sfh.empty()) {
-        opts.sfh = sfh_type::gridded;
-    } else {
+    if (!opts.my_sfh.empty()) {
         opts.sfh = sfh_type::single;
+    } else if (!opts.custom_sfh.empty()) {
+        opts.sfh = sfh_type::custom;
+    } else {
+        opts.sfh = sfh_type::gridded;
     }
 
     if (opts.spectrum.empty()) {
@@ -301,10 +346,50 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
             break;
         case sfh_type::single:
             opts.output_columns = {
-                "id", "z", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "la2t", "chi2"
+                "id", "z", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "chi2"
             };
             break;
+        case sfh_type::custom:
+            opts.output_columns = {
+                "id", "z", "metal", "lage", "Av", "lmass", "lsfr", "lssfr"
+            };
+            append(opts.output_columns, opts.custom_params);
+            opts.output_columns.push_back("chi2");
+            break;
+
         }
+    }
+
+
+    if (!opts.custom_params.empty()) {
+        // Add tau to the custom parameter grid if the user used it
+        uint_t idp = where_first(tolower(opts.custom_params) == "log_tau");
+        if (idp != npos) {
+            opts.custom_params_min[idp] = opts.log_tau_min;
+            opts.custom_params_max[idp] = opts.log_tau_max;
+            opts.custom_params_step[idp] = opts.log_tau_step;
+        }
+    }
+
+    if (!opts.custom_sfh.empty()) {
+        // Check that all parameters in the grid have been properly defined
+        bool bad = false;
+        for (uint_t c : range(opts.custom_params)) {
+            if (!is_finite(opts.custom_params_min[c])) {
+                error("missing ", toupper(opts.custom_params[c])+"_MIN value");
+                bad = true;
+            }
+            if (!is_finite(opts.custom_params_max[c])) {
+                error("missing ", toupper(opts.custom_params[c])+"_MAX value");
+                bad = true;
+            }
+            if (!is_finite(opts.custom_params_step[c])) {
+                error("missing ", toupper(opts.custom_params[c])+"_STEP value");
+                bad = true;
+            }
+        }
+
+        if (bad) return false;
     }
 
     // Use the default 'share' directory if nothing is provided

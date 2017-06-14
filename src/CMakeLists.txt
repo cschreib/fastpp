@@ -20,13 +20,17 @@ add_definitions(-DFASTPP_SHARE_DIR="${FASTPP_SHARE_DIR}")
 # Include dependencies
 message(STATUS ${PHYPP_INCLUDE_DIRS})
 include_directories(${PHYPP_INCLUDE_DIRS})
+include_directories(${TINYEXPR_INCLUDE_DIR})
 
 # Build FAST++
 add_executable(fast++
     fast++-read_input.cpp
     fast++-gridder.cpp
+    fast++-gridder-ised.cpp
+    fast++-gridder-custom.cpp
     fast++-fitter.cpp
     fast++-write_output.cpp
     fast++.cpp)
 target_link_libraries(fast++ ${PHYPP_LIBRARIES})
+target_link_libraries(fast++ ${TINYEXPR_LIBRARY})
 install(TARGETS fast++ DESTINATION bin)

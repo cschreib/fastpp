@@ -28,7 +28,7 @@ endif()
 ExternalProject_Add(cfitsio
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/cfitsio
     DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/cfitsio
-    GIT_REPOSITORY https://github.com/cschreib/cfitsio.git
+    GIT_REPOSITORY https://github.com/HEASARC/cfitsio.git
     CMAKE_ARGS
         -DBUILD_SHARED_LIBS=OFF
         -DUSE_PTHREADS=ON
@@ -54,13 +54,25 @@ ExternalProject_Add(phy++
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
         -DCMAKE_BUILD_TYPE=Release)
 
+# Configure and build tinyexpr
+ExternalProject_Add(tinyexpr
+    SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/tinyexpr
+    DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/tinyexpr
+    GIT_REPOSITORY https://github.com/cschreib/tinyexpr
+    CMAKE_ARGS
+        -DTE_NAT_LOG=ON
+        -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
+        -DCMAKE_BUILD_TYPE=Release)
+
 # Configure and build FAST++
 ExternalProject_Add(fast++
-    DEPENDS phy++
+    DEPENDS phy++ tinyexpr
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/src
     CMAKE_ARGS
         -DCFITSIO_ROOT_DIR=${PROJECT_SOURCE_DIR}/external
         -DPHYPP_ROOT_DIR=${PROJECT_SOURCE_DIR}/external
+        -DTINYEXPR_INCLUDE_DIR=${PROJECT_SOURCE_DIR}/external/include
+        -DTINYEXPR_LIBRARY=${PROJECT_SOURCE_DIR}/external/lib/libtinyexpr.a
         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}
         -DCMAKE_MODULE_PATH=${PROJECT_SOURCE_DIR}/external/phypp/cmake
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}

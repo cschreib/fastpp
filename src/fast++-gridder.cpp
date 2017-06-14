@@ -46,6 +46,10 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         nparam = 4; // [z,av,age,metal]
         nprop = 4;  // [mass,sfr,ssfr,ldust]
         break;
+    case sfh_type::custom:
+        nparam = 4+opts.custom_params.size(); // [z,av,age,metal,...]
+        nprop = 4;  // [mass,sfr,ssfr,ldust]
+        break;
     }
 
     output.grid.resize(nparam);
@@ -73,12 +77,21 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     // Custom grid & properties
     switch (opts.sfh) {
     case sfh_type::gridded:
-        output.grid[grid_id::custom+0] = rgen_step(opts.log_tau_min, opts.log_tau_max, opts.log_tau_step);
+        output.grid[grid_id::custom] = rgen_step(opts.log_tau_min, opts.log_tau_max, opts.log_tau_step);
 
-        set_param(grid_id::custom+0, "ltau", "log[tau/yr]",  false, false, 1e-2);
-        set_prop(prop_id::custom+0,  "la2t", "log[age/tau]", false, false, 1e-2);
+        set_param(grid_id::custom, "ltau", "log[tau/yr]",  false, false, 1e-2);
+        set_prop(prop_id::custom,  "la2t", "log[age/tau]", false, false, 1e-2);
         break;
     case sfh_type::single:
+        break;
+    case sfh_type::custom:
+        for (uint_t ig : range(opts.custom_params)) {
+            output.grid[grid_id::custom+ig] = rgen_step(
+                opts.custom_params_min[ig], opts.custom_params_max[ig], opts.custom_params_step[ig]
+            );
+
+            set_param(grid_id::custom+ig, opts.custom_params[ig], "", false, false, 1e-2);
+        }
         break;
     }
 
@@ -170,10 +183,18 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         switch (opts.sfh) {
         case sfh_type::gridded:
             note("fitting a grid of ", nmodel,
-                " templates (ntau=", output.grid[grid_id::custom+0].size(), ",", grid_common, ")");
+                " templates (ntau=", output.grid[grid_id::custom].size(), ",", grid_common, ")");
             break;
         case sfh_type::single:
             note("fitting a grid of ", nmodel, " templates (", grid_common, ")");
+            break;
+        case sfh_type::custom:
+            std::string grid_custom;
+            for (uint_t ig : range(opts.custom_params)) {
+                grid_custom += "n"+opts.custom_params[ig]+"="+
+                    strn(output.grid[grid_id::custom+ig].size())+",";
+            }
+            note("fitting a grid of ", nmodel, " templates (", grid_custom, grid_common, ")");
             break;
         }
     }
@@ -193,17 +214,19 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         cache.cache_filename = opts.output_dir+opts.library+"_"+opts.resolution+"_"+
             opts.name_imf+"_"+opts.name_sfh+"_"+opts.dust_law+"_";
 
-        std::string grid_hash = hash(output_z, output.grid[grid_id::av],
-            output.grid[grid_id::age], output.grid[grid_id::metal], input.lambda,
+        std::string grid_hash = hash(output.grid[_-(grid_id::custom-1)], input.lambda,
             opts.dust_noll_eb, opts.dust_noll_delta, opts.sfr_avg,
             opts.cosmo.H0, opts.cosmo.wm, opts.cosmo.wL);
 
+        // Additional grid parameter
         switch (opts.sfh) {
         case sfh_type::gridded:
-            // Additional grid parameter
-            grid_hash = hash(grid_hash, output.grid[grid_id::custom+0]);
+            grid_hash = hash(grid_hash, output.grid[grid_id::custom]);
             break;
         case sfh_type::single:
+            break;
+        case sfh_type::custom:
+            grid_hash = hash(grid_hash, opts.custom_sfh, output.grid[grid_id::custom-_]);
             break;
         }
 
@@ -272,238 +295,6 @@ bool gridder_t::check_options() const {
     return true;
 }
 
-struct file_wrapper {
-    std::ifstream in;
-    bool doswap = false;
-
-    explicit file_wrapper(std::string filename) : in(filename, std::ios::binary) {
-        in.exceptions(in.failbit);
-    }
-
-    static void swap_endian(char& t) {}
-
-    template<typename T>
-    static void swap_endian(T& t) {
-        static_assert(std::is_fundamental<T>::value, "cannot swap endian of complex type");
-
-        union {
-            T u;
-            unsigned char u8[sizeof(T)];
-        } source, dest;
-
-        source.u = t;
-
-        for (size_t k : range(sizeof(T))) {
-            dest.u8[k] = source.u8[sizeof(T)-k-1];
-        }
-
-        t = dest.u;
-    }
-
-    template<std::size_t D, typename T>
-    static void swap_endian(vec<D,char>& v) {}
-
-    template<std::size_t D, typename T>
-    static void swap_endian(vec<D,T>& v) {
-        for (auto& val : v) {
-            swap_endian(val);
-        }
-    }
-
-    template<typename T>
-    void read(T& val) {
-        in.read(reinterpret_cast<char*>(&val), sizeof(T));
-
-        if (doswap) {
-            swap_endian(val);
-        }
-    }
-
-    template<std::size_t D, typename T>
-    void read(vec<D,T>& val) {
-        in.read(reinterpret_cast<char*>(val.data.data()), sizeof(T)*val.size());
-
-        if (doswap) {
-            swap_endian(val);
-        }
-    }
-
-    template<typename T>
-    void read(T* val, uint_t n) {
-        in.read(reinterpret_cast<char*>(val), sizeof(T)*n);
-
-        if (doswap) {
-            for (uint_t i : range(n)) {
-                swap_endian(val[i]);
-            }
-        }
-    }
-
-    template<typename T>
-    void seekg(T i) {
-        in.seekg(i);
-    }
-
-    template<typename T, typename U>
-    void seekg(T i, U u) {
-        in.seekg(i, u);
-    }
-};
-
-struct galaxev_ised {
-    vec1f age, sfr, mass;
-    vec1f lambda;
-    vec2f fluxes;
-
-private :
-    vec2f extras;
-
-public :
-    bool read(std::string filename, bool noflux = false) {
-        std::string state;
-        try {
-            file_wrapper lib(filename);
-
-            // The file might have been written with a different endianess...
-            // As in FAST, we try to read the number of time steps and see if
-            // it makes sense, if not we switch endianess.
-
-            {
-                // Ignore the first four bytes (FORTRAN convention)
-                state = "read first bytes";
-                lib.seekg(4);
-
-                state = "determine endianess";
-                std::int32_t ntime = 0;
-                lib.read(ntime);
-
-                // Check if the number of steps makes sense
-                lib.doswap = ntime < 0 || ntime > 10000;
-                if (lib.doswap) {
-                    // It doesn't, try again swapping the bytes
-                    lib.seekg(4);
-                    lib.read(ntime);
-                }
-
-                // Read time steps
-                state = "read time steps";
-                age.resize(ntime);
-                lib.read(age);
-
-                // Make sure input is correct
-                phypp_check(is_sorted(age), "galaxev age array is not sorted: ", age);
-            }
-
-            // Read through info section (variable total size)
-            // Get the number of extras data, in passing
-            {
-                // Skip IMF boundaries
-                state = "read IMF";
-                lib.seekg(2*4, std::ios::cur);
-                // Skip IMF segments
-                std::int32_t imf_seg = 0;
-                lib.read(imf_seg);
-                lib.seekg(6*imf_seg*4, std::ios::cur);
-                // Skip some more stuff
-                state = "read header";
-                lib.seekg(3*4, std::ios::cur);
-                float info;
-                lib.read(info);
-                extras.resize(info == 0 ? 12 : 10, age.size());
-                // Skip the end of the info section (fixed size)
-                lib.seekg(1*4 + 80 + 4*4 + 80 + 80 + 2 + 2 + 3*4, std::ios::cur);
-            }
-
-            // Read wavelength grid
-            std::int32_t nwave = 0; {
-                state = "read wavelength grid";
-                if (nwave < 0) {
-                    error("invalid library file: number of wavelength values is negative");
-                    return false;
-                }
-                lib.read(nwave);
-                if (noflux) {
-                    lib.seekg(nwave*4, std::ios::cur);
-                } else {
-                    lambda.resize(nwave);
-                    lib.read(lambda);
-                }
-            }
-
-            // Read fluxes
-            {
-                state = "read model fluxes";
-
-                if (!noflux) {
-                    fluxes.resize(age.size(), lambda.size());
-                }
-
-                for (uint_t i : range(age)) {
-                    // Discard extra data
-                    lib.seekg(2*4, std::ios::cur);
-
-                    // Read data
-                    std::int32_t nlam = 0;
-                    lib.read(nlam);
-                    if (nlam < 0) {
-                        error("invalid library file: number of wavelength values "
-                            "is negative for time step id=", i);
-                        return false;
-                    }
-                    if (nlam > nwave) {
-                        error("invalid library file: too many wavelength values "
-                            "at time step id=", i);
-                        return false;
-                    }
-
-                    if (noflux) {
-                        lib.seekg(nlam*4, std::ios::cur);
-                    } else {
-                        lib.read(&fluxes(i,0), nlam);
-                    }
-
-                    // Discard extra data
-                    std::int32_t nspec = 0;
-                    lib.read(nspec);
-                    lib.seekg(nspec*4, std::ios::cur);
-                }
-            }
-
-            // Read extras
-            state = "read extra data (mass, sfr)";
-            for (uint_t i : range(extras.dims[0])) {
-                // Discard extra data
-                lib.seekg(2*4, std::ios::cur);
-
-                // Read data
-                std::int32_t ntime = 0;
-                lib.read(ntime);
-                if (ntime < 0) {
-                    error("invalid library file: number of time steps is negative "
-                        "for extra data id=", i);
-                    return false;
-                }
-                if (uint_t(ntime) > extras.dims[1]) {
-                    error("invalid library file: too many time steps for extra data id=", i);
-                    return false;
-                }
-
-                lib.read(&extras(i,0), ntime);
-            }
-        } catch (...) {
-            error("could not read data in library file '", filename, "'");
-            error("could not ", state);
-            error("the file is probably corrupted, try re-downloading it");
-            return false;
-        }
-
-        mass = extras(1,_);
-        sfr = extras(2,_);
-
-        return true;
-    }
-};
-
 namespace dust {
     auto calzetti2000 = vectorize_lambda([](double l) {
         // http://adsabs.harvard.edu/abs/2000ApJ...533..682C
@@ -561,7 +352,7 @@ namespace dust {
 }
 
 namespace igm {
-    vec1d madau1995(vec1d lam, double z) {
+    vec1d madau1995(double z, vec1d lam) {
         // http://adsabs.harvard.edu/abs/1995ApJ...441...18M
         // TODO: check this implementation someday, I suspect this is wrong or
         // very approximate (taken directly from FAST)
@@ -616,181 +407,85 @@ vec1d gridder_t::build_dust_law(const vec1f& lambda) const {
     return dust_law;
 }
 
-vec1d gridder_t::build_igm_absorption(const vec1f& lambda, float z) const {
-    return igm::madau1995(lambda, z);
-}
-
-std::string gridder_t::get_library_file(uint_t im, uint_t it) const {
-    std::string stau = strn(output.grid[grid_id::custom+0][it]);
-    if (stau.find(".") == stau.npos) stau += ".0";
-
-    return opts.library_dir+"ised_"+opts.name_sfh+"."+opts.resolution+"/"+
-        opts.library+"_"+opts.resolution+"_"+opts.name_imf+
-        "_z"+replace(strn(output.grid[grid_id::metal][im]), "0.", "")+"_ltau"+stau+".ised";
-}
-
-bool get_age_bounds(const vec1f& ised_age, float nage, std::array<uint_t,2>& p, double& x) {
-    p = bounds(nage, ised_age);
-
-    if (p[0] == npos) {
-        error("requested age is lower than allowed by the template library (",
-            log10(nage), " vs. ", log10(ised_age.safe[p[1]]), ")");
-        return false;
-    } else if (p[1] == npos) {
-        if (nage > ised_age.safe[p[0]]) {
-            error("requested age is larger than allowed by the template library (",
-                log10(nage), " vs. ", log10(ised_age.safe[p[0]]), ")");
-            return false;
-        }
-
-        // We picked exactly the oldest age of the library
-        p[1] = p[0];
-        p[0] = p[1]-1;
+vec2d gridder_t::build_igm_absorption(const vec1f& z, const vec1f& lambda) const {
+    vec2d igm_abs(z.size(), lambda.size());
+    for (uint_t iz : range(z)) {
+        igm_abs(iz,_) = igm::madau1995(z.safe[iz], lambda);
     }
-
-    x = (log10(nage) - log10(ised_age.safe[p[0]]))/
-        (log10(ised_age.safe[p[1]]) - log10(ised_age.safe[p[0]]));
-
-    return true;
+    return igm_abs;
 }
 
-bool gridder_t::build_and_send_ised(fitter_t& fitter) {
-    model_t model;
-    model.flux.resize(input.lambda.size());
-    model.props.resize(nprop);
+void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
+    const vec1d& lam, const vec1d& tpl_flux, const vec1d& dust_law, const vec2d& igm_abs,
+    float lage, vec1u& idm, model_t& model) {
 
-    galaxev_ised ised;
-
-    vec1f& output_metal = output.grid[grid_id::metal];
-    vec1f& output_tau = output.grid[grid_id::custom+0];
-    vec1f& output_age = output.grid[grid_id::age];
     vec1f& output_av = output.grid[grid_id::av];
     vec1f& output_z = output.grid[grid_id::z];
-
-    float& model_mass = model.props[prop_id::mass];
-    float& model_sfr = model.props[prop_id::sfr];
-    float& model_ssfr = model.props[prop_id::ssfr];
-    float& model_a2t = model.props[prop_id::custom+0];
     float& model_ldust = model.props[prop_id::ldust];
 
-    auto pg = progress_start(nmodel);
-    for (uint_t im : range(output_metal))
-    for (uint_t it : range(output_tau)) {
-        // Load SSP in galaxev ised format
-        std::string filename = get_library_file(im, it);
-        if (!ised.read(filename)) {
-            return false;
+    // Pre-compute bolometric luminosity
+    double lbol = integrate(lam, tpl_flux);
+
+    for (uint_t id : range(output_av)) {
+        idm[grid_id::av] = id;
+
+        // Apply dust reddening
+        vec1f tpl_att_flux = tpl_flux;
+        if (output_av[id] > 0) {
+            for (uint_t il : range(tpl_att_flux)) {
+                tpl_att_flux.safe[il] *= e10(-0.4*output_av[id]*dust_law.safe[il]);
+            }
+
+            // Compute absorbed energy
+            double lobs = integrate(lam, tpl_att_flux);
+            model_ldust = lbol - lobs;
+        } else {
+            model_ldust = 0;
         }
 
-        // Pre-compute dust law
-        vec1d dust_law = build_dust_law(ised.lambda);
-
-        // Pre-compute IGM absorption
-        vec2d igm_abs(output_z.size(), ised.lambda.size());
         for (uint_t iz : range(output_z)) {
-            igm_abs(iz,_) = build_igm_absorption(ised.lambda, output_z[iz]);
-        }
+            idm[grid_id::z] = iz;
+            model.igrid = model_id(idm);
 
-        for (uint_t ia : range(output_age)) {
-            // Interpolate the galaxev grid at the requested age
-            vec1f tpl_flux;
-            double nage = e10(output_age[ia]);
+            vec1f tpl_att_z_lam = lam;
+            vec1f tpl_att_z_flux = tpl_att_flux;
 
-            std::array<uint_t,2> p;
-            double x;
-            if (!get_age_bounds(ised.age, nage, p, x)) {
-                return false;
+            for (uint_t il : range(tpl_att_z_flux)) {
+                // Apply IGM absorption & redshift
+                tpl_att_z_flux.safe[il] *= lum2fl.safe[iz]*igm_abs.safe(iz,il);
+                tpl_att_z_lam.safe[il] *= (1.0 + output_z.safe[iz]);
             }
 
-            tpl_flux = (1.0 - x)*ised.fluxes.safe(p[0],_) + x*ised.fluxes.safe(p[1],_);
-            model_mass = (1.0 - x)*ised.mass.safe[p[0]] + x*ised.mass.safe[p[1]];
+            // Integrate
+            for (uint_t il : range(input.lambda)) {
+                model.flux.safe[il] = astro::sed2flux(
+                    input.filters.safe[il].wl, input.filters.safe[il].tr,
+                    tpl_att_z_lam, tpl_att_z_flux
+                );
 
-            if (opts.sfr_avg > 0) {
-                // Average SFR over the past X yr
-                double t1 = e10(output_age.safe[ia]);
-                double t0 = max(t1 - opts.sfr_avg, ised.age[0]);
-                model_sfr = integrate(ised.age, ised.sfr, t0, t1)/opts.sfr_avg;
-            } else {
-                // Use instantaneous SFR
-                model_sfr = (1.0 - x)*ised.sfr.safe[p[0]] + x*ised.sfr.safe[p[1]];
-            }
-
-            model_ssfr = model_sfr/model_mass;
-            model_a2t = output_age[ia] - output_tau[it];
-
-            // Pre-compute bolometric luminosity
-            double lbol = integrate(ised.lambda, tpl_flux);
-
-            for (uint_t id : range(output_av)) {
-                // Apply dust reddening
-                vec1f tpl_att_flux = tpl_flux;
-                if (output_av[id] > 0) {
-                    for (uint_t il : range(tpl_att_flux)) {
-                        tpl_att_flux.safe[il] *= e10(-0.4*output_av[id]*dust_law.safe[il]);
-                    }
-
-                    // Compute absorbed energy
-                    double lobs = integrate(ised.lambda, tpl_att_flux);
-                    model_ldust = lbol - lobs;
-                } else {
-                    model_ldust = 0;
-                }
-
-                for (uint_t iz : range(output_z)) {
-                    vec1u idm(nparam);
-                    idm[grid_id::z] = iz;
-                    idm[grid_id::av] = id;
-                    idm[grid_id::age] = ia;
-                    idm[grid_id::custom+0] = it;
-                    idm[grid_id::metal] = im;
-                    model.igrid = model_id(idm);
-
-                    vec1f tpl_att_z_lam = ised.lambda;
-                    vec1f tpl_att_z_flux = tpl_att_flux;
-
-                    for (uint_t il : range(tpl_att_z_flux)) {
-                        // Apply IGM absorption & redshift
-                        tpl_att_z_flux.safe[il] *= lum2fl.safe[iz]*igm_abs.safe(iz,il);
-                        tpl_att_z_lam.safe[il] *= (1.0 + output_z.safe[iz]);
-                    }
-
-                    // Integrate
-                    for (uint_t il : range(input.lambda)) {
-                        model.flux.safe[il] = astro::sed2flux(
-                            input.filters.safe[il].wl, input.filters.safe[il].tr,
-                            tpl_att_z_lam, tpl_att_z_flux
-                        );
-
-                        if (!is_finite(model.flux.safe[il])) {
-                            // Filter goes out of model coverage, assume zero
-                            model.flux.safe[il] = 0;
-                        }
-                    }
-
-                    // See if we want to use this model or not
-                    bool nofit = false;
-                    if (!opts.no_max_age && output_age[ia] > auniv[iz]) {
-                        nofit = true;
-                    }
-
-                    // Send to fitter
-                    if (!nofit) {
-                        fitter.fit(model);
-                    }
-
-                    // Cache
-                    cache.write_model(model);
-
-                    if (opts.verbose) progress(pg, 131);
+                if (!is_finite(model.flux.safe[il])) {
+                    // Filter goes out of model coverage, assume zero
+                    model.flux.safe[il] = 0;
                 }
             }
+
+            // See if we want to use this model or not
+            bool nofit = false;
+            if (!opts.no_max_age && lage > auniv[iz]) {
+                nofit = true;
+            }
+
+            // Send to fitter
+            if (!nofit) {
+                fitter.fit(model);
+            }
+
+            // Cache
+            cache.write_model(model);
+
+            if (opts.verbose) progress(pg, 131);
         }
     }
-
-    // Make sure we flush it all out
-    cache.cache_file.close();
-
-    return true;
 }
 
 bool gridder_t::build_and_send(fitter_t& fitter) {
@@ -826,6 +521,8 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
         switch (opts.sfh) {
         case sfh_type::gridded:
             return build_and_send_ised(fitter);
+        // case sfh_type::custom:
+        //     return build_and_send_custom(fitter);
         default:
             error("this SFH is not implemented yet");
             return false;
@@ -835,33 +532,33 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
     return true;
 }
 
-bool gridder_t::build_template_ised_impl(uint_t im, uint_t it, uint_t iz, double nage, double av,
+bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
     vec1f& lam, vec1f& flux, vec1f& iflux) const {
 
-    double z = output.grid[grid_id::z][iz];
+    vec1u idm = grid_ids(iflat);
+    uint_t iz = idm[grid_id::z];
+    uint_t id = idm[grid_id::av];
 
-    galaxev_ised ised;
+    float z = output.grid[grid_id::z][iz];
+    float av = output.grid[grid_id::av][id];
 
-    // Load SSP in galaxev ised format
-    std::string filename = get_library_file(im, it);
-
-    if (!ised.read(filename)) {
+    switch (opts.sfh) {
+    case sfh_type::gridded:
+        if (!build_template_ised(iflat, lam, flux)) {
+            return false;
+        }
+    // case sfh_type::gridded:
+    //     if (!build_template_custom(iflat, lam, flux)) {
+    //         return false;
+    //     }
+    default:
+        error("this SFH is not implemented yet");
         return false;
     }
-
-    // Interpolate the galaxev grid at the requested age
-    std::array<uint_t,2> p;
-    double x;
-    if (!get_age_bounds(ised.age, nage, p, x)) {
-        return false;
-    }
-
-    flux = ised.fluxes(p[0],_)*(1.0 - x) + ised.fluxes(p[1],_)*x;
-    float mass = ised.mass[p[0]]*(1.0 - x) + ised.mass[p[1]]*x;
 
     // Apply dust reddening
-    if (av > 0) {
-        vec1d dust_law = build_dust_law(ised.lambda);
+    if (av > 0 && !nodust) {
+        vec1d dust_law = build_dust_law(lam);
 
         for (uint_t il : range(flux)) {
             flux.safe[il] *= e10(-0.4*av*dust_law.safe[il]);
@@ -869,12 +566,11 @@ bool gridder_t::build_template_ised_impl(uint_t im, uint_t it, uint_t iz, double
     }
 
     // Compute IGM absorption
-    vec1d igm_abs = build_igm_absorption(ised.lambda, z);
+    vec2d igm_abs = build_igm_absorption({z}, lam);
 
-    lam = ised.lambda;
     for (uint_t il : range(flux)) {
-        // Apply IGM absorption & redshift & normalize to unit mass
-        flux.safe[il] *= (lum2fl[iz]/mass)*igm_abs.safe[il];
+        // Apply IGM absorption & redshift
+        flux.safe[il] *= lum2fl[iz]*igm_abs.safe(0,il);
         lam.safe[il] *= (1.0 + z);
     }
 
@@ -890,112 +586,20 @@ bool gridder_t::build_template_ised_impl(uint_t im, uint_t it, uint_t iz, double
     return true;
 }
 
-bool gridder_t::build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux, vec1f& iflux) const {
-    vec1u idm = grid_ids(iflat);
-    uint_t iz = idm[grid_id::z];
-    uint_t id = idm[grid_id::av];
-    uint_t ia = idm[grid_id::age];
-    uint_t it = idm[grid_id::custom+0];
-    uint_t im = idm[grid_id::metal];
-
-    double nage = e10(output.grid[grid_id::age][ia]);
-    double av = output.grid[grid_id::av][id];
-
-    return build_template_ised_impl(im, it, iz, nage, av, lam, flux, iflux);
-}
-
-bool gridder_t::build_template_ised_nodust(uint_t iflat, vec1f& lam, vec1f& flux, vec1f& iflux) const {
-    vec1u idm = grid_ids(iflat);
-    uint_t iz = idm[grid_id::z];
-    uint_t ia = idm[grid_id::age];
-    uint_t it = idm[grid_id::custom+0];
-    uint_t im = idm[grid_id::metal];
-
-    double nage = e10(output.grid[grid_id::age][ia]);
-    double av = 0.0;
-
-    return build_template_ised_impl(im, it, iz, nage, av, lam, flux, iflux);
-}
-
 bool gridder_t::build_template(uint_t igrid, vec1f& lam, vec1f& flux, vec1f& iflux) const {
-    switch (opts.sfh) {
-    case sfh_type::gridded:
-        return build_template_ised(igrid, lam, flux, iflux);
-    default:
-        error("this SFH is not implemented yet");
-        return false;
-    }
+    return build_template_impl(igrid, false, lam, flux, iflux);
 }
 
 bool gridder_t::build_template_nodust(uint_t igrid, vec1f& lam, vec1f& flux, vec1f& iflux) const {
-    switch (opts.sfh) {
-    case sfh_type::gridded:
-        return build_template_ised_nodust(igrid, lam, flux, iflux);
-    default:
-        error("this SFH is not implemented yet");
-        return false;
-    }
-}
-
-bool gridder_t::get_sfh_ised(uint_t iflat, const vec1f& t, vec1f& sfh) const {
-    uint_t im, it, ia, iz; {
-        vec1u idm = grid_ids(iflat);
-        iz = idm[grid_id::z];
-        ia = idm[grid_id::age];
-        it = idm[grid_id::custom+0];
-        im = idm[grid_id::metal];
-    }
-
-    galaxev_ised ised;
-
-    // Load SSP in galaxev ised format
-    std::string filename = get_library_file(im, it);
-
-    if (!ised.read(filename, true)) {
-        return false;
-    }
-
-    double nage = e10(output.grid[grid_id::age][ia]);
-    double age_obs = e10(auniv[iz]);
-    double age_born = age_obs - nage;
-
-    uint_t i0 = upper_bound(age_born, t);
-    uint_t i1 = upper_bound(age_obs, t);
-
-    if (i1 == npos) {
-        i1 = t.size()-1;
-    }
-    if (i0 == npos) {
-        i0 = 0;
-    }
-
-    if (opts.sfh_output == "sfr") {
-        sfh = replicate(0.0f, t.size());
-        sfh[i0-_-i1] = interpolate(ised.sfr, ised.age, t[i0-_-i1] - age_born);
-
-        // Interpolate the galaxev grid at the requested age
-        std::array<uint_t,2> p;
-        double x;
-        if (!get_age_bounds(ised.age, nage, p, x)) {
-            return false;
-        }
-
-        double ised_mass = ised.mass[p[0]]*(1.0 - x) + ised.mass[p[1]]*x;
-        sfh /= ised_mass;
-    } else {
-        sfh = replicate(0.0f, t.size());
-        sfh[i0-_-i1] = interpolate(ised.mass, ised.age, t[i0-_-i1] - age_born);
-        sfh /= interpolate(sfh, t, age_obs);
-        sfh[i1-_] = 1.0; // NB: ignores mass loss after time of observations!
-    }
-
-    return true;
+    return build_template_impl(igrid, true, lam, flux, iflux);
 }
 
 bool gridder_t::get_sfh(uint_t igrid, const vec1f& t, vec1f& sfh) const {
     switch (opts.sfh) {
     case sfh_type::gridded:
         return get_sfh_ised(igrid, t, sfh);
+    // case sfh_type::custom:
+        // return get_sfh_custom(igrid, t, sfh);
     default:
         error("this SFH is not implemented yet");
         return false;

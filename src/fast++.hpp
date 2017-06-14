@@ -25,7 +25,7 @@ enum class parallel_choice {
 };
 
 enum class sfh_type {
-    gridded, single
+    gridded, single, custom
 };
 
 // Program options read from parameter file
@@ -101,12 +101,21 @@ struct options_t {
     bool verbose = true;
 
     // Outputs
-    float sfr_avg = 0.0;
-    bool intrinsic_best_fit = false;
-    bool best_sfhs = false;
-    std::string sfh_output = "sfr";
-    float sfh_step = 10.0;
     vec1s output_columns;
+    float sfr_avg = 0.0;
+    bool  intrinsic_best_fit = false;
+
+    // Custom SFH
+    std::string custom_sfh;
+    vec1s       custom_params;
+    vec1f       custom_params_min;
+    vec1f       custom_params_max;
+    vec1f       custom_params_step;
+
+    // SFH output
+    bool        best_sfhs = false;
+    std::string sfh_output = "sfr";
+    float       sfh_step = 10.0;
 
     // Simulations
     bool save_sim = false;
@@ -117,8 +126,8 @@ struct options_t {
 
     // Multithreading
     parallel_choice parallel = parallel_choice::none;
-    uint_t n_thread = 0;
-    uint_t max_queued_fits = 1000;
+    uint_t          n_thread = 0;
+    uint_t          max_queued_fits = 1000;
 };
 
 // Filter passband
@@ -239,16 +248,24 @@ struct gridder_t {
     vec1u grid_ids(uint_t iflat) const;
 
 private :
+    void build_and_send_impl(fitter_t& fitter, progress_t& pg,
+        const vec1d& lam, const vec1d& tpl_flux, const vec1d& dust_law, const vec2d& igm_abs,
+        float lage, vec1u& idm, model_t& model);
+
     bool build_and_send_ised(fitter_t& fitter);
-    bool build_template_ised_impl(uint_t im, uint_t it, uint_t iz, double nage, double av,
-        vec1f& lam, vec1f& flux, vec1f& iflux) const;
-    bool build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux, vec1f& iflux) const;
-    bool build_template_ised_nodust(uint_t iflat, vec1f& lam, vec1f& flux, vec1f& iflux) const;
+    bool build_and_send_custom(fitter_t& fitter);
+
+    bool build_template_impl(uint_t iflat, bool nodust, vec1f& lam, vec1f& flux, vec1f& iflux) const;
+
+    bool build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux) const;
+    bool build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) const;
+
     bool get_sfh_ised(uint_t iflat, const vec1f& t, vec1f& sfh) const;
+    bool get_sfh_custom(uint_t iflat, const vec1f& t, vec1f& sfh) const;
 
     std::string get_library_file(uint_t im, uint_t it) const;
     vec1d build_dust_law(const vec1f& lambda) const;
-    vec1d build_igm_absorption(const vec1f& lambda, float z) const;
+    vec2d build_igm_absorption(const vec1f& z, const vec1f& lambda) const;
 };
 
 // Fit a model to observed fluxes
