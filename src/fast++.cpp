@@ -23,11 +23,12 @@ int phypp_main(int argc, char* argv[]) {
     // Initizalize the fitter
     fitter_t fitter(opts, input, gridder, output);
 
-    // Build/read the grid for this redshift
+    // Build/read the grid and fit galaxies
     if (!gridder.build_and_send(fitter)) {
         return 1;
     }
 
+    // Compile results
     fitter.find_best_fits();
 
     // Write output to disk
