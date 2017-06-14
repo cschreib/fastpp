@@ -16,6 +16,9 @@ int phypp_main(int argc, char* argv[]) {
     // Initialize the grid
     output_state_t output;
     gridder_t gridder(opts, input, output);
+    if (!gridder.check_options()) {
+        return 1;
+    }
 
     // Initizalize the fitter
     fitter_t fitter(opts, input, gridder, output);

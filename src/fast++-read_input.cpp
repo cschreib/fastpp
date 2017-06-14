@@ -18,14 +18,6 @@ bool parse_value_impl(const std::string& val, T& out) {
     return from_string(val, out);
 }
 
-template <typename T>
-bool parse_value_impl(std::string val, vec<1,T>& out) {
-    if (val.empty()) return true;
-    val = remove_first_last(val, "[]");
-    vec1s spl = split(val, ",");
-    return count(!from_string(spl, out)) == 0;
-}
-
 bool parse_value_impl(const std::string& val, std::string& out) {
     out = remove_first_last(val, "\'\"");
     return true;
@@ -44,6 +36,21 @@ bool parse_value_impl(std::string val, parallel_choice& out) {
         error("must be one of 'none', sources' or 'models'");
         return false;
     }
+    return true;
+}
+
+template <typename T>
+bool parse_value_impl(std::string val, vec<1,T>& out) {
+    if (val.empty()) return true;
+    val = remove_first_last(val, "[]");
+    vec1s spl = split(val, ",");
+    out.resize(spl.size());
+    for (uint_t i : range(spl)) {
+        if (!parse_value_impl(spl[i], out[i])) {
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -87,8 +94,8 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(library_dir)
         PARSE_OPTION(library)
         PARSE_OPTION(resolution)
-        PARSE_OPTION(imf)
-        PARSE_OPTION(sfh)
+        PARSE_OPTION_RENAME(name_imf, "imf")
+        PARSE_OPTION_RENAME(name_sfh, "sfh")
         PARSE_OPTION(dust_law)
         PARSE_OPTION_RENAME(dust_noll_eb, "e_b")
         PARSE_OPTION_RENAME(dust_noll_delta, "delta")
@@ -124,13 +131,13 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(n_thread)
         PARSE_OPTION(max_queued_fits)
         PARSE_OPTION(verbose)
-        PARSE_OPTION(output_ldust)
         PARSE_OPTION(sfr_avg)
         PARSE_OPTION(intrinsic_best_fit)
         PARSE_OPTION(best_sfhs)
         PARSE_OPTION(sfh_step)
         PARSE_OPTION(sfh_output)
         PARSE_OPTION(use_lir)
+        PARSE_OPTION(output_columns)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
@@ -226,6 +233,12 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         return false;
     }
 
+    if (opts.my_sfh.empty()) {
+        opts.sfh = sfh_type::gridded;
+    } else {
+        opts.sfh = sfh_type::single;
+    }
+
     if (opts.spectrum.empty()) {
         opts.auto_scale = false;
     }
@@ -275,6 +288,22 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         } else {
             // Unknown stellar library, simply guess what could be a good default value...
             opts.metal = {0.02};
+        }
+    }
+
+    if (opts.output_columns.empty()) {
+        // Default columns to display
+        switch (opts.sfh) {
+        case sfh_type::gridded:
+            opts.output_columns = {
+                "id", "z", "ltau", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "la2t", "chi2"
+            };
+            break;
+        case sfh_type::single:
+            opts.output_columns = {
+                "id", "z", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "la2t", "chi2"
+            };
+            break;
         }
     }
 

@@ -87,22 +87,24 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     }
     fout << "# AB ZP:       " << opts.ab_zeropoint << std::endl;
     fout << "# Library:     " << pretty_library(opts.library) << std::endl;
-    if (opts.my_sfh.empty()) {
-    fout << "# SFH:         " << pretty_sfh(opts.sfh);
+    if (opts.sfh == sfh_type::single) {
+    fout << "# SFH:         " << opts.my_sfh;
     } else {
-    fout << "# SFH:         " << "custom SFH: " << opts.my_sfh;
+    fout << "# SFH:         " << pretty_sfh(opts.name_sfh);
     }
     if (opts.sfr_avg > 0) {
         fout << " (<SFR> over " << opts.sfr_avg/1e6 << " Myr)" << std::endl;
     } else {
         fout << " (inst. SFR)" << std::endl;
     }
-    fout << "# Stellar IMF: " << pretty_imf(opts.imf) << std::endl;
+    fout << "# Stellar IMF: " << pretty_imf(opts.name_imf) << std::endl;
     fout << "# Dust law:    " <<
         pretty_dust_law(opts.dust_law, opts.dust_noll_eb, opts.dust_noll_delta) << std::endl;
     fout << "# metallicity: " << collapse(strna(opts.metal), "  ") << std::endl;
+    if (opts.sfh == sfh_type::gridded) {
     fout << "# log(tau/yr): " <<
         pretty_grid(opts.log_tau_min, opts.log_tau_max, opts.log_tau_step, 2) << std::endl;
+    }
     fout << "# log(age/yr): " <<
         pretty_grid(opts.log_age_min, opts.log_age_max, opts.log_age_step, 2) << std::endl;
     fout << "# A_V:         " <<
@@ -112,102 +114,96 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
         " (" << (opts.z_step_type == 0 ? "linear" : "logarithmic") << ")" << std::endl;
     fout << "# Filters:     " << collapse(strna(input.no_filt), "  ") << std::endl;
 
-    std::string additional_abbrev;
-    if (opts.output_ldust) {
-        additional_abbrev += ", lldust: log[ldust/Lsol]";
+    vec1u idp(opts.output_columns.size());
+    for (uint_t ic : range(opts.output_columns)) {
+        idp[ic] = where_first(tolower(output.param_names) == tolower(opts.output_columns[ic]));
     }
 
-    fout << "# ltau: log[tau/yr], lage: log[age/yr], lmass: log[mass/Msol], "
-        "lsfr: log[sfr/(Msol/yr)], lssfr: log[ssfr*yr], la2t: log[age/tau]"+additional_abbrev << std::endl;
-    fout << "# For sfr=0. lsfr is set to -99" << std::endl;
-
-    vec1s param = {"id"};
-    uint_t maxid = 7;
-    if (!input.id.empty()) {
-        maxid = max(maxid, max(length(input.id)+1));
-    }
-    vec1u cwidth = {maxid};
-
-    vec1s oparam = {"z", "ltau", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "la2t"};
-    if (opts.output_ldust) {
-        oparam.push_back("lldust");
+    std::string abbrev = "# ";
+    for (uint_t ic : range(idp)) {
+        if (idp[ic] == npos || output.param_descriptions[idp[ic]].empty()) continue;
+        if (abbrev != "# ") abbrev += ", ";
+        abbrev += output.param_names[idp[ic]]+": "+output.param_descriptions[idp[ic]];
     }
 
-    uint_t ocwidth = 10;
-    for (uint_t i : range(oparam)) {
-        param.push_back(oparam[i]);
-        cwidth.push_back(max(ocwidth, param.back().size()+1));
-        if (!opts.c_interval.empty()) {
-            for (float c : input.conf_interval) {
-                float cc = 100*(1-2*c);
-                std::string is = (cc < 0.0 ? "u" : "l")+strn(round(abs(cc)));
-                param.push_back(is+"_"+oparam[i]);
-                cwidth.push_back(max(ocwidth, param.back().size()+1));
+    fout << abbrev << std::endl;
+    fout << "# For value=0. log[value] is set to -99" << std::endl;
+
+    vec1s param;
+    vec1u cwidth;
+    vec1u iparam;
+    vec1u iconf;
+
+    for (uint_t ic : range(idp)) {
+        std::string cname = opts.output_columns[ic];
+        param.push_back(cname);
+        iparam.push_back(idp[ic]);
+        iconf.push_back(0);
+
+        if (cname == "id") {
+            uint_t maxid = 7;
+            if (!input.id.empty()) {
+                maxid = max(maxid, max(length(input.id)+1));
+            }
+            cwidth.push_back(maxid);
+        } else if (cname == "chi2") {
+            cwidth.push_back(15);
+        } else {
+            uint_t ocwidth = 10;
+            // Make sure we use the right format
+            cname = output.param_names[idp[ic]];
+            param.back() = cname;
+            cwidth.push_back(max(ocwidth, cname.size()+1));
+
+            if (!opts.c_interval.empty()) {
+                for (uint_t ip : range(input.conf_interval)) {
+                    float cc = 100*(1-2*input.conf_interval[ip]);
+                    std::string is = (cc < 0.0 ? "u" : "l")+strn(round(abs(cc)));
+                    param.push_back(is+"_"+cname);
+                    cwidth.push_back(max(ocwidth, param.back().size()+1));
+                    iparam.push_back(idp[ic]);
+                    iconf.push_back(1+ip);
+                }
             }
         }
     }
 
-    param.push_back("chi2");
-    cwidth.push_back(15);
-
     fout << "#";
-    for (uint_t ip : range(param)) {
-        fout << align_right(param[ip], cwidth[ip]);
+    for (uint_t ic : range(param)) {
+        fout << align_right(param[ic], cwidth[ic]);
     }
     fout << std::endl;
 
     // Print data
     for (uint_t is : range(input.id)) {
         fout << " ";
-        uint_t c = 0;
-        fout << align_right(input.id[is], cwidth[c]); ++c;
 
-        for (uint_t ip : range(output.best_z.dims[1])) {
-            fout << align_right(pretty_strn(round(1e4*output.best_z(is,ip))/1e4), cwidth[c]); ++c;
-        }
-        for (uint_t ip : range(output.best_tau.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*output.best_tau(is,ip))/1e2), cwidth[c]); ++c;
-        }
-        for (uint_t ip : range(output.best_metal.dims[1])) {
-            fout << align_right(pretty_strn(round(1e4*output.best_metal(is,ip))/1e4), cwidth[c]); ++c;
-        }
-        for (uint_t ip : range(output.best_age.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*output.best_age(is,ip))/1e2), cwidth[c]); ++c;
-        }
-        for (uint_t ip : range(output.best_av.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*output.best_av(is,ip))/1e2), cwidth[c]); ++c;
-        }
-        for (uint_t ip : range(output.best_mass.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*log10(output.best_mass(is,ip)))/1e2), cwidth[c]); ++c;
-        }
-        for (uint_t ip : range(output.best_sfr.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*log10(output.best_sfr(is,ip)))/1e2), cwidth[c]); ++c;
-        }
-        for (uint_t ip : range(output.best_ssfr.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*log10(output.best_ssfr(is,ip)))/1e2), cwidth[c]); ++c;
-        }
-        for (uint_t ip : range(output.best_tau.dims[1])) {
-            float la2t = output.best_age(is,ip) - output.best_tau(is,ip);
-            fout << align_right(pretty_strn(round(1e2*la2t)/1e2), cwidth[c]); ++c;
-        }
+        for (uint_t ic : range(param)) {
+            if (iparam[ic] == npos) {
+                std::string cname = param[ic];
+                if (cname == "id") {
+                    fout << align_right(input.id[is], cwidth[ic]);
+                } else if (cname == "chi2") {
+                    uint_t nobs = count(is_finite(input.eflux(is,_)));
+                    if (!input.lir.empty() && is_finite(input.lir[is])) ++nobs;
 
-        if (opts.output_ldust) {
-            for (uint_t ip : range(output.best_ldust.dims[1])) {
-                fout << align_right(pretty_strn(round(1e2*log10(output.best_ldust(is,ip)))/1e2), cwidth[c]); ++c;
+                    uint_t ndof = (nobs > gridder.nfreeparam ? nobs - gridder.nfreeparam : 1u);
+                    float chi2 = output.best_chi2[is]/ndof;
+                    fout << align_right(strn_sci(chi2), cwidth[ic]);
+                }
+            } else {
+                float value = output.best_params.safe(is,iparam[ic],iconf[ic]);
+                if (output.param_log.safe[iparam[ic]]) {
+                    value = log10(value);
+                }
+
+                float precision = output.param_precision.safe[iparam[ic]];
+                value = round(value/precision)*precision;
+                fout << align_right(pretty_strn(value), cwidth[ic]);
             }
         }
-        uint_t nobs = count(is_finite(input.eflux(is,_)));
-        if (!input.lir.empty() && is_finite(input.lir[is])) ++nobs;
 
-        float chi2 = output.best_chi2[is]/max(1u, nobs > gridder.nparam ? nobs - gridder.nparam : 1u);
-        fout << align_right(strn_sci(chi2), cwidth[c]);
         fout << "\n";
-        ++c;
-
-        if (c != cwidth.size()) {
-            error("mismatch in column writing code, please report!");
-            return;
-        }
     }
 }
 
@@ -226,18 +222,17 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
     vec1f lam, sed, sed_nodust, flx;
     auto pg = progress_start(input.id.size());
     for (uint_t is : range(input.id)) {
+        float mass = output.best_params(is,gridder.nparam+prop_id::mass,0);
+
         // Get model
         if (opts.intrinsic_best_fit) {
-            vec1u idm = gridder.grid_ids(output.best_model[is]);
-            idm[3] = 0; // no dust
-            uint_t nodust_model = gridder.model_id(idm);
-            gridder.build_template(nodust_model, lam, sed_nodust, flx);
-            sed_nodust *= output.best_mass(is,0);
+            gridder.build_template_nodust(output.best_model[is], lam, sed_nodust, flx);
+            sed_nodust *= mass;
         }
 
         gridder.build_template(output.best_model[is], lam, sed, flx);
-        sed *= output.best_mass(is,0);
-        flx *= output.best_mass(is,0);
+        sed *= mass;
+        flx *= mass;
 
         // Save model
         // TODO: use a more efficient serialization code
@@ -309,16 +304,17 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
     auto pg = progress_start(input.id.size());
     for (uint_t is : range(input.id)) {
         vec1u idm = gridder.grid_ids(output.best_model[is]);
-        vec1f t = rgen_step(1e6, e10(gridder.auniv[idm[4]]), opts.sfh_step);
+        vec1f t = rgen_step(1e6, e10(gridder.auniv[idm[grid_id::z]]), opts.sfh_step);
 
         // Get best fit SFH
         vec2f sfh(t.size(), 1+input.conf_interval.size()+(input.conf_interval.empty() ? 0 : 1)); {
             vec1f tsfh;
-            if (!gridder.get_sfh(output.best_model[is], t, output.best_mass(is,0), tsfh)) {
+            if (!gridder.get_sfh(output.best_model[is], t, tsfh)) {
                 return;
             }
 
-            sfh(_,0) = tsfh;
+            float mass = output.best_params(is,gridder.nparam+prop_id::mass,0);
+            sfh(_,0) = tsfh*mass;
         }
 
         // Get confidence intervals
@@ -326,11 +322,12 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
             vec2f sim_sfh(t.size(), opts.n_sim);
             for (uint_t ir : range(opts.n_sim)) {
                 vec1f tsfh;
-                if (!gridder.get_sfh(output.mc_best_model(is,ir), t, output.mc_best_mass(is,ir), tsfh)) {
+                if (!gridder.get_sfh(output.mc_best_model(is,ir), t, tsfh)) {
                     return;
                 }
 
-                sim_sfh(_,ir) = tsfh;
+                float mass = output.mc_best_props(is,prop_id::mass,ir);
+                sim_sfh(_,ir) = tsfh*mass;
             }
 
             for (uint_t it : range(t)) {
