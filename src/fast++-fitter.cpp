@@ -437,12 +437,13 @@ void fitter_t::find_best_fits() {
             output.best_metal(is,0) = output.metal[ids[0]];
             output.best_tau(is,0)   = output.tau[ids[1]];
             output.best_age(is,0)   = output.age[ids[2]];
+            output.best_a2t(is,0)   = output.best_age(is,0) - output.best_tau(is,0);
             output.best_av(is,0)    = output.av[ids[3]];
             output.best_z(is,0)     = output.z[ids[4]];
         }
 
         if (opts.n_sim > 0) {
-            vec1f bmass, bsfr, bssfr, bmetal, btau, bage, bav, bz;
+            vec1f bmass, bsfr, bssfr, bmetal, btau, bage, ba2t, bav, bz;
 
             bmass = output.mc_best_mass(is,_);
             bsfr = output.mc_best_sfr(is,_);
@@ -459,6 +460,8 @@ void fitter_t::find_best_fits() {
                 bz[im]     = output.z[ids[4]];
             }
 
+            ba2t = bage - btau;
+
             if (opts.save_sim) {
                 std::string odir = opts.output_dir+"best_fits/";
                 if (!file::mkdir(odir)) {
@@ -467,7 +470,8 @@ void fitter_t::find_best_fits() {
                 } else {
                     fits::write_table(odir+opts.catalog+"_"+input.id[is]+".sims.fits",
                         "mass", bmass, "sfr", bsfr, "ssfr", bssfr, "metal", bmetal,
-                        "tau", btau, "age", bage, "av", bav, "z", bz, "chi2", output.mc_best_chi2
+                        "tau", btau, "age", bage, "a2t", ba2t, "av", bav, "z", bz,
+                        "chi2", output.mc_best_chi2(is,_)
                     );
                 }
             }
@@ -479,6 +483,7 @@ void fitter_t::find_best_fits() {
                 output.best_metal(is,0) = inplace_median(bmetal);
                 output.best_tau(is,0)   = inplace_median(btau);
                 output.best_age(is,0)   = inplace_median(bage);
+                output.best_a2t(is,0)   = inplace_median(ba2t);
                 output.best_av(is,0)    = inplace_median(bav);
                 output.best_z(is,0)     = inplace_median(bz);
             }
@@ -490,6 +495,7 @@ void fitter_t::find_best_fits() {
                 output.best_metal(is,1+ic) = inplace_percentile(bmetal, input.conf_interval[ic]);
                 output.best_tau(is,1+ic)   = inplace_percentile(btau,   input.conf_interval[ic]);
                 output.best_age(is,1+ic)   = inplace_percentile(bage,   input.conf_interval[ic]);
+                output.best_a2t(is,1+ic)   = inplace_percentile(ba2t,   input.conf_interval[ic]);
                 output.best_av(is,1+ic)    = inplace_percentile(bav,    input.conf_interval[ic]);
                 output.best_z(is,1+ic)     = inplace_percentile(bz,     input.conf_interval[ic]);
             }

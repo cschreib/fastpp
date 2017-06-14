@@ -143,6 +143,7 @@ struct output_state_t {
     vec2f best_metal;                // [ngal,1+nconf]
     vec2f best_tau;                  // [ngal,1+nconf]
     vec2f best_age;                  // [ngal,1+nconf]
+    vec2f best_a2t;                  // [ngal,1+nconf]
     vec2f best_av;                   // [ngal,1+nconf]
     vec1f best_chi2;                 // [ngal]
     vec1u best_model;                // [ngal]

@@ -107,7 +107,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
 
     output.best_mass = output.best_sfr = output.best_z = output.best_metal =
         output.best_av = output.best_age = output.best_tau = output.best_ssfr =
-        replicate(fnan, input.id.size(), 1+input.conf_interval.size());
+        output.best_a2t = replicate(fnan, input.id.size(), 1+input.conf_interval.size());
 
     output.best_chi2 = replicate(finf, input.id.size());
     output.best_model = replicate(npos, input.id.size());

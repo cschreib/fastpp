@@ -172,9 +172,8 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
         for (uint_t ip : range(output.best_ssfr.dims[1])) {
             fout << align_right(pretty_strn(round(1e2*log10(output.best_ssfr(is,ip)))/1e2), cwidth[c]); ++c;
         }
-        for (uint_t ip : range(output.best_tau.dims[1])) {
-            float la2t = output.best_age(is,ip) - output.best_tau(is,ip);
-            fout << align_right(pretty_strn(round(1e2*la2t)/1e2), cwidth[c]); ++c;
+        for (uint_t ip : range(output.best_a2t.dims[1])) {
+            fout << align_right(pretty_strn(round(1e2*output.best_a2t(is,ip))/1e2), cwidth[c]); ++c;
         }
 
         uint_t nobs = count(is_finite(input.eflux(is,_)));
