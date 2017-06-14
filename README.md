@@ -40,6 +40,8 @@ This is a C++ version of the popular SED fitting code [FAST](http://w.astro.berk
  - FAST++ is on average 5 times faster, and up to 30 times with multi-threading.
  - FAST++ uses 5 to 600 times less memory.
  - FAST++ can handle *much* larger parameter grids.
+ - FAST++ can use observational constraints on dust emission.
+ - ... and more! See [Additional features](#additional-features).
 
 There are two main differences with the original FAST: in dealing with redshifts from EAzY, and in estimating uncertainties. First, the EAzY redshifts and confidence intervals are used differently: by default the photo-z will not be enforced for the best-fitting solution, and only the confidence intervals are used to restrict the parameter space (this can be changed in the parameter file). The Monte Carlo simulations always use the same constraints on the redshift as the true observations. Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid.
 
