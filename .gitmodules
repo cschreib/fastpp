@@ -1,6 +1,0 @@
-[submodule "phypp"]
-	path = external/phypp
-	url = https://github.com/cschreib/phypp.git
-[submodule "external/cfitsio"]
-	path = external/cfitsio
-	url = https://github.com/cschreib/cfitsio.git
