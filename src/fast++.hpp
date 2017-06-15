@@ -107,6 +107,7 @@ struct options_t {
 
     // Custom SFH
     std::string custom_sfh;
+    float       custom_sfh_step = 1.0;
     vec1s       custom_params;
     vec1f       custom_params_min;
     vec1f       custom_params_max;
@@ -115,7 +116,7 @@ struct options_t {
     // SFH output
     bool        best_sfhs = false;
     std::string sfh_output = "sfr";
-    float       sfh_step = 10.0;
+    float       sfh_output_step = 10.0;
 
     // Simulations
     bool save_sim = false;
@@ -210,6 +211,8 @@ struct model_t {
 };
 
 struct fitter_t;
+struct te_expr;
+struct te_variable;
 
 // Build the grid of models and sends models to the fitter
 struct gridder_t {
@@ -228,12 +231,22 @@ struct gridder_t {
     bool read_from_cache = true;
     cache_manager_t cache;
 
+    struct tinyexpr_wrapper {
+        te_expr* expr = nullptr;
+        te_variable* vars_glue = nullptr;
+        vec1d vars;
+
+        bool compile(const gridder_t& gridder);
+        double eval();
+        ~tinyexpr_wrapper();
+    };
+
     vec1u grid_dims;                 // [ngrid]
     vec1u grid_dims_pitch;           // [ngrid]
 
     vec1d lum2fl;                    // [nz]
     vec1d auniv;                     // [nz]
-    uint_t nparam = 0, nprop = 0, nfreeparam = 0, nmodel = 0;
+    uint_t nparam = 0, nprop = 0, nfreeparam = 0, nmodel = 0, ncustom = 0;
 
     explicit gridder_t(const options_t& opts, const input_state_t& input, output_state_t& output);
 
@@ -242,7 +255,7 @@ struct gridder_t {
     bool build_and_send(fitter_t& fitter);
     bool build_template(uint_t igrid, vec1f& lam, vec1f& flux, vec1f& iflux) const;
     bool build_template_nodust(uint_t igrid, vec1f& lam, vec1f& flux, vec1f& iflux) const;
-    bool get_sfh(uint_t iflat, const vec1f& t, vec1f& sfh) const;
+    bool get_sfh(uint_t iflat, const vec1d& t, vec1d& sfh) const;
 
     uint_t model_id(const vec1u& ids) const;
     vec1u grid_ids(uint_t iflat) const;
@@ -260,12 +273,19 @@ private :
     bool build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux) const;
     bool build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) const;
 
-    bool get_sfh_ised(uint_t iflat, const vec1f& t, vec1f& sfh) const;
-    bool get_sfh_custom(uint_t iflat, const vec1f& t, vec1f& sfh) const;
+    bool get_sfh_ised(uint_t iflat, const vec1d& t, vec1d& sfh, const std::string& type) const;
+    bool get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh, const std::string& type) const;
 
-    std::string get_library_file(uint_t im, uint_t it) const;
+    std::string get_library_file_ised(uint_t im, uint_t it) const;
+    std::string get_library_file_ssp(uint_t im) const;
+
     vec1d build_dust_law(const vec1f& lambda) const;
     vec2d build_igm_absorption(const vec1f& z, const vec1f& lambda) const;
+
+    bool get_age_bounds(const vec1f& ised_age, float nage, std::array<uint_t,2>& p, double& x) const;
+    void evaluate_sfh_custom(const vec1u& idm, const vec1d& t, vec1d& sfh) const;
+
+    mutable tinyexpr_wrapper sfh_expr;
 };
 
 // Fit a model to observed fluxes

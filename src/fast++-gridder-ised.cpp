@@ -1,5 +1,4 @@
 #include "fast++.hpp"
-#include <phypp/utility/thread.hpp>
 
 struct file_wrapper {
     std::ifstream in;
@@ -233,7 +232,7 @@ public :
     }
 };
 
-std::string gridder_t::get_library_file(uint_t im, uint_t it) const {
+std::string gridder_t::get_library_file_ised(uint_t im, uint_t it) const {
     std::string stau = strn(output.grid[grid_id::custom+0][it]);
     if (stau.find(".") == stau.npos) stau += ".0";
 
@@ -242,7 +241,9 @@ std::string gridder_t::get_library_file(uint_t im, uint_t it) const {
         "_z"+replace(strn(output.grid[grid_id::metal][im]), "0.", "")+"_ltau"+stau+".ised";
 }
 
-bool get_age_bounds(const vec1f& ised_age, float nage, std::array<uint_t,2>& p, double& x) {
+bool gridder_t::get_age_bounds(const vec1f& ised_age, float nage,
+    std::array<uint_t,2>& p, double& x) const {
+
     p = bounds(nage, ised_age);
 
     if (p[0] == npos) {
@@ -291,8 +292,8 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
         idm[grid_id::metal] = im;
         idm[grid_id::custom] = it;
 
-        // Load SSP in galaxev ised format
-        std::string filename = get_library_file(im, it);
+        // Load CSP
+        std::string filename = get_library_file_ised(im, it);
         if (!ised.read(filename)) {
             return false;
         }
@@ -319,7 +320,7 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
 
             if (opts.sfr_avg > 0) {
                 // Average SFR over the past X yr
-                double t1 = e10(output_age.safe[ia]);
+                double t1 = nage;
                 double t0 = max(t1 - opts.sfr_avg, ised.age[0]);
                 model_sfr = integrate(ised.age, ised.sfr, t0, t1)/opts.sfr_avg;
             } else {
@@ -336,9 +337,6 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
         }
     }
 
-    // Make sure we flush it all out
-    cache.cache_file.close();
-
     return true;
 }
 
@@ -350,9 +348,8 @@ bool gridder_t::build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux) const
 
     galaxev_ised ised;
 
-    // Load SSP in galaxev ised format
-    std::string filename = get_library_file(im, it);
-
+    // Load CSP
+    std::string filename = get_library_file_ised(im, it);
     if (!ised.read(filename)) {
         return false;
     }
@@ -365,6 +362,7 @@ bool gridder_t::build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux) const
         return false;
     }
 
+    lam = ised.lambda;
     flux = ised.fluxes(p[0],_)*(1.0 - x) + ised.fluxes(p[1],_)*x;
     float mass = ised.mass[p[0]]*(1.0 - x) + ised.mass[p[1]]*x;
     flux /= mass;
@@ -372,7 +370,9 @@ bool gridder_t::build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux) const
     return true;
 }
 
-bool gridder_t::get_sfh_ised(uint_t iflat, const vec1f& t, vec1f& sfh) const {
+bool gridder_t::get_sfh_ised(uint_t iflat, const vec1d& t, vec1d& sfh,
+    const std::string& type) const {
+
     uint_t im, it, ia, iz; {
         vec1u idm = grid_ids(iflat);
         iz = idm[grid_id::z];
@@ -383,9 +383,8 @@ bool gridder_t::get_sfh_ised(uint_t iflat, const vec1f& t, vec1f& sfh) const {
 
     galaxev_ised ised;
 
-    // Load SSP in galaxev ised format
-    std::string filename = get_library_file(im, it);
-
+    // Load CSP (only extras)
+    std::string filename = get_library_file_ised(im, it);
     if (!ised.read(filename, true)) {
         return false;
     }
@@ -404,8 +403,8 @@ bool gridder_t::get_sfh_ised(uint_t iflat, const vec1f& t, vec1f& sfh) const {
         i0 = 0;
     }
 
-    if (opts.sfh_output == "sfr") {
-        sfh = replicate(0.0f, t.size());
+    if (type == "sfr") {
+        sfh = replicate(0.0, t.size());
         sfh[i0-_-i1] = interpolate(ised.sfr, ised.age, t[i0-_-i1] - age_born);
 
         // Interpolate the galaxev grid at the requested age
@@ -417,11 +416,14 @@ bool gridder_t::get_sfh_ised(uint_t iflat, const vec1f& t, vec1f& sfh) const {
 
         double ised_mass = ised.mass[p[0]]*(1.0 - x) + ised.mass[p[1]]*x;
         sfh /= ised_mass;
-    } else {
-        sfh = replicate(0.0f, t.size());
+    } else if (type == "mass") {
+        sfh = replicate(0.0, t.size());
         sfh[i0-_-i1] = interpolate(ised.mass, ised.age, t[i0-_-i1] - age_born);
         sfh /= interpolate(sfh, t, age_obs);
         sfh[i1-_] = 1.0; // NB: ignores mass loss after time of observations!
+    } else {
+        error("unknown SFH type '", type, "'");
+        return false;
     }
 
     return true;

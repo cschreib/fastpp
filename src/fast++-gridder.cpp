@@ -1,5 +1,4 @@
 #include "fast++.hpp"
-#include <phypp/utility/thread.hpp>
 
 void gridder_t::cache_manager_t::write_model(const model_t& model) {
     if (!cache_file.is_open()) return;
@@ -62,11 +61,11 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     auto set_param = [&](uint_t id, std::string name, std::string desc,
         bool scale, bool log, float precision) {
 
-        output.param_names[id]         = name;
-        output.param_descriptions[id]  = desc;
-        output.param_scale[id]         = scale;
-        output.param_log[id]           = log;
-        output.param_precision[id]     = precision;
+        output.param_names[id]        = name;
+        output.param_descriptions[id] = desc;
+        output.param_scale[id]        = scale;
+        output.param_log[id]          = log;
+        output.param_precision[id]    = precision;
     };
 
     auto set_prop = [&](uint_t id, std::string name, std::string desc,
@@ -161,6 +160,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     grid_dims_pitch = replicate(1u, output.grid.size());
     nmodel = 1;
     nparam = 0;
+    ncustom = 1;
     nfreeparam = 0; // TODO: change, this should be 1 (normalization *is* a degree of freedom)
     for (uint_t i : range(grid_dims)) {
         grid_dims[i] = output.grid[i].size();
@@ -170,6 +170,9 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         }
 
         nmodel *= grid_dims[i];
+        if (i >= grid_id::custom) {
+            ncustom *= grid_dims[i];
+        }
 
         ++nparam;
         if (grid_dims[i] > 1) ++nfreeparam;
@@ -290,6 +293,13 @@ bool gridder_t::check_options() const {
     if (bad) {
         error("some of the requested columns do not exist, cannot proceed");
         return false;
+    }
+
+    // If we use a custom SFH, compile it and check that the expression is valid
+    if (opts.sfh == sfh_type::custom) {
+        if (!sfh_expr.compile(*this)) {
+            return false;
+        }
     }
 
     return true;
@@ -521,12 +531,15 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
         switch (opts.sfh) {
         case sfh_type::gridded:
             return build_and_send_ised(fitter);
-        // case sfh_type::custom:
-        //     return build_and_send_custom(fitter);
+        case sfh_type::custom:
+            return build_and_send_custom(fitter);
         default:
             error("this SFH is not implemented yet");
             return false;
         }
+
+        // Make sure we flush all the cache out
+        cache.cache_file.close();
     }
 
     return true;
@@ -547,10 +560,12 @@ bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
         if (!build_template_ised(iflat, lam, flux)) {
             return false;
         }
-    // case sfh_type::gridded:
-    //     if (!build_template_custom(iflat, lam, flux)) {
-    //         return false;
-    //     }
+        break;
+    case sfh_type::custom:
+        if (!build_template_custom(iflat, lam, flux)) {
+            return false;
+        }
+        break;
     default:
         error("this SFH is not implemented yet");
         return false;
@@ -594,12 +609,12 @@ bool gridder_t::build_template_nodust(uint_t igrid, vec1f& lam, vec1f& flux, vec
     return build_template_impl(igrid, true, lam, flux, iflux);
 }
 
-bool gridder_t::get_sfh(uint_t igrid, const vec1f& t, vec1f& sfh) const {
+bool gridder_t::get_sfh(uint_t igrid, const vec1d& t, vec1d& sfh) const {
     switch (opts.sfh) {
     case sfh_type::gridded:
-        return get_sfh_ised(igrid, t, sfh);
-    // case sfh_type::custom:
-        // return get_sfh_custom(igrid, t, sfh);
+        return get_sfh_ised(igrid, t, sfh, opts.sfh_output);
+    case sfh_type::custom:
+        return get_sfh_custom(igrid, t, sfh, opts.sfh_output);
     default:
         error("this SFH is not implemented yet");
         return false;

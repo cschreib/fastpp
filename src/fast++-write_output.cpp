@@ -87,10 +87,13 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     }
     fout << "# AB ZP:       " << opts.ab_zeropoint << std::endl;
     fout << "# Library:     " << pretty_library(opts.library) << std::endl;
-    if (opts.sfh == sfh_type::single) {
-    fout << "# SFH:         " << opts.my_sfh;
-    } else {
-    fout << "# SFH:         " << pretty_sfh(opts.name_sfh);
+    switch (opts.sfh) {
+    case sfh_type::gridded:
+        fout << "# SFH:         " << pretty_sfh(opts.name_sfh); break;
+    case sfh_type::custom:
+        fout << "# SFH:         " << opts.custom_sfh; break;
+    case sfh_type::single:
+        fout << "# SFH:         " << opts.my_sfh; break;
     }
     if (opts.sfr_avg > 0) {
         fout << " (<SFR> over " << opts.sfr_avg/1e6 << " Myr)" << std::endl;
@@ -102,8 +105,15 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
         pretty_dust_law(opts.dust_law, opts.dust_noll_eb, opts.dust_noll_delta) << std::endl;
     fout << "# metallicity: " << collapse(strna(opts.metal), "  ") << std::endl;
     if (opts.sfh == sfh_type::gridded) {
-    fout << "# log(tau/yr): " <<
-        pretty_grid(opts.log_tau_min, opts.log_tau_max, opts.log_tau_step, 2) << std::endl;
+        fout << "# log(tau/yr): " <<
+            pretty_grid(opts.log_tau_min, opts.log_tau_max, opts.log_tau_step, 2) << std::endl;
+    } else if (opts.sfh == sfh_type::custom) {
+        for (uint_t ip : range(opts.custom_params.size())) {
+            fout << "# " << align_left(opts.custom_params[ip]+": ", 13) <<
+                pretty_grid(opts.custom_params_min[ip], opts.custom_params_max[ip],
+                    opts.custom_params_step[ip], -round(log10(output.param_precision[ip])))
+                     << std::endl;
+        }
     }
     fout << "# log(age/yr): " <<
         pretty_grid(opts.log_age_min, opts.log_age_max, opts.log_age_step, 2) << std::endl;
@@ -226,11 +236,17 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
 
         // Get model
         if (opts.intrinsic_best_fit) {
-            gridder.build_template_nodust(output.best_model[is], lam, sed_nodust, flx);
+            if (!gridder.build_template_nodust(output.best_model[is], lam, sed_nodust, flx)) {
+                return;
+            }
+
             sed_nodust *= mass;
         }
 
-        gridder.build_template(output.best_model[is], lam, sed, flx);
+        if (!gridder.build_template(output.best_model[is], lam, sed, flx)) {
+            return;
+        }
+
         sed *= mass;
         flx *= mass;
 
@@ -304,11 +320,11 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
     auto pg = progress_start(input.id.size());
     for (uint_t is : range(input.id)) {
         vec1u idm = gridder.grid_ids(output.best_model[is]);
-        vec1f t = rgen_step(1e6, e10(gridder.auniv[idm[grid_id::z]]), opts.sfh_step);
+        vec1d t = rgen_step(1e6, e10(gridder.auniv[idm[grid_id::z]]), opts.sfh_output_step);
 
         // Get best fit SFH
         vec2f sfh(t.size(), 1+input.conf_interval.size()+(input.conf_interval.empty() ? 0 : 1)); {
-            vec1f tsfh;
+            vec1d tsfh;
             if (!gridder.get_sfh(output.best_model[is], t, tsfh)) {
                 return;
             }
@@ -321,7 +337,7 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
         if (!opts.c_interval.empty()) {
             vec2f sim_sfh(t.size(), opts.n_sim);
             for (uint_t ir : range(opts.n_sim)) {
-                vec1f tsfh;
+                vec1d tsfh;
                 if (!gridder.get_sfh(output.mc_best_model(is,ir), t, tsfh)) {
                     return;
                 }
@@ -371,5 +387,9 @@ void write_output(const options_t& opts, const input_state_t& input, const gridd
 
     if (opts.best_sfhs) {
         write_sfhs(opts, input, gridder, output);
+    }
+
+    if (opts.verbose) {
+        note("done writing outputs");
     }
 }

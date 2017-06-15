@@ -136,11 +136,12 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(sfr_avg)
         PARSE_OPTION(intrinsic_best_fit)
         PARSE_OPTION(best_sfhs)
-        PARSE_OPTION(sfh_step)
+        PARSE_OPTION(sfh_output_step)
         PARSE_OPTION(sfh_output)
         PARSE_OPTION(use_lir)
         PARSE_OPTION(output_columns)
         PARSE_OPTION(custom_sfh)
+        PARSE_OPTION(custom_sfh_step)
         PARSE_OPTION(custom_params)
 
         #undef  PARSE_OPTION
@@ -234,16 +235,23 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         opts.sfr_avg = 0;
     }
 
-    if (opts.sfh_step < 0) {
-        error("step of output SFH cannot be negative");
-        return false;
-    } else if (opts.sfh_step > 1e4) {
-        error("step of output SFH must be given in Myr");
-        error("(you gave ", opts.sfh_step, " which is larger than the age of the Universe)");
-        return false;
-    }
+    auto check_sfh_step = [&](float& step, std::string which) {
+        if (step < 0) {
+            error("step of ", which, " SFH cannot be negative");
+            return false;
+        } else if (step > 1e4) {
+            error("step of ", which, " SFH must be given in Myr");
+            error("(you gave ", step, " which is larger than the age of the Universe)");
+            return false;
+        }
 
-    opts.sfh_step *= 1e6;
+        step *= 1e6; // convert to yr
+
+        return true;
+    };
+
+    check_sfh_step(opts.sfh_output_step, "output");
+    check_sfh_step(opts.custom_sfh_step, "custom");
 
     if (opts.verbose) {
         if (opts.sfr_avg == 0) {
