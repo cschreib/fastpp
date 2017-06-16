@@ -15,7 +15,6 @@
 #   - This parameter file
 #   - [CATALOG].cat        If you fit broadband photometry
 #   - [CATALOG].zout       If you input photometric redshifts
-#   - [CATALOG].lir        If you input infrared luminosities
 #   - [CATALOG].translate  If you input a translate file
 #   - [SPECTRUM].spec      If you fit spectra
 #
