@@ -26,6 +26,7 @@
     - [Monte Carlo simulations](#monte-carlo-simulations)
     - [Controlling the cache](#controlling-the-cache)
     - [More output options](#more-output-options)
+    - [Custom star formation histories](#custom-star-formation-histories)
     - [Using priors on the infrared luminosity](#using-priors-on-the-infrared-luminosity)
     - [Better treatment of spectra](#better-treatment-of-spectra)
 
@@ -40,6 +41,7 @@ This is a C++ version of the popular SED fitting code [FAST](http://w.astro.berk
  - FAST++ is on average 5 times faster, and up to 30 times with multi-threading.
  - FAST++ uses 5 to 600 times less memory.
  - FAST++ can handle *much* larger parameter grids.
+ - FAST++ can generate models with arbitrary star formation histories.
  - FAST++ can use observational constraints on dust emission.
  - ... and more! See [Additional features](#additional-features).
 
@@ -65,6 +67,8 @@ make install
 
 This will create an executable called ```fast++``` in the ```fastpp/bin``` directory, which you can use immediately to replace FAST. If you have not installed FAST, you will have to download some template libraries from [the FAST website](http://w.astro.berkeley.edu/~mariska/FAST_Download.html) before you can start fitting galaxies. The latest FAST template error function and EAzY filter response database are provided with FAST++ in the ```fastpp/share``` directory.
 
+If you want to use arbitrary star formation histories beyond what the original FAST supports, you will have to download the single stellar populations libraries from Bruzual & Charlot (2003). To simplify this task for you, a script is provided in the ```fastpp/share/libraries``` folder. This script will download the libraries and rename the files to FAST++ convention for you, all you have to do is run this script and it will take care of the rest. You will need about 400 MB of free disk space.
+
 
 # Benchmarks
 ## Hardware/software
@@ -76,6 +80,7 @@ This will create an executable called ```fast++``` in the ```fastpp/bin``` direc
 * C++ compiler: gcc 6.3.1 (-O3 -std=c++11)
 * IDL: 8.4
 * When run multithreaded, FAST++ is set to ```PARALLEL='models'```, ```MAX_QUEUED_FITS=1000``` and ```N_THREAD=8```.
+* These benchmarks were ran with FAST++ v1.0-legacy.
 
 ## Run 1: a catalog of galaxies with broadband fluxes
 ### Parameters
@@ -226,8 +231,42 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
  * ```SFH_STEP```: possible values are any strictly positive number, which defines the size of a time step in the output SFH (in Myr). The default is ```10``` Myr.
  * ```SFH_OUTPUT```: possible values are ```'sfr'``` or ```'mass'```. The default is ```'sfr'```, and the program outputs as "SFH" the evolution of the instantaneous SFR of each galaxy with time. If set to ```'mass'```, the program will output instead the evolution of the stellar mass with time (which is usually better behaved, see Glazebrook et al. 2017). Note that the evolution of the mass accounts for mass loss, so the mass slowly _decreases_ with time after a galaxy has quenched.
 
+## Custom star formation histories
+In the original FAST, one has access to three star formation histories: the tau model (exponentially declining), the delayed tau model (delayed exponentially declining) and the constant model. The first two are parametrized with the exponential timescale ```tau```, which can be adjusted in the fit. These star formation histories are distributed as pre-gridded template libraries at various ages, which are then interpolated during the fit to obtain arbitrary ages.
+
+In addition, one could use the ```MY_SFH``` option to supply an arbitrary star formation history to replace the three SFHs listed above, again, as a pre-gridded template library. The downside is that this must be a single SFH, not a family of SFHs (such as the declining model, parametrized with ```tau```), so it is not possible to fit for your custom SFH's parameters this way.
+
+For this reason in FAST++ you have the option to build the template library on the fly, using an analytical formula for the SFH with any number of free parameters. These parameters will be varied on a grid, and participate in determining the best fit and confidence intervals of the other parameters, such as the mass or the SFR.
+
+Using custom SFHs is easy. First you have write down the analytical formula in the ```CUSTOM_SFH``` parameter. This formula should return the star formation rate (in arbitrary units) as a function of time since onset of star formation ```t``` (given in years), where ```t=0``` is the birth of the galaxy. The formula can involve any math function, including: ```abs```, ```acos```, ```asin```, ```atan```, ```atan2```, ```ceil```, ```cos```, ```cosh```, ```exp```, ```floor```, ```log``` (natural logarithm), ```log10``` (base-10 logarithm), ```pow```, ```sin```, ```sinh```, ```sqrt```, ```tan```, ```tanh```, ```min```, ```max```, ```step``` (returns ```1``` if argument is zero or positive, and ```0``` otherwise). See the documentation of [tinyexpr](https://github.com/codeplea/tinyexpr) for more detail.
+
+In addition, if your SFH is parametrized by one or more parameters, the formula can reference these parameters by name. For this to work, your parameters must be listed in the ```CUSTOM_PARAMS``` parameter as an array of strings, and for each parameter ```x``` you must provide the grid parameters as ```X_MIN```, ```X_MAX``` and ```X_STEP``` (with ```X``` in upper case by convention, but lower case works too).
+
+For example you can replicate FAST's delayed SFH using:
+```
+CUSTOM_SFH = '(t/10^log_tau)*exp(-(t/10^log_tau))'
+CUSTOM_PARAMS = ['log_tau']
+LOG_TAU_MIN = 6.0
+LOG_TAU_MAX = 10.0
+LOG_TAU_STEP = 0.2
+```
+
+Then if you want to add a second burst with the same ```tau``` and intensity, but with a time delay ```tburst```, you could write:
+```
+CUSTOM_SFH = '(t/10^log_tau)*exp(-t/10^log_tau) + max(0, ((t - 10^log_tburst)/10^log_tau)*exp(-(t - 10^log_tburst)/10^log_tau))'
+CUSTOM_PARAMS = ['log_tau','log_tburst']
+LOG_TAU_MIN = 6.0
+LOG_TAU_MAX = 10.0
+LOG_TAU_STEP = 0.2
+LOG_TBURST_MIN = 6.0
+LOG_TBURST_MAX = 9.0
+LOG_TBURST_STEP = 0.3
+```
+
+As you can see the analytical formula can be quite complex, and this has only a minimal impact on performances. However you should pay attention to the size of your grid: this feature allows you to have as many parameter as you wish, and sampling all of them properly may require a very large grid. FAST++ will deal with any grid size, but it may take some time.
+
 ## Using priors on the infrared luminosity
-One of the main degeneracy that arises when fitting UV-to-NIR data is that of dust versus age. When a galaxy has a red SED, unless the signal to noise and the wavelength sampling are high, it is very difficult to say if this is caused by a large amount of dust, or by an older stellar population, or a combination of both. It is for this reason that SFRs obtained from such fits are very uncertain (for red galaxies), and that SFRs determined from the far-IR are preferred.
+One of the main degeneracy that arises when fitting UV-to-NIR data is that of dust versus age. When a galaxy has a red SED, unless the signal to noise and the wavelength sampling are high, it is very difficult to say if this is caused by a large amount of dust, or by an older stellar population, or a combination of both. It is for this reason that SFRs obtained from such fits are very uncertain, and that SFRs determined from the far-IR are preferred.
 
 The typical approach is thus to use the UV-to-NIR data to determine the photometric redshift and the stellar mass, and the FIR data for the SFR. But this is inconsistent: by not using all the available information in a single fit, we may be using a stellar mass derived assuming the galaxy is very old, while it was actually dusty. It turns out that the stellar mass does not change dramatically under the age-dust degeneracy, but other parameters do (such as the star formation history, but also the redshift!).
 
