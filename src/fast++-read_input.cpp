@@ -344,7 +344,8 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         }
     }
 
-    if (opts.output_columns.empty()) {
+    if (opts.output_columns.empty() ||
+        (opts.output_columns.size() == 1 && opts.output_columns[0].empty())) {
         // Default columns to display
         switch (opts.sfh) {
         case sfh_type::gridded:
