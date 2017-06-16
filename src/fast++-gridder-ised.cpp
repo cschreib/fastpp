@@ -219,9 +219,11 @@ public :
                 lib.read(&extras(i,0), ntime);
             }
         } catch (...) {
+            print("");
             error("could not read data in library file '", filename, "'");
             error("could not ", state);
             error("the file is probably corrupted, try re-downloading it");
+            print("");
             return false;
         }
 
@@ -247,13 +249,17 @@ bool gridder_t::get_age_bounds(const vec1f& ised_age, float nage,
     p = bounds(nage, ised_age);
 
     if (p[0] == npos) {
+        print("");
         error("requested age is lower than allowed by the template library (",
             log10(nage), " vs. ", log10(ised_age.safe[p[1]]), ")");
+        print("");
         return false;
     } else if (p[1] == npos) {
         if (nage > ised_age.safe[p[0]]) {
+            print("");
             error("requested age is larger than allowed by the template library (",
                 log10(nage), " vs. ", log10(ised_age.safe[p[0]]), ")");
+            print("");
             return false;
         }
 

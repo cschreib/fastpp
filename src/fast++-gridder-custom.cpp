@@ -171,9 +171,11 @@ struct ssp_bc03 {
                 }
             }
         } catch (...) {
+            print("");
             error("could not read data in library file '", filename, "'");
             error("could not ", state);
             error("the file is probably corrupted, try re-downloading it");
+            print("");
             return false;
         }
 
@@ -186,20 +188,28 @@ struct ssp_bc03 {
     bool read_fits(std::string filename, bool noflux) {
         fits::input_table itbl(filename);
         if (!itbl.read_column("age", age)) {
+            print("");
             error("could not read column 'T' (time) from FITS file '", filename, "'");
+            print("");
             return false;
         }
         if (!itbl.read_column("mass", mass)) {
+            print("");
             error("could not read column 'MASS' from FITS file '", filename, "'");
+            print("");
             return false;
         }
         if (!noflux) {
             if (!itbl.read_column("lambda", lambda)) {
+                print("");
                 error("could not read column 'LAMBDA' from FITS file '", filename, "'");
+                print("");
                 return false;
             }
             if (!itbl.read_column("sed", sed)) {
+                print("");
                 error("could not read column 'SED' from FITS file '", filename, "'");
+                print("");
                 return false;
             }
         }
@@ -212,8 +222,10 @@ struct ssp_bc03 {
         } else if (file::exists(filename+".ised_ASCII")) {
             return read_ascii(filename+".ised_ASCII");
         } else {
+            print("");
             error("could not find library: '", filename, "'");
             error("expected extensions *.fits or *.ised_ASCII");
+            print("");
             return false;
         }
     }

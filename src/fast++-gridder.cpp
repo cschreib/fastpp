@@ -9,8 +9,10 @@ void gridder_t::cache_manager_t::write_model(const model_t& model) {
     file::write(cache_file, model.flux);
 
     if (!cache_file) {
+        print("");
         warning("could not write to cache file anymore");
         warning("in case you ran out of disk space, the cache file has been removed");
+        print("");
         cache_file.close();
         file::remove(cache_filename);
     }
@@ -522,8 +524,10 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
 
                 if (opts.verbose) progress(pg, 131);
             } else {
+                print("");
                 error("could not read data from cache file");
                 error("the cache is probably corrupted, please remove it and try again");
+                print("");
                 return false;
             }
         }
