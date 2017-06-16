@@ -19,6 +19,11 @@
     - [Why is it faster?](#why-is-it-faster)
     - [Why does it use so little memory?](#why-does-it-use-so-little-memory)
     - [There must be a price to pay... did the code become more complex in C++?](#there-must-be-a-price-to-pay-did-the-code-become-more-complex-in-c)
+- [Differences with FAST](#differences-with-fast)
+    - [Photometry](#photometry)
+    - [Spectra](#spectra)
+    - [Photo-z](#photo-z)
+    - [Monte Carlo uncertainties](#monte-carlo-uncertainties)
 - [Additional features](#additional-features)
     - [Controlling output to the terminal](#controlling-output-to-the-terminal)
     - [Multithreading](#multithreading)
@@ -185,6 +190,28 @@ The first version of FAST++ which reproduced all features of FAST-IDL was weight
 At similar code size, deciding if a code is more complex than another is a subjective question, especially if the languages are not the same. While C++ has suffered from a reputation of being an obscure language for many years, the situation has vastly improved with the 2011 version of the C++ standard, on which FAST++ relies greatly. These changes made C++ much more expressive and clear, and as always without compromising on performances. It is therefore my opinion that the code of FAST++ is *not* complex nor obscure, at least not more than that of FAST-IDL, but this is the opinion of one who has always programmed in C++.
 
 
+# Differences with FAST
+
+While the implementation of FAST++ was designed to resemble FAST-IDL as much as possible, some aspects of FAST-IDL were not preserved. These are listed here.
+
+## Photometry
+ * The default "zero point" of the fluxes is 23.9 instead of 25. This means that your input fluxes are expected to be given in micro Janskys by default. You can of course specify your own "zero point" if this is not the case, as in FAST-IDL.
+ * If a galaxy has no measured flux in a band (i.e., we have no information about it), the _uncertainty_ must be set to a negative value or "NaN". Note that there is a difference between "no measured flux" and "non-detection": the latter provides information that the fit can use. In FAST-IDL the _flux_ had to be set to -99, which was problematic because -99 could be a valid flux measurement (i.e., a non-detection).
+ * The input photometry catalog can contain columns starting with "F" or "E" which are not flux columns, provided the "F" or "E" is not followed by numbers. In FAST-IDL a catalog containing such columns was rejected.
+
+## Spectra
+ * The template error function is now also applied to the spectra, as for the photometry. In FAST-IDL this was not the case.
+ * Galaxies with a spectrum can still use the input photo-z. In FAST-IDL their photo-z was ignored.
+ * An alternative format for the spectrum file is allowed (see [Better treatment of spectra](#better-treatment-of-spectra) below), but the old format is still supported.
+ * The ```bin``` column is used in FAST++ to combine multiple spectral elements into one before the fit, using inverse variance weighting, which can speed up computations if the spectral resolution is very high. In FAST-IDL only the first element in a bin was used.
+
+## Photo-z
+ * If an input photo-z is negative, FAST++ will simply ignore the photo-z and let the redshift vary freely. In FAST-IDL a galaxy with a negative photo-z was ignored completely.
+ * The way photometric redshifts are used in the fit is quite different by default, but it can be made to reproduce the original behavior of FAST-IDL. See [Photometric redshifts from EAzY](#photometric-redshifts-from-eazy) below.
+
+## Monte Carlo uncertainties
+ * The way FAST++ computes uncertainties using the Monte Carlo simulations is different from FAST-IDL, and this can lead to small differences in the resulting confidence intervals. This should not be significant.
+
 # Additional features
 
 In addition to the base feature set provided by FAST-IDL, FAST++ has a number of additional feature, some of which you can enable in the parameter file. These features are all listed below.
@@ -232,7 +259,7 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
  * ```SFH_OUTPUT```: possible values are ```'sfr'``` or ```'mass'```. The default is ```'sfr'```, and the program outputs as "SFH" the evolution of the instantaneous SFR of each galaxy with time. If set to ```'mass'```, the program will output instead the evolution of the stellar mass with time (which is usually better behaved, see Glazebrook et al. 2017). Note that the evolution of the mass accounts for mass loss, so the mass slowly _decreases_ with time after a galaxy has quenched.
 
 ## Custom star formation histories
-In the original FAST, one has access to three star formation histories: the tau model (exponentially declining), the delayed tau model (delayed exponentially declining) and the constant model. The first two are parametrized with the exponential timescale ```tau```, which can be adjusted in the fit. These star formation histories are distributed as pre-gridded template libraries at various ages, which are then interpolated during the fit to obtain arbitrary ages.
+In the original FAST, one has access to three star formation histories: the tau model (exponentially declining), the delayed tau model (delayed exponentially declining) and the constant truncated model (constant, then zero). All three are parametrized with the star formation timescale ```tau``` (either the exponential timescale for the first two SFH, or the duration of the star formation episode for the last one), which can be adjusted in the fit. These star formation histories are distributed as pre-gridded template libraries at various ages, which are then interpolated during the fit to obtain arbitrary ages.
 
 In addition, one could use the ```MY_SFH``` option to supply an arbitrary star formation history to replace the three SFHs listed above, again, as a pre-gridded template library. The downside is that this must be a single SFH, not a family of SFHs (such as the declining model, parametrized with ```tau```), so it is not possible to fit for your custom SFH's parameters this way.
 
