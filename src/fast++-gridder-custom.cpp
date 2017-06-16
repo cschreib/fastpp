@@ -244,9 +244,9 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
 
     ssp_bc03 ssp;
 
-    vec1f& output_metal = output.grid[grid_id::metal];
-    vec1f& output_age = output.grid[grid_id::age];
-    vec1f& output_z = output.grid[grid_id::z];
+    const vec1f& output_metal = output.grid[grid_id::metal];
+    const vec1f& output_age = output.grid[grid_id::age];
+    const vec1f& output_z = output.grid[grid_id::z];
 
     float& model_mass = model.props[prop_id::mass];
     float& model_sfr = model.props[prop_id::sfr];
@@ -296,26 +296,22 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
                 idm[grid_id::age] = ia;
 
                 // Integrate SFH on local time grid
+                vec1d tpl_flux(ssp.lambda.size());
+                double tmodel_mass = 0.0;
+
+                double formed = 0;
                 vec1d ltime = e10(output_age[ia]) - ctime;
-                vec1d minit(ssp.age.size());
-                uint_t iend = minit.size();
                 uint_t ihint = npos;
-                for (uint_t it : range(minit)) {
+                for (uint_t it : range(ssp.age)) {
                     if (ssp_t1.safe[it] > ltime.back()) {
-                        iend = it;
                         break;
                     }
 
                     double t2 = min(ssp_t2.safe[it], ltime.back());
-                    minit.safe[it] = integrate_hinted(ltime, sfh, ihint, ssp_t1.safe[it], t2);
-                }
+                    formed = integrate_hinted(ltime, sfh, ihint, ssp_t1.safe[it], t2);
 
-                // Sum SSPs of various ages
-                vec1d tpl_flux(ssp.lambda.size());
-                double tmodel_mass = 0.0;
-                for (uint_t it : range(iend)) {
-                    tpl_flux += minit.safe[it]*ssp.sed.safe(it,_);
-                    tmodel_mass += minit.safe[it]*ssp.mass.safe[it];
+                    tpl_flux += formed*ssp.sed.safe(it,_);
+                    tmodel_mass += formed*ssp.mass.safe[it];
                 }
 
                 model_mass = tmodel_mass;
@@ -326,7 +322,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
                     model_sfr = integrate(ltime, sfh, 0.0, t1)/opts.sfr_avg;
                 } else {
                     // Use instantaneous SFR
-                    model_sfr = minit[0]/(ssp_t2[0] - ssp_t1[0]);
+                    model_sfr = formed/(ssp_t2[0] - ssp_t1[0]);
                 }
 
                 model_ssfr = model_sfr/model_mass;
@@ -345,8 +341,56 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
 }
 
 bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) const {
-    error("best fit templates for this SFH are not implemented yet");
-    return false;
+    vec1u idm = grid_ids(iflat);
+    uint_t ia = idm[grid_id::age];
+    uint_t im = idm[grid_id::metal];
+    const vec1f& output_age = output.grid[grid_id::age];
+
+    ssp_bc03 ssp;
+
+    // Load SSP
+    std::string filename = get_library_file_ssp(im);
+    if (!ssp.read(filename)) {
+        return false;
+    }
+
+    // Build analytic SFH
+    double dt = opts.custom_sfh_step;
+    vec1d ctime = reverse(dt*dindgen(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
+    // NB: age array is sorted from largest to smallest
+    vec1d sfh;
+    evaluate_sfh_custom(idm, ctime, sfh);
+
+    // Integrate SFH on local time grid
+    double mass = 0.0;
+    vec1d tpl_flux(ssp.lambda.size());
+
+    vec1d ltime = e10(output_age[ia]) - ctime;
+    double t2 = 0.0;
+    uint_t ihint = npos;
+    for (uint_t it : range(ssp.age)) {
+        double t1 = t2;
+        if (it < ssp.age.size()-1) {
+            t2 = 0.5*(ssp.age.safe[it] + ssp.age.safe[it+1]);
+        } else {
+            t2 = ssp.age.safe[it];
+        }
+
+        t2 = min(t2, ltime.back());
+
+        double formed = integrate_hinted(ltime, sfh, ihint, t1, t2);
+        mass += formed*ssp.mass.safe[it];
+        tpl_flux += formed*ssp.sed.safe(it,_);
+
+        if (t2 >= ltime.back()) {
+            break;
+        }
+    }
+
+    lam = ssp.lambda;
+    flux = tpl_flux/mass;
+
+    return true;
 }
 
 bool gridder_t::get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh,

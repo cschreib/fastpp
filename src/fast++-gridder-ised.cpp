@@ -276,10 +276,10 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
 
     galaxev_ised ised;
 
-    vec1f& output_metal = output.grid[grid_id::metal];
-    vec1f& output_tau = output.grid[grid_id::custom+0];
-    vec1f& output_age = output.grid[grid_id::age];
-    vec1f& output_z = output.grid[grid_id::z];
+    const vec1f& output_metal = output.grid[grid_id::metal];
+    const vec1f& output_tau = output.grid[grid_id::custom+0];
+    const vec1f& output_age = output.grid[grid_id::age];
+    const vec1f& output_z = output.grid[grid_id::z];
 
     float& model_mass = model.props[prop_id::mass];
     float& model_sfr = model.props[prop_id::sfr];
