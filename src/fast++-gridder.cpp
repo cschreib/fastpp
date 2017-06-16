@@ -11,8 +11,11 @@ void gridder_t::cache_manager_t::write_model(const model_t& model) {
     file::write(cache_file, model.flux);
 
     if (!cache_file) {
+        print("");
         warning("could not write to cache file anymore");
         warning("in case you ran out of disk space, the cache file has been removed");
+        print("");
+
         cache_file.close();
         file::remove(cache_filename);
     }
@@ -370,9 +373,11 @@ public :
                 lib.read(&extras(i,0), ntime);
             }
         } catch (...) {
+            print("");
             error("could not read data in library file '", filename, "'");
             error("could not ", state);
             error("the file is probably corrupted, try re-downloading it");
+            print("");
             return false;
         }
 
@@ -521,8 +526,10 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
         for (uint_t iz : range(output.z)) {
             if (cache.read_model(model)) {
                 if (model.igrid != model_id(im, it, ia, id, iz)) {
+                    print("");
                     error("data in the cache file are not what was expected");
                     error("the cache is probably corrupted, please remove it and try again");
+                    print("");
                     return false;
                 }
 
@@ -534,8 +541,10 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
 
                 if (opts.verbose) progress(pg, 131);
             } else {
+                print("");
                 error("could not read data from cache file");
                 error("the cache is probably corrupted, please remove it and try again");
+                print("");
                 return false;
             }
         }
@@ -554,7 +563,12 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
             }
 
             // Make sure input is correct
-            phypp_check(is_sorted(ised.age), "galaxev age array is not sorted: ", ised.age);
+            if (!is_sorted(ised.age)) {
+                print("");
+                error("galaxev age array is not sorted");
+                print("");
+                return false;
+            }
 
             // Pre-compute dust law
             vec1d dust_law = build_dust_law(ised.lambda);
@@ -573,13 +587,17 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
                 double nage = e10(output.age[ia]);
                 auto p = bounds(nage, ised.age);
                 if (p[0] == npos) {
+                    print("");
                     error("requested age is lower than allowed by the template library (",
                         output.age[ia], " vs. ", log10(ised.age.safe[p[1]]), ")");
+                    print("");
                     return false;
                 } else if (p[1] == npos) {
                     if (nage > ised.age.safe[p[0]]) {
+                        print("");
                         error("requested age is larger than allowed by the template library (",
                             output.age[ia], " vs. ", log10(ised.age.safe[p[0]]), ")");
+                        print("");
                         return false;
                     }
 
@@ -662,20 +680,29 @@ bool gridder_t::build_template(uint_t im, uint_t it, uint_t ia, uint_t id, uint_
     }
 
     // Make sure input is correct
-    phypp_check(is_sorted(ised.age), "galaxev age array is not sorted: ", ised.age);
+    if (!is_sorted(ised.age)) {
+        print("");
+        error("galaxev age array is not sorted");
+        print("");
+        return false;
+    }
 
     // Interpolate the galaxev grid at the requested age
     double nage = e10(output.age[ia]);
     auto p = bounds(nage, ised.age);
     double mass = 0;
     if (p[0] == npos) {
+        print("");
         error("requested age is lower than allowed by the template library (",
             output.age[ia], " vs. ", log10(ised.age[p[1]]), ")");
+        print("");
         return false;
     } else if (p[1] == npos) {
         if (nage > ised.age[p[0]]) {
+            print("");
             error("requested age is larger than allowed by the template library (",
                 output.age[ia], " vs. ", log10(ised.age[p[0]]), ")");
+            print("");
             return false;
         }
 
