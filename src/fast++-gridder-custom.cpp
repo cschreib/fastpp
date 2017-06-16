@@ -207,13 +207,13 @@ struct ssp_bc03 {
     }
 
     bool read(std::string filename, bool noflux = false) {
-        if (file::exists(filename+".fits")) {
-            return read_fits(filename+".fits", noflux);
+        if (file::exists(filename+".ised_ASCII.fits")) {
+            return read_fits(filename+".ised_ASCII.fits", noflux);
         } else if (file::exists(filename+".ised_ASCII")) {
             return read_ascii(filename+".ised_ASCII");
         } else {
             error("could not find library: '", filename, "'");
-            error("expected extensions *.fits or *.isec_ASCII");
+            error("expected extensions *.fits or *.ised_ASCII");
             return false;
         }
     }
@@ -299,6 +299,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
                 vec1d ltime = e10(output_age[ia]) - ctime;
                 vec1d minit(ssp.age.size());
                 uint_t iend = minit.size();
+                uint_t ihint = npos;
                 for (uint_t it : range(minit)) {
                     if (ssp_t1.safe[it] > ltime.back()) {
                         iend = it;
@@ -306,7 +307,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
                     }
 
                     double t2 = min(ssp_t2.safe[it], ltime.back());
-                    minit.safe[it] = integrate(ltime, sfh, ssp_t1.safe[it], t2);
+                    minit.safe[it] = integrate_hinted(ltime, sfh, ihint, ssp_t1.safe[it], t2);
                 }
 
                 // Sum SSPs of various ages
@@ -350,6 +351,100 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
 
 bool gridder_t::get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh,
     const std::string& type) const {
-    error("best fit SFH for this SFH are not implemented yet");
-    return false;
+
+    vec1u idm = grid_ids(iflat);
+    double nage = e10(output.grid[grid_id::age][idm[grid_id::age]]);
+    double age_obs = e10(auniv[grid_id::z]);
+    double age_born = age_obs - nage;
+
+    // Evaluate SFH
+    uint_t i0 = upper_bound(age_born, t);
+    uint_t i1 = upper_bound(age_obs, t);
+
+    if (i1 == npos) {
+        i1 = t.size()-1;
+    }
+    if (i0 == npos) {
+        i0 = 0;
+    }
+
+    sfh = replicate(0.0, t.size()); {
+        vec1d tsfh;
+        evaluate_sfh_custom(idm, t[i0-_] - age_born, tsfh);
+        sfh[i0-_] = tsfh;
+    }
+
+    // Load SSP (only extras) to get mass
+    std::string filename = get_library_file_ssp(idm[grid_id::metal]);
+
+    ssp_bc03 ssp;
+    if (!ssp.read(filename, true)) {
+        return false;
+    }
+
+    if (type == "sfr") {
+        // Compute total mass at epoch of observation
+        double mass = 0.0;
+        vec1d ltime = nage - reverse(t);
+        vec1d lsfh = reverse(sfh);
+
+        double t2 = 0.0;
+        uint_t ihint = npos;
+        for (uint_t it : range(ssp.age)) {
+            double t1 = t2;
+            if (it < ssp.age.size()-1) {
+                t2 = 0.5*(ssp.age.safe[it] + ssp.age.safe[it+1]);
+            } else {
+                t2 = ssp.age.safe[it];
+            }
+
+            t2 = min(t2, ltime.back());
+
+            mass += ssp.mass.safe[it]*integrate_hinted(ltime, lsfh, ihint, t1, t2);
+
+            if (t2 >= ltime.back()) {
+                break;
+            }
+        }
+
+        // Normalize to unit mass at observation
+        sfh /= mass;
+    } else if (type == "mass") {
+        // Integrate mass, including mass loss
+        vec1d mass(t.size());
+        vec1d lsfh = reverse(sfh);
+
+        for (uint_t i : range(t)) {
+            double t2 = 0.0;
+            vec1d ltime = t.safe[i] - reverse(t);
+            uint_t ihint = npos;
+            for (uint_t it : range(ssp.age)) {
+                double t1 = t2;
+                if (it < ssp.age.size()-1) {
+                    t2 = 0.5*(ssp.age.safe[it] + ssp.age.safe[it+1]);
+                } else {
+                    t2 = ssp.age.safe[it];
+                }
+
+                t2 = min(t2, ltime.back());
+
+                mass.safe[i] += ssp.mass.safe[it]*integrate_hinted(ltime, lsfh, ihint, t1, t2);
+
+                if (t2 >= ltime.back()) {
+                    break;
+                }
+            }
+        }
+
+        // Normalize to unit mass at observation
+        mass /= interpolate(mass, t - age_born, nage);
+
+        // Return mass instead of SFR
+        std::swap(mass, sfh);
+    } else {
+        error("unknown SFH type '", type, "'");
+        return false;
+    }
+
+    return true;
 }
