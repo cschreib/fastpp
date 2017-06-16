@@ -116,6 +116,14 @@ MAX_QUEUED_FITS = 1000
 #   redshifts should be used to limit the grid for each galaxy.
 #   Redshifts outside of this confidence interval will not be considered.
 #
+# o USE_LIR: if set to 1 and [CATALOG].lir exists, FAST++ will read
+#   infrared luminosities from this file and use them to constrain the
+#   fit. Must contain columns: id, lir and elir. The observed luminosities
+#   (given in units of total solar luminosity) are compared to difference
+#   of bolometric luminosity before and after dust attenuation is applied
+#   to the models. This can help break degeneracies, but requires that
+#   the redshift is well known.
+#
 #-----------------------------------------------------------------------
 
 CATALOG        = 'hdfn_fs99'
@@ -127,6 +135,7 @@ NAME_ZPHOT     = 'z_m2'
 FORCE_ZPHOT    = 0          # 0 / 1
 BEST_AT_ZPHOT  = 1          # 0 / 1
 ZPHOT_CONF     = 68         # 68 / 95 / 99
+USE_LIR        = 0          # 0 / 1
 
 
 #--- SPECTROSCOPIC INFORMATION -----------------------------------------
@@ -175,7 +184,7 @@ AUTO_SCALE     = 0          # 0 / 1
 # o C_INTERVAL: Percentage of confidence intervals, choose from 68% (1
 #   sigma), 95% (2 sigma), or 99% (3 sigma)
 #
-# o BEST_FIT: output best-fit SPS model
+# o BEST_FIT: output best-fit SPS model in the 'best_fits' directory
 #
 # o BEST_FROM_SIM: use the median of the Monte Carlo simulation as
 #   best-fit instead of the model with the smallest chi squared on
@@ -183,6 +192,35 @@ AUTO_SCALE     = 0          # 0 / 1
 #
 # o SAVE_SIM: save the best-fit parameters for each Monte Carlo
 #   simulation for all sources in the "best_fits" directory.
+#
+# o SFR_AVG: output the SFR as the average of the 'SFR_AVG' last million
+#   years. If set to zero (the default) FAST++ will output the
+#   instantaneous SFR.
+#
+# o INTRINSIC_BEST_FIT: if BEST_FIT=1, setting this option to 1 will also
+#   output the intrinsic best-fit SED of the galaxy, as it would be seen
+#   without dust obscuration. This intrinsic SED is saved as a third
+#   column in the best-fit SED file.
+#
+# o BEST_SFHS: if set to 1, the program will output the best-fit star
+#   formation history along with the best fit SEDs. If Monte Carlo
+#   simulations are enabled, the confidence intervals of the SFH will
+#   also be written.
+#
+# o SFH_OUTPUT_STEP: if BEST_SFHS=1, sets the time step of the output SFH in
+#   million years. The default is 10 Myr.
+#
+# o SFH_OUTPUT: 'sfr' will output the evolution of the star formation rate
+#   with time, while 'mass' will show the total stellar mass (including
+#   mass loss).
+#
+# o OUTPUT_COLUMNS: define here what columns to write in [CATALOG].fout
+#   Available columns: id, metal, lage, Av, lmass, lsfr, lssfr, lldust
+#   and chi2. If using the "standard" FAST templates, two additional
+#   columns are available: ltau and la2t. If using custom SFH, you can
+#   also choose any of your custom SFH parameter.
+#   By default all available parameters are written in the file
+#   (except lldust).
 #
 #-----------------------------------------------------------------------
 
@@ -193,6 +231,12 @@ C_INTERVAL     = 68         # 68 / 95 / 99 or [68,95] etc
 BEST_FIT       = 0          # 0 / 1
 BEST_FROM_SIM  = 0          # 0 / 1
 SAVE_SIM       = 0          # 0 / 1
+SFR_AVG        = 0          # 0, 100 Myr, 300 Myr etc
+INTRINSIC_BEST_FIT = 0      # 0 / 1
+BEST_SFHS      = 0          # 0 / 1
+SFH_OUTPUT_STEP = 10        # 10 Myr, 100 Myr etc
+SFH_OUTPUT     = 'sfr'      # 'sfr' or 'mass'
+OUTPUT_COLUMNS = ''         # ['id','Av','mass','sfr', ...]
 
 
 #--- CHOOSE STELLAR POPULATIONS LIBRARY --------------------------------
@@ -236,7 +280,7 @@ SAVE_SIM       = 0          # 0 / 1
 #   - 'noll': For this law you have to parametrize E_b and delta.
 #      You can only pick one value for each, arrays are not allowed.
 #
-# o MY_SFH: if you define this option, FAST will not fit a range of
+# o MY_SFH: if you define this option, FAST++ will not fit a range of
 #   star-formation histories, but just one model (so LOG_TAU_XXX will
 #   be ignored). For this option you can only read in one custom star
 #   formation history, for which you have to make the ISED file
@@ -244,6 +288,20 @@ SAVE_SIM       = 0          # 0 / 1
 #   be as follows:
 #   [library]_[resolution]_[imf]_z[metallicity]_[MY_SFH].ised
 #   This file needs to be placed directly in 'LIBRARY_DIR'
+#
+# o CUSTOM_SFH: if you define this option, FAST++ will build a grid of
+#   templates on the fly using SSP models, instead of reading the
+#   composite models from "csp_galaxev". You can therefore fit any
+#   star formation history. The SFH must be a mathematical expression
+#   which returns the SFR as a function of the time 't' since the galaxy
+#   was born (the units of the SFR do not matter). Custom grid parameters
+#   can be referenced in this function (see below) but not the age or the
+#   dust attenuation.
+#
+# o CUSTOM_PARAMS: when using CUSTOM_SFH, define here the names of your
+#   grid parameters (e.g., log_tau). For each of these parameters you
+#   must provide the _MIN, _MAX and _STEP values, as for the other
+#   grid parameters.
 #
 #-----------------------------------------------------------------------
 
@@ -256,6 +314,11 @@ DUST_LAW       = 'calzetti'     # 'calzetti' / 'mw' / 'kc' / 'noll'
 # E_B          = 1              # only define for 'noll' dust law
 # delta        = -0.2           # only define for 'noll' dust law
 MY_SFH         = ''
+CUSTOM_SFH     = ''             # '(1 + t)^alpha'
+CUSTOM_PARAMS  = ''             # ['alpha', ...]
+# ALPHA_MIN    = -2             # define these for each custom parameter
+# ALPHA_MAX    = 2              # define these for each custom parameter
+# ALPHA_STEP   = 0.1            # define these for each custom parameter
 
 
 #--- DEFINE GRID -------------------------------------------------------
