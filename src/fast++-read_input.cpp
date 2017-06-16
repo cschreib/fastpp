@@ -534,6 +534,18 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     if (col_zspec == npos) {
         // If no zspec column, give no zspec to all galaxies
         state.zspec = replicate(fnan, state.id.size());
+    } else {
+        // Check that zspecs are covered by the redshift grid
+        if (min(state.zspec) < opts.z_min) {
+            error("the smallest z_spec is outside of the grid ", min(state.zspec),
+                " vs. ", opts.z_min, ")");
+            return false;
+        }
+        if (max(state.zspec) > opts.z_max) {
+            error("the largest z_spec is outside of the grid ", max(state.zspec),
+                " vs. ", opts.z_max, ")");
+            return false;
+        }
     }
 
     // Convert photometry from [catalog unit] to [uJy]
@@ -1011,6 +1023,30 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
     if (i != state.id.size()) {
         error("photometric redshift and photometry catalogs do not match (", i, " vs. ",
             state.id.size(), ")");
+        return false;
+    }
+
+    // Check that zspecs are covered by the redshift grid
+    if (min(state.zspec) < opts.z_min) {
+        error("the smallest z_spec is outside of the grid ", min(state.zspec),
+            " vs. ", opts.z_min, ")");
+        return false;
+    }
+    if (max(state.zspec) > opts.z_max) {
+        error("the largest z_spec is outside of the grid ", max(state.zspec),
+            " vs. ", opts.z_max, ")");
+        return false;
+    }
+
+    // Check that zphots are covered by the redshift grid
+    if (min(state.zphot(_,0)) < opts.z_min) {
+        error("the smallest z_phot is outside of the grid ", min(state.zphot(_,0)),
+            " vs. ", opts.z_min, ")");
+        return false;
+    }
+    if (max(state.zphot(_,0)) > opts.z_max) {
+        error("the largest z_phot is outside of the grid ", max(state.zphot(_,0)),
+            " vs. ", opts.z_max, ")");
         return false;
     }
 
