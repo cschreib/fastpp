@@ -63,10 +63,14 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
         uint_t iup  = 1 + 2*ic + 1;
 
         for (uint_t is : range(input.id)) {
-            // Get range from zlow and zup
-            if (is_finite(input.zphot.safe(is,ilow)) && is_finite(input.zphot.safe(is,iup))) {
-                idzl.safe[is] = min_id(abs(output.z - input.zphot.safe(is,ilow)));
-                idzu.safe[is] = min_id(abs(output.z - input.zphot.safe(is,iup)));
+            if (idz.safe[is] != npos) {
+                // Range is limited to z_spec
+                idzl.safe[is] = idz.safe[is];
+                idzu.safe[is] = idz.safe[is];
+            } else if (is_finite(input.zphot.safe(is,ilow)) && is_finite(input.zphot.safe(is,iup))) {
+                // Get range from zlow and zup
+                idzl.safe[is] = min_id(abs(output_z - input.zphot.safe(is,ilow)));
+                idzu.safe[is] = min_id(abs(output_z - input.zphot.safe(is,iup)));
             }
         }
     }
@@ -268,8 +272,9 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
         uint_t is = i + i0;
 
         // Apply constraints on redshift
-        if ((idz.safe[is] != npos && model.iz != idz.safe[is]) ||
-            model.iz < idzl.safe[is] || model.iz > idzu.safe[is]) {
+        if ((idzp.safe[is] == npos || model.iz != idzp.safe[is]) &&
+            (idz.safe[is] == npos || model.iz != idz.safe[is]) &&
+            (model.iz < idzl.safe[is] || model.iz > idzu.safe[is])) {
             wsp.chi2.safe[i] = finf;
             wsp.mass.safe[i] = fnan;
             wsp.sfr.safe[i]  = fnan;
