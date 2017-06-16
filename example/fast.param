@@ -1,0 +1,312 @@
+#... FAST++ V1.0: parameter file .......................................
+
+
+#--- GENERAL INFORMATION -----------------------------------------------
+#
+# Please read this parameter file in detail, you can find all relevant
+# information here. Note that you have to adjust your input catalogs
+# accordingly, otherwise FAST++ may not work properly!
+#
+# o Requirements:
+#   - about 30 MB of free RAM memory
+#   - at least one CPU core
+#
+# o The current directory should contain the following files:
+#   - This parameter file
+#   - [CATALOG].cat        If you fit broadband photometry
+#   - [CATALOG].zout       If you input photometric redshifts
+#   - [CATALOG].lir        If you input infrared luminosities
+#   - [CATALOG].translate  If you input a translate file
+#   - [SPECTRUM].spec      If you fit spectra
+#
+# o FAST++ runs from the command line.
+#   The first argument is the parameter file. Default is 'fast.param'
+#   $ fast++
+#   $ fast++ my_fast.param
+#
+# o VERBOSE: set to 0 to disable output in the terminal (except for
+#   warnings and errors, which are always shown)
+#
+# o PARALLEL: sets which part of the code should be executed in parallel.
+#    - 'none': (default) no parallelization, the code will execute on
+#      one CPU.
+#    - 'models': each model will be adjusted to the photometry in a
+#      different thread. Good when you have lots of models and few
+#      galaxies to fit.
+#    - 'sources': the input catalog will be split into equal parts, and
+#      each part will be analyzed in a different thread. Good when you
+#      have few models but lots of galaxies.
+#
+# o N_THREAD: sets the maximum number of threads the program can use at
+#   once. This should be close to (or equal to) the number of available
+#   cores on your CPU, or (one minus) the number of nodes available on a
+#   cluster. Setting this to zero will disable parallelization.
+#
+# o MAX_QUEUED_FITS: sets the maximum number of fits that are queued and
+#   waiting to be executed by the worker threads. Increasing this value
+#   will make the code run faster, but will also increase memory usage.
+#   For a run on a desktop computer with no more than 10 threads, a value
+#   of 1000 provides a good compromise; larger values do not improve
+#   performances significantly (no more than 10%).
+#
+#-----------------------------------------------------------------------
+
+VERBOSE = 1                 # 0 / 1
+PARALLEL = 'none'           # 'none', 'models', or 'sources'
+N_THREAD = 0
+MAX_QUEUED_FITS = 1000
+
+
+#--- BROADBAND PHOTOMETRIC INFORMATION ---------------------------------
+#
+# o [CATALOG].cat (similar as for EAzY):
+#   - Example catalog: hdfn_fs99.cat
+#   - FAST++ recognizes columns with names {id,ID,z_spec,F[n],E[n],
+#     TOT[n]} with n the number of the filter
+#   - If z_spec is not given or any negative value, no z_spec is assumed
+#   - Give a negative error or "NaN" if the object has no coverage in a
+#     certain band
+#
+# o [CATALOG].zout (preferably generated with EAzY):
+#   - Example catalog: hdfn_fs99.zout
+#   - If NAME_ZPHOT is not defined, FAST reads columns with labels "z_phot"
+#     as best-fit photometric redshifts "l68/l95/l99" and "h68/h95/h99"
+#     for the confidence intervals
+#   - If input photo-z is a negative value, the photo-z will be ignored
+#   - If [CATALOG].zout is not available, and no z_specs are given in
+#     [CATALOG].cat, then the redshifts are allowed to float
+#   - You can also read in spectroscopic redshifts from [CATALOG].zout.
+#     The corresponding column should be labeled "z_spec". However, if you
+#     list them in [CATALOG].cat, FAST++ will ignore those in [CATALOG].zout
+#
+# o [CATALOG].translate:
+#   - Example file: hdfn_fs99.translate
+#   - Translates the column names in [CATALOG].cat to the required
+#     F[n],E[n],etc formats
+#   - Will only be used when available
+#
+# o AB_ZEROPOINT: m_AB = AB_ZEROPOINT - 2.5*log(F[n])
+#   - Default: AB_ZEROPOINT = 23.9
+#   - fluxes in micro Janskys: AB_ZEROPOINT = 23.9
+#   - fluxes in erg sec^{-1} cm^{-2} Hz^{-1}: AB_ZEROPOINT = 48.6
+#
+# o FILTERS_RES: similar as for EAzY
+#
+# o FILTER_FORMAT: tells the program in the response curves provided in
+#   filters_res file are determined for energy-counting (=0) or photon-
+#   counting (=1) detectors (Default: 1)
+#
+# o TEMP_ERR_FILE: Template error function. The photometric errors are
+#   in rest-frame multiplied by this function.
+#
+# o NAME_ZPHOT: Header name of the column in your [CATALOG].zout file
+#   that you want to use for your photometric redshifts. If not defined,
+#   FAST will look for 'z_phot'
+#
+# o FORCE_ZPHOT: if set to 1, tells the program to treat the photometric
+#   redshifts as spectroscopic redshifts.
+#
+# o BEST_AT_ZPHOT: if set to 1, tells the program to force the best-fit
+#   solution to match the photometric redshift obtained by EAzY, but the
+#   confidence intervals will still account for the uncertainty on the
+#   redshift (note that these intervals may not be centered on the best-
+#   fit solution if this option is enabled).
+#
+# o ZPHOT_CONF: tells which confidence interval of the photometric
+#   redshifts should be used to limit the grid for each galaxy.
+#   Redshifts outside of this confidence interval will not be considered.
+#
+#-----------------------------------------------------------------------
+
+CATALOG        = 'hdfn_fs99'
+AB_ZEROPOINT   = 25.
+FILTERS_RES    = '../share/FILTER.RES.latest'
+FILTER_FORMAT  = 1
+TEMP_ERR_FILE  = '../share/TEMPLATE_ERROR.fast.v0.2'
+NAME_ZPHOT     = 'z_m2'
+FORCE_ZPHOT    = 0          # 0 / 1
+BEST_AT_ZPHOT  = 1          # 0 / 1
+ZPHOT_CONF     = 68         # 68 / 95 / 99
+
+
+#--- SPECTROSCOPIC INFORMATION -----------------------------------------
+#
+# o SPECTRUM:
+#   - Example file: "1030_gnirs.spec"
+#   - The file should have the following format:
+#     # bin wl_low wl_low F[id1] E[id1] F[id2] E[id2] ...
+#   - bin: number of the bin in which the spectral element falls
+#   - wl_low: lower wavelength of the spectral element in Angstrom
+#   - wl_up: upper wavelength of the spectral element in Angstrom
+#   - (e)fl: in 10^-19 ergs s-1 cm-2 Angstrom-1 (if AUTO_SCALE=0)
+#   - id.: should be an integer
+#   - If you want to fit spectra and photometry at the same time, only
+#     the objects for which both spectra AND photometry are provided
+#     will be fit. Note that when you fit only one or a few galaxies
+#     from the same field, you can feed the full photometric catalog,
+#     and FAST++ will find the corresponding photometry.
+#   - Photometric redshifts are ignored when spectra are included.
+#   - Missing values can be signaled with negative errors or "NaN".
+#
+# o AUTO_SCALE: This option automatically scales the spectrum using the
+#   broadband photometry as provided in the [CATALOG].cat file. The
+#   error on the scaling is taken into account when deriving the
+#   confidence intervals. The photometric bands used to scale the
+#   spectrum are not included in the fit. The scaling factor will be
+#   stored in the grid file, thus you have to set "SAVE_CHI_GRID" to "1"
+#
+#-----------------------------------------------------------------------
+
+SPECTRUM       = ''
+AUTO_SCALE     = 0          # 0 / 1
+
+
+#--- OUTPUT INFORMATION  -----------------------------------------------
+#
+# o OUTPUT_DIR: output directory for results
+#
+# o OUTPUT_FILE: output file for results.
+#   If not given: [CATALOG]_[SPECTRUM].fout
+#
+# o N_SIM: The number of Monte Carlo simulations used to determine the
+#   confidence levels. If zero or not defined, only best-fit values will
+#   be given.
+#
+# o C_INTERVAL: Percentage of confidence intervals, choose from 68% (1
+#   sigma), 95% (2 sigma), or 99% (3 sigma)
+#
+# o BEST_FIT: output best-fit SPS model
+#
+#-----------------------------------------------------------------------
+
+OUTPUT_DIR     = ''
+OUTPUT_FILE    = ''
+N_SIM          = 100
+C_INTERVAL     = 68         # 68 / 95 / 99 or [68,95] etc
+SAVE_SIM       = 0          # 0 / 1
+BEST_FROM_SIM  = 0          # 0 / 1
+BEST_FIT       = 0          # 0 / 1
+
+
+#--- CHOOSE STELLAR POPULATIONS LIBRARY --------------------------------
+#
+# o LIBRARY_DIR: directory containing the stellar population libraries
+#   of the form: ised_[SFH].[resolutions].
+#   The binaries in these directories are of the following form:
+#   [library]_[resolution]_[imf]_z[metallicity]_ltau[ltau/yr].ised
+#
+# o All binary inputs are made using "csp_galaxev"
+#   ("galaxev" software by Bruzual & Charlot 2003) on the SSP models
+#   "bc2003_[RESOLUTION]_[metal]_[IMF]_ssp.ised" and assuming no dust
+#   law (and no recycling of gas ejected by stars for exponentially
+#   declining star formation history)
+#
+# o LIBRARY: choose from Bruzual & Charlot 2003 ('bc03'),
+#   Maraston 2005 ('ma05'), and FSPS by Conroy et al. ('co11')
+#
+# o RESOLUTION: Choose 'hr' for spectral fitting, and 'pr' (photometric
+#   resolution) or 'lr' for medium and broadband filters. Not all
+#   resolutions are standard available for all SFHs or libraries or IMFs
+#
+# o IMF (stellar initial mass function), choose from
+#   - 'ch'(abrier)
+#   - 'sa'(lpeter)
+#   - 'kr'(oupa)
+#
+# o SFH: parametrization of the star formation history (SFH), choose from
+#   - 'exp': exponentially declining SFH; sfr ~ exp(-t/tau)
+#   - 'del': delayed exponentially declining SFH; sfr ~ t exp(-t/tau)
+#   - 'tru': truncated SFH, with constant star formation between
+#            t_onset and t_onset+tau
+#   For all SFH you can specify the range tau in the grid
+#
+# o DUST_LAW: parametrization of the dust attenuation curve. You can
+#   choose from the following options
+#   - 'calzetti': Calzetti (2000) dust law
+#   - 'mw': Milky Way, following parametrization by Cardelli et al. (1989)
+#   - 'kc': Kriek & Conroy (2013). Average dust law. We use the
+#      parametrization by Noll et al. with E_B = 1 and delta = -0.1
+#   - 'noll': For this law you have to parametrize E_b and delta.
+#      You can only pick one value for each, arrays are not allowed.
+#
+# o MY_SFH: if you define this option, FAST will not fit a range of
+#   star-formation histories, but just one model (so LOG_TAU_XXX will
+#   be ignored). For this option you can only read in one custom star
+#   formation history, for which you have to make the ISED file
+#   yourself using "csp_galaxev". The naming of the ised file has to
+#   be as follows:
+#   [library]_[resolution]_[imf]_z[metallicity]_[MY_SFH].ised
+#   This file needs to be placed directly in 'LIBRARY_DIR'
+#
+#-----------------------------------------------------------------------
+
+LIBRARY_DIR    = '../share/libraries/'
+LIBRARY        = 'bc03'         # 'bc03' / 'ma05' / 'co11'
+RESOLUTION     = 'hr'           # 'pr' / 'lr' / 'hr'
+IMF            = 'ch'           # 'ch' / 'sa' / 'kr'
+SFH            = 'del'          # 'exp' / 'del' / 'tru'
+DUST_LAW       = 'calzetti'     # 'calzetti' / 'mw' / 'kc' / 'noll'
+# E_B          = 1              # only define for 'noll' dust law
+# delta        = -0.2           # only define for 'noll' dust law
+MY_SFH         = ''
+
+
+#--- DEFINE GRID -------------------------------------------------------
+#
+# o Choose only values for tau and metallicity that are in your library.
+#   Otherwise extend your library.
+#
+# o If EAzY is used, make sure Z_MIN, Z_MAX are similar.
+#
+# o METAL: the options differ per stellar population library
+#   ma05: Z=0.001, Z=0.01, Z=0.02 [solar], and Z=0.04
+#   bc03: Z=0.004, Z=0.008, Z=0.02 [solar], and Z=0.05
+#   co11: Z=0.0008, Z=0.0031, Z=0.0096, Z=0.019 [solar], and Z=0.03
+#   You can choose more than one by defining an array.
+#
+# o If a grid has already been made for a specific LIBRARY, RESOLUTION,
+#   IMF, tau, age, z, A_v, metallicity, and filter set and/or spectral
+#   elements, the grid will be automatically read from the cache.
+#
+# o NO_MAX_AGE: By default (0), ages that exceed the age of the universe
+#   are not allowed. However, when NO_MAX_AGE is put to 1 you can have
+#   older ages.
+#
+#-----------------------------------------------------------------------
+
+LOG_TAU_MIN    = 8.5            # log [yr]
+LOG_TAU_MAX    = 10.            # log [yr]
+LOG_TAU_STEP   = 0.5            # log [yr], min 0.1
+LOG_AGE_MIN    = 8.0            # log [yr]
+LOG_AGE_MAX    = 10.0           # log [yr]
+LOG_AGE_STEP   = 0.2            # log [yr]
+NO_MAX_AGE     = 0              # 0 / 1
+Z_MIN          = 0.01           # Cannot be 0.0
+Z_MAX          = 6.00
+Z_STEP         = 0.05
+Z_STEP_TYPE    = 0              # 0: Z_STEP, 1: Z_STEP*(1+z)
+A_V_MIN        = 0.             # [mag]
+A_V_MAX        = 3.             # [mag]
+A_V_STEP       = 0.1            # [mag]
+METAL          = [0.02]         # [0.0096,0.019,0.03]
+NO_CACHE       = 0
+
+
+#--- COSMOLOGY ---------------------------------------------------------
+#
+#-----------------------------------------------------------------------
+
+H0             = 70.0               # Hubble constant
+OMEGA_M        = 0.3                # Omega matter
+OMEGA_L        = 0.7                # Omega lambda
+
+
+#--- SAVE INTERMEDIATE PRODUCTS ----------------------------------------
+#
+# - SAVE_CHI_GRID: if "1" then the temporary grid per objects will be
+#   saved as an idl ".save" file in the "tmp" directory. This option
+#   slows down the program.
+#
+#-----------------------------------------------------------------------
+
+SAVE_CHI_GRID  = 0          # 0 / 1

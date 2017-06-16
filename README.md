@@ -212,6 +212,7 @@ While the implementation of FAST++ was designed to resemble FAST-IDL as much as 
 ## Monte Carlo uncertainties
  * The way FAST++ computes uncertainties using the Monte Carlo simulations is different from FAST-IDL, and this can lead to small differences in the resulting confidence intervals. This should not be significant.
 
+
 # Additional features
 
 In addition to the base feature set provided by FAST-IDL, FAST++ has a number of additional feature, some of which you can enable in the parameter file. These features are all listed below.
