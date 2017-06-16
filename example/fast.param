@@ -177,15 +177,22 @@ AUTO_SCALE     = 0          # 0 / 1
 #
 # o BEST_FIT: output best-fit SPS model
 #
+# o BEST_FROM_SIM: use the median of the Monte Carlo simulation as
+#   best-fit instead of the model with the smallest chi squared on
+#   the original (unperturbed) photometry.
+#
+# o SAVE_SIM: save the best-fit parameters for each Monte Carlo
+#   simulation for all sources in the "best_fits" directory.
+#
 #-----------------------------------------------------------------------
 
 OUTPUT_DIR     = ''
 OUTPUT_FILE    = ''
 N_SIM          = 100
 C_INTERVAL     = 68         # 68 / 95 / 99 or [68,95] etc
-SAVE_SIM       = 0          # 0 / 1
-BEST_FROM_SIM  = 0          # 0 / 1
 BEST_FIT       = 0          # 0 / 1
+BEST_FROM_SIM  = 0          # 0 / 1
+SAVE_SIM       = 0          # 0 / 1
 
 
 #--- CHOOSE STELLAR POPULATIONS LIBRARY --------------------------------
@@ -266,7 +273,9 @@ MY_SFH         = ''
 #
 # o If a grid has already been made for a specific LIBRARY, RESOLUTION,
 #   IMF, tau, age, z, A_v, metallicity, and filter set and/or spectral
-#   elements, the grid will be automatically read from the cache.
+#   elements, the grid will be automatically read from the cache unless
+#   the NO_CACHE option is set to 1. This option will also prevent the
+#   code from writing this cache in the first place.
 #
 # o NO_MAX_AGE: By default (0), ages that exceed the age of the universe
 #   are not allowed. However, when NO_MAX_AGE is put to 1 you can have
@@ -289,7 +298,7 @@ A_V_MIN        = 0.             # [mag]
 A_V_MAX        = 3.             # [mag]
 A_V_STEP       = 0.1            # [mag]
 METAL          = [0.02]         # [0.0096,0.019,0.03]
-NO_CACHE       = 0
+NO_CACHE       = 0              # 0 / 1
 
 
 #--- COSMOLOGY ---------------------------------------------------------
