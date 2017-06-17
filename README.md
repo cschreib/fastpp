@@ -50,7 +50,7 @@ This is a C++ version of the popular SED fitting code [FAST](http://w.astro.berk
  - FAST++ can use observational constraints on dust emission.
  - ... and more! See [Additional features](#additional-features).
 
-There are two main differences with the original FAST: in dealing with redshifts from EAzY, and in estimating uncertainties. First, the EAzY redshifts and confidence intervals are used differently: by default the photo-z will not be enforced for the best-fitting solution, and only the confidence intervals are used to restrict the parameter space (this can be changed in the parameter file). The Monte Carlo simulations always use the same constraints on the redshift as the true observations. Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid.
+There are number of small differences between FAST++ and the original FAST, these are listed below in [Differences with FAST](#differences-with-fast).
 
 If you use this code for your own work, please cite this repository, as well as Kriek et al. (2009) where FAST was first introduced.
 
@@ -207,10 +207,10 @@ While the implementation of FAST++ was designed to resemble FAST-IDL as much as 
 
 ## Photo-z
  * If an input photo-z is negative, FAST++ will simply ignore the photo-z and let the redshift vary freely. In FAST-IDL a galaxy with a negative photo-z was ignored completely.
- * The way photometric redshifts are used in the fit is quite different by default, but it can be made to reproduce the original behavior of FAST-IDL. See [Photometric redshifts from EAzY](#photometric-redshifts-from-eazy) below.
+ * The EAzY redshifts and confidence intervals are used differently: by default the photo-z will not be enforced for the best-fitting solution, and only the confidence intervals are used to restrict the parameter space. This behavior can be modified to reproduce the original behavior of FAST-IDL. See [Photometric redshifts from EAzY](#photometric-redshifts-from-eazy) below.
 
 ## Monte Carlo uncertainties
- * The way FAST++ computes uncertainties using the Monte Carlo simulations is different from FAST-IDL, and this can lead to small differences in the resulting confidence intervals. This should not be significant. The accuracy of the uncertainties computed by FAST++ was verified using mock catalogs with known physical parameters.
+ * The way FAST++ computes uncertainties using the Monte Carlo simulations is different from FAST-IDL, and this can lead to small differences in the resulting confidence intervals. In particulat, the Monte Carlo simulations always use the same constraints on the redshift as the best-fit solution (unless ```BEST_AT_ZPHOT``` is set). Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid. This should not be significant, and the accuracy of the uncertainties computed by FAST++ was verified using mock catalogs with known physical parameters.
 
 
 # Additional features
