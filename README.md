@@ -54,7 +54,7 @@ If you use this code for your own work, please cite this repository, as well as 
 To install FAST++, you first need to build it. For this, you will need a recent C++ compiler, [git](https://git-scm.com/) and [CMake](https://cmake.org/). All of these tools are available by default on most modern linux distributions, and for MacOS you may need to install them with MacPorts. From there installing FAST++ is very easy. Navigate to a directory of your choosing where the code will be downloaded (it will be placed in a subdirectory called ```fastpp```), then execute the following commands:
 ```
 # Download the code and dependencies
-git clone --recursive https://github.com/cschreib/fastpp.git
+git clone https://github.com/cschreib/fastpp.git
 cd fastpp
 
 # Compile
