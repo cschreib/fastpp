@@ -1,4 +1,4 @@
-#... FAST++ V1.0: parameter file .......................................
+#... FAST++ legacy v1.1: parameter file ................................
 
 
 #--- GENERAL INFORMATION -----------------------------------------------
@@ -50,9 +50,9 @@
 #
 #-----------------------------------------------------------------------
 
-VERBOSE = 1                 # 0 / 1
-PARALLEL = 'none'           # 'none', 'models', or 'sources'
-N_THREAD = 0
+VERBOSE         = 1         # 0 / 1
+PARALLEL        = 'none'    # 'none', 'models', or 'sources'
+N_THREAD        = 0
 MAX_QUEUED_FITS = 1000
 
 
