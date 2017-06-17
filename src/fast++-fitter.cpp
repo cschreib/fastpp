@@ -273,7 +273,7 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
         uint_t is = i + i0;
 
         // Apply constraints on redshift
-        if ((idzp.safe[is] == npos || iz != idzp.safe[is]) &&
+        if ((!opts.best_at_zphot || idzp.safe[is] == npos || iz != idzp.safe[is]) &&
             (idz.safe[is] == npos || iz != idz.safe[is]) &&
             (iz < idzl.safe[is] || iz > idzu.safe[is])) {
             wsp.chi2.safe[i]  = finf;
