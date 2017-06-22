@@ -63,11 +63,7 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
         uint_t iup  = 1 + 2*ic + 1;
 
         for (uint_t is : range(input.id)) {
-            if (idz.safe[is] != npos) {
-                // Range is limited to z_spec
-                idzl.safe[is] = idz.safe[is];
-                idzu.safe[is] = idz.safe[is];
-            } else if (is_finite(input.zphot.safe(is,ilow)) && is_finite(input.zphot.safe(is,iup))) {
+            if (is_finite(input.zphot.safe(is,ilow)) && is_finite(input.zphot.safe(is,iup))) {
                 // Get range from zlow and zup
                 idzl.safe[is] = min_id(abs(output.z - input.zphot.safe(is,ilow)));
                 idzu.safe[is] = min_id(abs(output.z - input.zphot.safe(is,iup)));
@@ -81,6 +77,14 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
                         ")");
                 }
             }
+        }
+    }
+
+    for (uint_t is : range(input.id)) {
+        if (idz.safe[is] != npos) {
+            // Range is limited to z_spec
+            idzl.safe[is] = idz.safe[is];
+            idzu.safe[is] = idz.safe[is];
         }
     }
 
@@ -261,7 +265,8 @@ struct fitter_workspace {
             mc_sfr  = reinterpret_cast<float*>(pool  + off); off += nsim*sizeof(float);
         }
 
-        chi2 = mass = sfr = vec1f(ngal);
+        chi2 = replicate(finf, ngal);
+        mass = sfr = replicate(fnan, ngal);
     }
 
     fitter_workspace(const fitter_workspace&) = delete;
@@ -281,12 +286,20 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
         uint_t is = i + i0;
 
         // Apply constraints on redshift
-        if ((!opts.best_at_zphot || idzp.safe[is] == npos || model.iz != idzp.safe[is]) &&
-            (idz.safe[is] == npos || model.iz != idz.safe[is]) &&
-            (model.iz < idzl.safe[is] || model.iz > idzu.safe[is])) {
-            wsp.chi2.safe[i] = finf;
-            wsp.mass.safe[i] = fnan;
-            wsp.sfr.safe[i]  = fnan;
+        bool dofit = (idzl.safe[is] <= model.iz && model.iz <= idzu.safe[is]);
+        bool keepfit = true;
+        if (opts.best_at_zphot && idzp.safe[is] != npos) {
+            if (idzp.safe[is] == model.iz) {
+                dofit = true;
+                keepfit = true;
+            } else {
+                dofit = opts.n_sim != 0;
+                keepfit = false;
+            }
+        }
+
+        if (!dofit) {
+            // Skip this model
             continue;
         }
 
@@ -323,15 +336,16 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             tchi2 += sqr(wsp.wflux[il] - scale*wsp.wmodel[il]);
         }
 
-        wsp.chi2.safe[i] = tchi2;
-        wsp.mass.safe[i] = scale*model.mass;
-        wsp.sfr.safe[i]  = scale*model.sfr;
+        if (keepfit) {
+            wsp.chi2.safe[i] = tchi2;
+            wsp.mass.safe[i] = scale*model.mass;
+            wsp.sfr.safe[i]  = scale*model.sfr;
+        }
 
         if (!opts.best_from_sim && opts.parallel == parallel_choice::none) {
             // Compare to best
             // WARNING: read/modify shared resource
-            if (output.best_chi2.safe[is]   > wsp.chi2.safe[i] &&
-                (!opts.best_at_zphot || idzp.safe[is] == npos || model.iz == idzp.safe[is])) {
+            if (output.best_chi2.safe[is]   > wsp.chi2.safe[i]) {
                 output.best_chi2.safe[is]   = wsp.chi2.safe[i];
                 output.best_mass.safe(is,0) = wsp.mass.safe[i];
                 output.best_sfr.safe(is,0)  = wsp.sfr.safe[i];
@@ -413,8 +427,7 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
         for (uint_t i : range(i1-i0)) {
             uint_t is = i + i0;
-            if (output.best_chi2.safe[is]   > wsp.chi2[i] &&
-                (!opts.best_at_zphot || idzp.safe[is] == npos || model.iz == idzp.safe[is])) {
+            if (output.best_chi2.safe[is]   > wsp.chi2[i]) {
                 output.best_chi2.safe[is]   = wsp.chi2[i];
                 output.best_mass.safe(is,0) = wsp.mass[i];
                 output.best_sfr.safe(is,0)  = wsp.sfr[i];
