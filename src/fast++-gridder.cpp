@@ -231,7 +231,8 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         case sfh_type::single:
             break;
         case sfh_type::custom:
-            grid_hash = hash(grid_hash, opts.custom_sfh, output.grid[grid_id::custom-_]);
+            grid_hash = hash(grid_hash, opts.custom_sfh,
+                output.grid[grid_id::custom+uindgen(nparam-grid_id::custom)]);
             break;
         }
 
