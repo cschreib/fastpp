@@ -142,7 +142,7 @@ struct ssp_bc03 {
                 }
 
                 for (uint_t il : range(lambda)) {
-                    in >> sed(it,il);
+                    in >> sed.safe(it,il);
                 }
 
                 // Read extra information
@@ -249,6 +249,33 @@ void gridder_t::evaluate_sfh_custom(const vec1u& idm, const vec1d& t, vec1d& sfh
     }
 }
 
+template<typename F>
+void integrate_ssp(const vec1d& age, const vec1d& sfr, const vec1d& ssp_age, F&& func) {
+    double t2 = 0.0;
+    uint_t ihint = npos;
+    for (uint_t it : range(ssp_age)) {
+        double t1 = t2;
+        if (it < ssp_age.size()-1) {
+            t2 = 0.5*(ssp_age.safe[it] + ssp_age.safe[it+1]);
+        } else {
+            t2 = ssp_age.back();
+        }
+
+        if (t2 <= age.front()) {
+            continue;
+        }
+
+        t1 = max(t1, age.front());
+        t2 = min(t2, age.back());
+
+        func(it, integrate_hinted(age, sfr, ihint, t1, t2));
+
+        if (t2 >= age.back()) {
+            break;
+        }
+    }
+}
+
 bool gridder_t::build_and_send_custom(fitter_t& fitter) {
     model_t model;
     model.flux.resize(input.lambda.size());
@@ -283,22 +310,6 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
         vec1d dust_law = build_dust_law(ssp.lambda);
         vec2d igm_abs = build_igm_absorption(output_z, ssp.lambda);
 
-        // Build SSP delta_t array
-        vec1d ssp_t1(ssp.age.size());
-        vec1d ssp_t2(ssp.age.size());
-        for (uint_t it : range(ssp.age)) {
-            if (it == 0) {
-                ssp_t1.safe[it] = 0;
-            } else {
-                ssp_t1.safe[it] = ssp_t2.safe[it-1];
-            }
-            if (it == ssp.age.size()-1) {
-                ssp_t2.safe[it] = ssp.age.back();
-            } else {
-                ssp_t2.safe[it] = 0.5*(ssp.age.safe[it] + ssp.age.safe[it+1]);
-            }
-        }
-
         for (uint_t ic = 0; ic < ncustom; ++ic) {
             // Build analytic SFH
             vec1d sfh;
@@ -310,21 +321,11 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
                 // Integrate SFH on local time grid
                 vec1d tpl_flux(ssp.lambda.size());
                 double tmodel_mass = 0.0;
-
-                double formed = 0;
                 vec1d ltime = e10(output_age[ia]) - ctime;
-                uint_t ihint = npos;
-                for (uint_t it : range(ssp.age)) {
-                    if (ssp_t1.safe[it] > ltime.back()) {
-                        break;
-                    }
-
-                    double t2 = min(ssp_t2.safe[it], ltime.back());
-                    formed = integrate_hinted(ltime, sfh, ihint, ssp_t1.safe[it], t2);
-
-                    tpl_flux += formed*ssp.sed.safe(it,_);
+                integrate_ssp(ltime, sfh, ssp.age, [&](uint_t it, double formed) {
                     tmodel_mass += formed*ssp.mass.safe[it];
-                }
+                    tpl_flux += formed*ssp.sed.safe(it,_);
+                });
 
                 model_mass = tmodel_mass;
 
@@ -334,7 +335,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
                     model_sfr = integrate(ltime, sfh, 0.0, t1)/opts.sfr_avg;
                 } else {
                     // Use instantaneous SFR
-                    model_sfr = formed/(ssp_t2[0] - ssp_t1[0]);
+                    model_sfr = interpolate(ltime, sfh, 0.0);
                 }
 
                 model_ssfr = model_sfr/model_mass;
@@ -374,33 +375,17 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
     evaluate_sfh_custom(idm, ctime, sfh);
 
     // Integrate SFH on local time grid
-    double mass = 0.0;
     vec1d tpl_flux(ssp.lambda.size());
-
-    vec1d ltime = e10(output_age[ia]) - ctime;
-    double t2 = 0.0;
-    uint_t ihint = npos;
-    for (uint_t it : range(ssp.age)) {
-        double t1 = t2;
-        if (it < ssp.age.size()-1) {
-            t2 = 0.5*(ssp.age.safe[it] + ssp.age.safe[it+1]);
-        } else {
-            t2 = ssp.age.safe[it];
+    double tmodel_mass = 0.0;
+    integrate_ssp(e10(output_age[ia]) - ctime, sfh, ssp.age,
+        [&](uint_t it, double formed) {
+            tmodel_mass += formed*ssp.mass.safe[it];
+            tpl_flux += formed*ssp.sed.safe(it,_);
         }
-
-        t2 = min(t2, ltime.back());
-
-        double formed = integrate_hinted(ltime, sfh, ihint, t1, t2);
-        mass += formed*ssp.mass.safe[it];
-        tpl_flux += formed*ssp.sed.safe(it,_);
-
-        if (t2 >= ltime.back()) {
-            break;
-        }
-    }
+    );
 
     lam = ssp.lambda;
-    flux = tpl_flux/mass;
+    flux = tpl_flux/tmodel_mass;
 
     return true;
 }
@@ -439,31 +424,14 @@ bool gridder_t::get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh,
     }
 
     if (type == "sfr") {
-        // Compute total mass at epoch of observation
+        // Compute total mass at epoch of observation and normalize
         double mass = 0.0;
-        vec1d ltime = nage - reverse(t);
-        vec1d lsfh = reverse(sfh);
-
-        double t2 = 0.0;
-        uint_t ihint = npos;
-        for (uint_t it : range(ssp.age)) {
-            double t1 = t2;
-            if (it < ssp.age.size()-1) {
-                t2 = 0.5*(ssp.age.safe[it] + ssp.age.safe[it+1]);
-            } else {
-                t2 = ssp.age.safe[it];
+        integrate_ssp(nage + age_born - reverse(t), reverse(sfh), ssp.age,
+            [&](uint_t it, double formed) {
+                mass += formed*ssp.mass.safe[it];
             }
+        );
 
-            t2 = min(t2, ltime.back());
-
-            mass += ssp.mass.safe[it]*integrate_hinted(ltime, lsfh, ihint, t1, t2);
-
-            if (t2 >= ltime.back()) {
-                break;
-            }
-        }
-
-        // Normalize to unit mass at observation
         sfh /= mass;
     } else if (type == "mass") {
         // Integrate mass, including mass loss
@@ -471,29 +439,15 @@ bool gridder_t::get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh,
         vec1d lsfh = reverse(sfh);
 
         for (uint_t i : range(t)) {
-            double t2 = 0.0;
-            vec1d ltime = t.safe[i] - reverse(t);
-            uint_t ihint = npos;
-            for (uint_t it : range(ssp.age)) {
-                double t1 = t2;
-                if (it < ssp.age.size()-1) {
-                    t2 = 0.5*(ssp.age.safe[it] + ssp.age.safe[it+1]);
-                } else {
-                    t2 = ssp.age.safe[it];
+            integrate_ssp(t.safe[i] - reverse(t), lsfh, ssp.age,
+                [&](uint_t it, double formed) {
+                    mass.safe[i] += formed*ssp.mass.safe[it];
                 }
-
-                t2 = min(t2, ltime.back());
-
-                mass.safe[i] += ssp.mass.safe[it]*integrate_hinted(ltime, lsfh, ihint, t1, t2);
-
-                if (t2 >= ltime.back()) {
-                    break;
-                }
-            }
+            );
         }
 
         // Normalize to unit mass at observation
-        mass /= interpolate(mass, t - age_born, nage);
+        mass /= interpolate(mass, t, nage + age_born);
 
         // Return mass instead of SFR
         std::swap(mass, sfh);
