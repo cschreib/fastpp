@@ -22,7 +22,7 @@ template <typename T>
 bool parse_value_impl(std::string val, vec<1,T>& out) {
     if (val.empty()) return true;
     val = remove_first_last(val, "[]");
-    vec1s spl = split(val, ",");
+    vec1s spl = trim(split(val, ","));
     return count(!from_string(spl, out)) == 0;
 }
 
