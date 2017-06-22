@@ -43,7 +43,7 @@ template <typename T>
 bool parse_value_impl(std::string val, vec<1,T>& out) {
     if (val.empty()) return true;
     val = remove_first_last(val, "[]");
-    vec1s spl = split(val, ",");
+    vec1s spl = trim(split(val, ","));
     out.resize(spl.size());
     for (uint_t i : range(spl)) {
         if (!parse_value_impl(spl[i], out[i])) {
