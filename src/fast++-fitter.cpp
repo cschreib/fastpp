@@ -65,11 +65,7 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
         uint_t iup  = 1 + 2*ic + 1;
 
         for (uint_t is : range(input.id)) {
-            if (idz.safe[is] != npos) {
-                // Range is limited to z_spec
-                idzl.safe[is] = idz.safe[is];
-                idzu.safe[is] = idz.safe[is];
-            } else if (is_finite(input.zphot.safe(is,ilow)) && is_finite(input.zphot.safe(is,iup))) {
+            if (is_finite(input.zphot.safe(is,ilow)) && is_finite(input.zphot.safe(is,iup))) {
                 // Get range from zlow and zup
                 idzl.safe[is] = min_id(abs(output_z - input.zphot.safe(is,ilow)));
                 idzu.safe[is] = min_id(abs(output_z - input.zphot.safe(is,iup)));
@@ -83,6 +79,14 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
                         ")");
                 }
             }
+        }
+    }
+
+    for (uint_t is : range(input.id)) {
+        if (idz.safe[is] != npos) {
+            // Range is limited to z_spec
+            idzl.safe[is] = idz.safe[is];
+            idzu.safe[is] = idz.safe[is];
         }
     }
 
@@ -250,8 +254,8 @@ struct fitter_workspace {
         mc_chi2.resize(nsim);
         mc_props.resize(nprop, nsim);
 
-        chi2.resize(ngal);
-        props.resize(ngal, nprop);
+        chi2 = replicate(finf, ngal);
+        props = replicate(fnan, ngal, nprop);
     }
 
     fitter_workspace(const fitter_workspace&) = delete;
@@ -273,11 +277,20 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
         uint_t is = i + i0;
 
         // Apply constraints on redshift
-        if ((!opts.best_at_zphot || idzp.safe[is] == npos || iz != idzp.safe[is]) &&
-            (idz.safe[is] == npos || iz != idz.safe[is]) &&
-            (iz < idzl.safe[is] || iz > idzu.safe[is])) {
-            wsp.chi2.safe[i]  = finf;
-            wsp.props.safe(i,_) = fnan;
+        bool dofit = (idzl.safe[is] <= iz && iz <= idzu.safe[is]);
+        bool keepfit = true;
+        if (opts.best_at_zphot && idzp.safe[is] != npos) {
+            if (idzp.safe[is] == iz) {
+                dofit = true;
+                keepfit = true;
+            } else {
+                dofit = opts.n_sim != 0;
+                keepfit = false;
+            }
+        }
+
+        if (!dofit) {
+            // Skip this model
             continue;
         }
 
@@ -328,18 +341,20 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             tchi2 += sqr(wsp.wflux[il] - scale*wsp.wmodel[il]);
         }
 
-        wsp.chi2.safe[i] = tchi2;
-        for (uint_t ip : range(model.props)) {
-            wsp.props.safe(i,ip) = (output.param_scale.safe[gridder.nparam+ip] ?
-                scale*model.props.safe[ip] : model.props.safe[ip]
-            );
+        if (keepfit) {
+            // Save chi2 and properties
+            wsp.chi2.safe[i] = tchi2;
+            for (uint_t ip : range(model.props)) {
+                wsp.props.safe(i,ip) = (output.param_scale.safe[gridder.nparam+ip] ?
+                    scale*model.props.safe[ip] : model.props.safe[ip]
+                );
+            }
         }
 
         if (!opts.best_from_sim && opts.parallel == parallel_choice::none) {
             // Compare to best
             // WARNING: read/modify shared resource
-            if (output.best_chi2.safe[is]  > wsp.chi2.safe[i] &&
-                (!opts.best_at_zphot || idzp.safe[is] == npos || iz == idzp.safe[is])) {
+            if (output.best_chi2.safe[is]  > wsp.chi2.safe[i]) {
                 output.best_chi2.safe[is]  = wsp.chi2.safe[i];
                 output.best_model.safe[is] = model.igrid;
                 for (uint_t ip : range(model.props)) {
@@ -429,10 +444,9 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
         for (uint_t i : range(i1-i0)) {
             uint_t is = i + i0;
-            if (output.best_chi2.safe[is]    > wsp.chi2[i] &&
-                (!opts.best_at_zphot || idzp.safe[is] == npos || iz == idzp.safe[is])) {
-                output.best_chi2.safe[is]    = wsp.chi2[i];
-                output.best_model.safe[is]   = model.igrid;
+            if (output.best_chi2.safe[is]  > wsp.chi2[i]) {
+                output.best_chi2.safe[is]  = wsp.chi2[i];
+                output.best_model.safe[is] = model.igrid;
                 for (uint_t ip : range(model.props)) {
                     output.best_params.safe(is,gridder.nparam+ip,0) = wsp.props.safe(i,ip);
                 }
