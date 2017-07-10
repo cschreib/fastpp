@@ -217,8 +217,8 @@ void fitter_t::write_chi2(uint_t igrid, const vec1f& chi2, const vec2f& props, u
     file::write(ochi2.out_file, chi2);
 
     for (uint_t p : range(gridder.nprop)) {
-        ochi2.out_file.seekp(p0 + (p*input.id.size() + i0)*sizeof(float));
-        file::write(ochi2.out_file, props(_,p));
+        ochi2.out_file.seekp(p0 + ((1+p)*input.id.size() + i0)*sizeof(float));
+        file::write(ochi2.out_file, vec1f(props(_,p)));
     }
 }
 
