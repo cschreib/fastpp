@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
-project(fast++ CXX)
+project(fast++ C CXX)
 
 if (NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type selected, default to Release (-DCMAKE_BUILD_TYPE=...)")
