@@ -97,6 +97,9 @@ struct options_t {
     // LIR prior
     bool use_lir = false;
 
+    // Grid control
+    std::string grid_exclude;
+
     // Miscelaneous
     bool verbose = true;
 
@@ -236,7 +239,7 @@ struct gridder_t {
         te_variable* vars_glue = nullptr;
         vec1d vars;
 
-        bool compile(const gridder_t& gridder);
+        bool compile(const std::string& sexpr, const vec1s& params);
         double eval();
         ~tinyexpr_wrapper();
     };
@@ -286,6 +289,7 @@ private :
     void evaluate_sfh_custom(const vec1u& idm, const vec1d& t, vec1d& sfh) const;
 
     mutable tinyexpr_wrapper sfh_expr;
+    mutable tinyexpr_wrapper exclude_expr;
 };
 
 // Fit a model to observed fluxes

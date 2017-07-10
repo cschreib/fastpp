@@ -300,7 +300,22 @@ bool gridder_t::check_options() const {
 
     // If we use a custom SFH, compile it and check that the expression is valid
     if (opts.sfh == sfh_type::custom) {
-        if (!sfh_expr.compile(*this)) {
+        vec1s p = {"t", "lage"};
+        append(p, opts.custom_params);
+
+        if (!sfh_expr.compile(opts.custom_sfh, p)) {
+            return false;
+        }
+    }
+
+    // If we use an exclude pattern, compile it and check that the expression is valid
+    if (!opts.grid_exclude.empty()) {
+        vec1s p(nparam);
+        for (uint_t ip : range(nparam)) {
+            p[ip] = output.param_names[ip];
+        }
+
+        if (!exclude_expr.compile(opts.grid_exclude, p)) {
             return false;
         }
     }
@@ -485,7 +500,17 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
             // See if we want to use this model or not
             bool nofit = false;
             if (!opts.no_max_age && lage > auniv[iz]) {
+                // Age greater than the age of the universe
                 nofit = true;
+            }
+
+            if (!nofit && !opts.grid_exclude.empty()) {
+                // Custom exclude function
+                for (uint_t i : range(nparam)) {
+                    exclude_expr.vars.safe[i] = output.grid.safe[i].safe[idm.safe[i]];
+                }
+
+                nofit = abs(exclude_expr.eval()) > 0;
             }
 
             // Send to fitter
@@ -516,6 +541,16 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
                     if (output.grid[grid_id::age][idm[grid_id::age]] > auniv[idm[grid_id::z]]) {
                         nofit = true;
                     }
+                }
+
+                if (!nofit && !opts.grid_exclude.empty()) {
+                    // Custom exclude function
+                    vec1u idm = grid_ids(model.igrid);
+                    for (uint_t i : range(nparam)) {
+                        exclude_expr.vars.safe[i] = output.grid.safe[i].safe[idm.safe[i]];
+                    }
+
+                    nofit = abs(exclude_expr.eval()) > 0;
                 }
 
                 if (!nofit) {

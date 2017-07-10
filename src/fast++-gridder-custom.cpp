@@ -16,8 +16,8 @@ double expr_max(double a, double b) {
     return std::max(a, b);
 }
 
-bool gridder_t::tinyexpr_wrapper::compile(const gridder_t& gridder) {
-    uint_t nparam = gridder.opts.custom_params.size()+1;
+bool gridder_t::tinyexpr_wrapper::compile(const std::string& sexpr, const vec1s& params) {
+    uint_t nparam = params.size();
     uint_t nfunc = 3;
 
     vars_glue = new te_variable[nparam+nfunc];
@@ -33,8 +33,8 @@ bool gridder_t::tinyexpr_wrapper::compile(const gridder_t& gridder) {
     vars_glue[0].type = TE_VARIABLE;
 
     // Custom parameters
-    for (uint_t p : range(1, nparam)) {
-        vars_glue[p].name = gridder.opts.custom_params[p-1].c_str();
+    for (uint_t p : range(nparam)) {
+        vars_glue[p].name = params[p].c_str();
         vars_glue[p].address = &vars[p];
         vars_glue[p].type = TE_VARIABLE;
     }
@@ -42,20 +42,20 @@ bool gridder_t::tinyexpr_wrapper::compile(const gridder_t& gridder) {
     // Custom functions
     vars_glue[nparam+0].name = "step";
     vars_glue[nparam+0].address = (void*)(&expr_step);
-    vars_glue[nparam+0].type = TE_FUNCTION1;
+    vars_glue[nparam+0].type = TE_FUNCTION1 | TE_FLAG_PURE;
     vars_glue[nparam+1].name = "min";
     vars_glue[nparam+1].address = (void*)(&expr_min);
-    vars_glue[nparam+1].type = TE_FUNCTION2;
+    vars_glue[nparam+1].type = TE_FUNCTION2 | TE_FLAG_PURE;
     vars_glue[nparam+2].name = "max";
     vars_glue[nparam+2].address = (void*)(&expr_max);
-    vars_glue[nparam+2].type = TE_FUNCTION2;
+    vars_glue[nparam+2].type = TE_FUNCTION2 | TE_FLAG_PURE;
 
     // Compile expression
     int err = 0;
-    expr = te_compile(gridder.opts.custom_sfh.c_str(), vars_glue, nparam+nfunc, &err);
+    expr = te_compile(sexpr.c_str(), vars_glue, nparam+nfunc, &err);
     if (err > 0) {
         std::string head = "could not parse SFH expression: ";
-        error(head, gridder.opts.custom_sfh);
+        error(head, sexpr);
         error(std::string(head.size()+err-1, ' ')+'^');
         return false;
     }
@@ -238,8 +238,9 @@ std::string gridder_t::get_library_file_ssp(uint_t im) const {
 }
 
 void gridder_t::evaluate_sfh_custom(const vec1u& idm, const vec1d& t, vec1d& sfh) const {
+    sfh_expr.vars[1] = output.grid[grid_id::age][idm[grid_id::age]];
     for (uint_t i : range(opts.custom_params)) {
-        sfh_expr.vars[i+1] = output.grid[grid_id::custom+i][idm[grid_id::custom+i]];
+        sfh_expr.vars[i+2] = output.grid[grid_id::custom+i][idm[grid_id::custom+i]];
     }
 
     sfh.resize(t.size());
@@ -311,12 +312,12 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
         vec2d igm_abs = build_igm_absorption(output_z, ssp.lambda);
 
         for (uint_t ic = 0; ic < ncustom; ++ic) {
-            // Build analytic SFH
-            vec1d sfh;
-            evaluate_sfh_custom(idm, ctime, sfh);
-
             for (uint_t ia : range(output_age)) {
                 idm[grid_id::age] = ia;
+
+                // Build analytic SFH
+                vec1d sfh;
+                evaluate_sfh_custom(idm, ctime, sfh);
 
                 // Integrate SFH on local time grid
                 vec1d tpl_flux(ssp.lambda.size());
