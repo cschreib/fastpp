@@ -123,12 +123,14 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
         // Format:
         // uint32: size of header in bytes (to skip it)
         // uint32: number of galaxies
+        // uint32: number of properties
         // uint32: number of grid axis
         // for each grid axis:
         //     uint32: number of values
         //     float[*]: grid values
         file::write_as<std::uint32_t>(ochi2.out_file, 0);
         file::write_as<std::uint32_t>(ochi2.out_file, input.id.size());
+        file::write_as<std::uint32_t>(ochi2.out_file, gridder.nprop);
         file::write_as<std::uint32_t>(ochi2.out_file, gridder.grid_dims.size());
         for (uint_t i : range(gridder.grid_dims)) {
             file::write_as<std::uint32_t>(ochi2.out_file, gridder.grid_dims[i]);
