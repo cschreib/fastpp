@@ -650,6 +650,11 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
 
         vec1s spl = split_any_of(line, " \t\n\r");
 
+        if (spl.size() != header_trans.size()) {
+            error("line ", l, " has ", spl.size(), " columns while header has ", header_trans.size());
+            return false;
+        }
+
         // Read the ID
         state.id.push_back(spl[col_id]);
 
