@@ -402,6 +402,11 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         if (bad) return false;
     }
 
+    if (!opts.make_seds.empty() && !file::exists(opts.make_seds)) {
+        warning("file '", opts.make_seds, "' is empty (MAKE_SEDS=...), ignoring");
+        opts.make_seds = "";
+    }
+
     // Use the default 'share' directory if nothing is provided
     if (opts.filters_res.empty()) {
         opts.filters_res = std::string(FASTPP_SHARE_DIR)+"/FILTER.RES.latest";

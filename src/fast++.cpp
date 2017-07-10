@@ -20,6 +20,9 @@ int phypp_main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Write SEDs if asked
+    gridder.write_seds();
+
     // Initizalize the fitter
     fitter_t fitter(opts, input, gridder, output);
 

@@ -107,6 +107,7 @@ struct options_t {
     vec1s output_columns;
     float sfr_avg = 0.0;
     bool  intrinsic_best_fit = false;
+    std::string make_seds;
 
     // Custom SFH
     std::string custom_sfh;
@@ -259,6 +260,7 @@ struct gridder_t {
     bool build_template(uint_t igrid, vec1f& lam, vec1f& flux, vec1f& iflux) const;
     bool build_template_nodust(uint_t igrid, vec1f& lam, vec1f& flux, vec1f& iflux) const;
     bool get_sfh(uint_t iflat, const vec1d& t, vec1d& sfh) const;
+    bool write_seds() const;
 
     uint_t model_id(const vec1u& ids) const;
     vec1u grid_ids(uint_t iflat) const;

@@ -661,6 +661,81 @@ bool gridder_t::get_sfh(uint_t igrid, const vec1d& t, vec1d& sfh) const {
     }
 }
 
+
+bool gridder_t::write_seds() const {
+    if (opts.make_seds.empty()) return true;
+
+    if (opts.verbose) {
+        note("writing list of SEDs to "+opts.output_dir+"seds directory");
+    }
+
+    std::string odir = opts.output_dir+"seds/";
+    file::mkdir(odir);
+
+    std::ifstream in(opts.make_seds);
+    std::string line;
+    uint_t l = 0;
+    uint_t written = 0;
+    while (std::getline(in, line)) {
+        ++l;
+        line = trim(line);
+        if (line.empty() || line[0] == '#') continue;
+
+        vec1s spl = split_any_of(line, " \t");
+        if (spl.size() != 3) {
+            error("ill formed line at ", opts.make_seds, ":", l, ": expected three values, got ",
+                spl.size());
+            return false;
+        }
+
+        std::string id = spl[0];
+        uint_t igrid; double mass;
+        if (!from_string(spl[1], igrid)) {
+            error("could not convert '", spl[1], "' to integer at ", opts.make_seds, ":", l);
+            return false;
+        }
+        if (!from_string(spl[2], mass)) {
+            error("could not convert '", spl[2], "' to double at ", opts.make_seds, ":", l);
+            return false;
+        }
+
+        vec1f lam, sed, flx;
+        if (!build_template(igrid, lam, sed, flx)) {
+            return false;
+        }
+
+        sed *= mass;
+        flx *= mass;
+
+        // Save model
+        // TODO: use a more efficient serialization code
+        std::ofstream fout(odir+id+".fit");
+        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+        for (uint_t il : range(lam)) {
+            fout << align_right(strn(lam.safe[il]), 13)
+                 << align_right(strn(sed.safe[il]), 13) << "\n";
+        }
+        fout.close();
+
+        // Save fluxes
+        fout.open(odir+id+".input_res.fit");
+        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+        for (uint_t il : range(input.lambda)) {
+            fout << align_right(strn(float(input.lambda[il])), 13)
+                 << align_right(strn(flx[il]), 13) << "\n";
+        }
+        fout.close();
+
+        ++written;
+    }
+
+    if (opts.verbose) {
+        note("wrote ", written, " SEDs");
+    }
+
+    return true;
+}
+
 uint_t gridder_t::model_id(const vec1u& ids) const {
     uint_t fid = 0;
 
