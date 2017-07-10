@@ -293,6 +293,11 @@ LOG_TBURST_STEP = 0.3
 
 As you can see the analytical formula can be quite complex, and this has only a minimal impact on performances. However you should pay attention to the size of your grid: this feature allows you to have as many parameter as you wish, and sampling all of them properly may require a very large grid. FAST++ will deal with any grid size, but it may take some time.
 
+Depending on which SFH expression you choose, there may be some parts of the parameter space that you do not want to probe, but that you cannot exclude simply from reducing the extents of the grid. For example with the custom SFH above, you could want to exclude cases where the burst happens before one e-folding time, namely, ```log_tburst < log_tau```. To specify this, you can use the option ```GRID_EXCLUDE```. This must be a custom function of the grid parameters that should return ```1``` ("true") if you want to exclude a particular combination, and ```0``` ("false") otherwise. The above scenario would then be written as:
+```
+GRID_EXCLUDE = 'log_tburst < log_tau'
+```
+
 ## Using priors on the infrared luminosity
 One of the main degeneracy that arises when fitting UV-to-NIR data is that of dust versus age. When a galaxy has a red SED, unless the signal to noise and the wavelength sampling are high, it is very difficult to say if this is caused by a large amount of dust, or by an older stellar population, or a combination of both. It is for this reason that SFRs obtained from such fits are very uncertain, and that SFRs determined from the far-IR are preferred.
 
