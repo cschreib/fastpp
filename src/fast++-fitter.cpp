@@ -467,6 +467,33 @@ void fitter_t::fit(const model_t& model) {
     }
 }
 
+vec2d make_grid_bins(const vec1d& grid) {
+    vec2d bins(2, grid.size());
+
+    if (grid.size() == 1) {
+        // Single bin, just make it large enough to account for potential numerical jitter
+        bins(0,1) = grid.safe[0]*0.9 - 0.1;
+        bins(1,1) = grid.safe[0]*1.1 + 0.1;
+    } else {
+        // Build bins surrounding each grid value
+        for (uint_t k : range(grid)) {
+            if (k == 0) {
+                bins(0,k) = grid.safe[k] - 0.5*(grid.safe[k+1] - grid.safe[k]);
+            } else {
+                bins(0,k) = bins(1,k-1);
+            }
+
+            if (k == grid.size()-1) {
+                bins(1,k) = grid.safe[k] + 0.5*(grid.safe[k] - grid.safe[k-1]);
+            } else {
+                bins(1,k) = 0.5*(grid.safe[k] + grid.safe[k+1]);
+            }
+        }
+    }
+
+    return bins;
+}
+
 void fitter_t::find_best_fits() {
     if (opts.parallel == parallel_choice::models) {
         if (opts.verbose) note("waiting for all models to finish...");
@@ -514,14 +541,50 @@ void fitter_t::find_best_fits() {
                 }
             }
 
-            if (opts.best_from_sim) {
-                for (uint_t ip : range(bparams.dims[0])) {
-                    output.best_params(is,ip,0) = median(bparams.safe(ip,_));
+            // For grid parameters, use cumulative distribution
+            for (uint_t ip : range(gridder.nparam)) {
+                auto& grid = output.grid[ip];
+
+                if (grid.size() == 1) {
+                    if (opts.best_from_sim) {
+                        output.best_params(is,ip,0) = grid[0];
+                    }
+
+                    for (uint_t ic : range(input.conf_interval)) {
+                        output.best_params(is,ip,1+ic) = grid[0];
+                    }
+                } else {
+                    vec2d bins = make_grid_bins(grid);
+                    vec1d cnt = cumul(histogram(bparams.safe(ip,_), bins));
+                    cnt /= cnt.back();
+
+                    if (opts.best_from_sim) {
+                        if (cnt[0] < 0.5) {
+                            output.best_params(is,ip,0) = interpolate(grid, cnt, 0.5);
+                        } else {
+                            output.best_params(is,ip,0) = grid[0];
+                        }
+                    }
+
+                    for (uint_t ic : range(input.conf_interval)) {
+                        double c = input.conf_interval[ic];
+                        if (cnt[0] < c) {
+                            output.best_params(is,ip,1+ic) = interpolate(grid, cnt, c);
+                        } else {
+                            output.best_params(is,ip,1+ic) = grid[0];
+                        }
+                    }
                 }
             }
 
-            for (uint_t ip : range(bparams.dims[0])) {
+            // For properties, use percentiles
+            for (uint_t ip : range(gridder.nparam, bparams.dims[0])) {
                 vec1d bp = bparams.safe(ip,_);
+
+                if (opts.best_from_sim) {
+                    output.best_params(is,ip,0) = inplace_median(bp);
+                }
+
                 for (uint_t ic : range(input.conf_interval)) {
                     output.best_params(is,ip,1+ic) = inplace_percentile(bp, input.conf_interval[ic]);
                 }
