@@ -810,20 +810,19 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     vec1u sid;
     vec1u col_flux, col_eflux;
     for (uint_t b : range(spec_header)) {
-        vec2s ext = regex_extract(spec_header[b], "F([0-9]+)");
-        if (ext.empty()) continue;
-        std::string id = ext[0];
+        if (spec_header[b][0] != 'F') continue;
 
-        uint_t cid = where_first(state.id == id);
+        std::string id = erase_begin(spec_header[b], "F");
+        uint_t cid = where_first(toupper(state.id) == id);
         if (cid == npos) {
             warning("spectrum for source ", id, " has no corresponding photometry "
                 "and will be ignored");
             continue;
         }
 
-        uint_t ce = where_first(spec_header == "E"+ext[0]);
+        uint_t ce = where_first(spec_header == "E"+id);
         if (ce == npos) {
-            warning("spectral flux column ", spec_header[b], " has no uncertainty (E"+ext[0]+") "
+            warning("spectral flux column ", spec_header[b], " has no uncertainty (E"+id+") "
                 "and will be ignored");
             continue;
         }
@@ -847,6 +846,11 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
         if (line.empty() || line[0] == '#') continue;
 
         vec1s spl = split_any_of(line, " \t\n\r");
+
+        if (spl.size() != spec_header.size()) {
+            error("line ", l, " has ", spl.size(), " columns while header has ", spec_header.size());
+            return false;
+        }
 
         if (col_tr != npos) {
             bool tr;
@@ -962,6 +966,10 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
         slam1 = slam0 + dlam_whole;
     }
 
+    // Flag bad values
+    vec1u idb = where(serr < 0 || !is_finite(sflx) || !is_finite(serr));
+    serr[idb] = finf; sflx[idb] = 0;
+
     // Apply binning if required
     if (!bin.empty()) {
         // First sort by bin ID
@@ -1003,7 +1011,6 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
 
             // Accumulate the flux with weighting
             vec1f w = 1/sqr(oerr(_,b));
-            w[where(!is_finite(w))] = 0;
             tf += oflx(_,b)*w;
             tw += w;
             ++nb;
@@ -1042,7 +1049,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     }
 
     // Create synthetic filters
-    for (uint_t b : range(sflx)) {
+    for (uint_t b : range(sflx.dims[1])) {
         fast_filter_t f;
         f.spectral = true;
         f.id = max(state.no_filt)+1 + b;
@@ -1069,8 +1076,8 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     uint_t nslam = sflx.dims[1];
     uint_t ngal = pflx.dims[0];
 
-    state.flux = replicate(fnan, ngal, nplam+nslam);
-    state.eflux = replicate(fnan, ngal, nplam+nslam);
+    state.flux = replicate(0.0f, ngal, nplam+nslam);
+    state.eflux = replicate(finf, ngal, nplam+nslam);
 
     for (uint_t i : range(ngal)) {
         state.flux(i,_-(nplam-1)) = pflx(i,_);
