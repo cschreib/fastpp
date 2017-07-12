@@ -130,9 +130,15 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
         //     float[*]: grid values
         file::write_as<std::uint32_t>(ochi2.out_file, 0);
         file::write_as<std::uint32_t>(ochi2.out_file, input.id.size());
+
         file::write_as<std::uint32_t>(ochi2.out_file, gridder.nprop);
+        for (uint_t i : range(gridder.nprop)) {
+            file::write(ochi2.out_file, output.param_names[gridder.nparam+i]);
+        }
+
         file::write_as<std::uint32_t>(ochi2.out_file, gridder.grid_dims.size());
         for (uint_t i : range(gridder.grid_dims)) {
+            file::write(ochi2.out_file, output.param_names[i]);
             file::write_as<std::uint32_t>(ochi2.out_file, gridder.grid_dims[i]);
             file::write(ochi2.out_file, output.grid[i]);
         }
