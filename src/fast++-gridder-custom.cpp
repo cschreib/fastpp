@@ -336,7 +336,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
                     model_sfr = integrate(ltime, sfh, 0.0, t1)/opts.sfr_avg;
                 } else {
                     // Use instantaneous SFR
-                    model_sfr = interpolate(ltime, sfh, 0.0);
+                    model_sfr = interpolate(sfh, ltime, 0.0);
                 }
 
                 model_ssfr = model_sfr/model_mass;
