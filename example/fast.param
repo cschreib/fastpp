@@ -144,25 +144,22 @@ USE_LIR        = 0          # 0 / 1
 #   - Example file: "1030_gnirs.spec"
 #   - The file should have the following format:
 #     # bin wl_low wl_low F[id1] E[id1] F[id2] E[id2] ...
-#   - bin: number of the bin in which the spectral element falls
+#   - bin: ID of the bin in which the spectral element falls
 #   - wl_low: lower wavelength of the spectral element in Angstrom
 #   - wl_up: upper wavelength of the spectral element in Angstrom
-#   - (e)fl: in 10^-19 ergs s-1 cm-2 Angstrom-1 (if AUTO_SCALE=0)
-#   - id.: should be an integer
-#   - If you want to fit spectra and photometry at the same time, only
-#     the objects for which both spectra AND photometry are provided
-#     will be fit. Note that when you fit only one or a few galaxies
-#     from the same field, you can feed the full photometric catalog,
-#     and FAST++ will find the corresponding photometry.
-#   - Photometric redshifts are ignored when spectra are included.
+#   - (e)fl: in 10^-19 ergs s-1 cm-2 Angstrom-1 (these units do not
+#     matter if AUTO_SCALE is set to 1)
+#   - id[.]: should be an ID in the flux catalog
 #   - Missing values can be signaled with negative errors or "NaN".
 #
-# o AUTO_SCALE: This option automatically scales the spectrum using the
-#   broadband photometry as provided in the [CATALOG].cat file. The
-#   error on the scaling is taken into account when deriving the
-#   confidence intervals. The photometric bands used to scale the
-#   spectrum are not included in the fit. The scaling factor will be
-#   stored in the grid file, thus you have to set "SAVE_CHI_GRID" to "1"
+# o AUTO_SCALE: This option automatically adjusts the spectrum to the
+#   model separately from the rest of the photometry. The spectrum thus
+#   does not participate in determining the best amplitude of the
+#   model, but still participates in the chi2. This can account for
+#   uncertain flux calibration of the spectrum, and will emphasize more
+#   the features of the spectrum rather than it's absolute flux level.
+#   Note that when this feature is enabled, the template error function,
+#   if used, will not be applied to the spectral data.
 #
 #-----------------------------------------------------------------------
 

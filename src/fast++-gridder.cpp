@@ -41,15 +41,15 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     switch (opts.sfh) {
     case sfh_type::gridded:
         nparam = 5; // [z,av,age,tau,metal]
-        nprop = 7;  // [scale,mass,sfr,ssfr,ldust,lion,a2t]
+        nprop = 8;  // [scale,sscale,mass,sfr,ssfr,ldust,lion,a2t]
         break;
     case sfh_type::single:
         nparam = 4; // [z,av,age,metal]
-        nprop = 6;  // [scale,mass,sfr,ssfr,ldust,lion]
+        nprop = 7;  // [scale,sscale,mass,sfr,ssfr,ldust,lion]
         break;
     case sfh_type::custom:
         nparam = 4+opts.custom_params.size(); // [z,av,age,metal,...]
-        nprop = 6;  // [scale,mass,sfr,ssfr,ldust,lion]
+        nprop = 7;  // [scale,sscale,mass,sfr,ssfr,ldust,lion]
         break;
     }
 
@@ -106,6 +106,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     set_param(grid_id::age,   "lage",   "log[age/yr]",        false, false, 1e-2);
     set_param(grid_id::metal, "metal",  "",                   false, false, 1e-4);
     set_prop(prop_id::scale,  "lscale", "log[scale]",         true,  true,  1e-2);
+    set_prop(prop_id::spec_scale, "sscale", "spec_rescale",   true,  false, 1e-3);
     set_prop(prop_id::mass,   "lmass",  "log[mass/Msol]",     true,  true,  1e-2);
     set_prop(prop_id::sfr,    "lsfr",   "log[sfr/(Msol/yr)]", true,  true,  1e-2);
     set_prop(prop_id::ssfr,   "lssfr",  "log[ssfr*yr]",       false, true,  1e-2);
@@ -452,10 +453,12 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
     vec1f& output_av = output.grid[grid_id::av];
     vec1f& output_z = output.grid[grid_id::z];
     float& model_scale = model.props[prop_id::scale];
+    float& model_sscale = model.props[prop_id::spec_scale];
     float& model_ldust = model.props[prop_id::ldust];
     float& model_lion = model.props[prop_id::lion];
 
     model_scale = 1.0; // by definition
+    model_sscale = 1.0; // by definition
 
     // Pre-compute bolometric luminosity
     double lbol = integrate(lam, tpl_flux);

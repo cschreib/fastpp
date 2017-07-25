@@ -90,6 +90,16 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
         }
     }
 
+    has_spec = replicate(false, input.id.size());
+    for (uint_t is : range(input.id)) {
+        for (uint_t il : range(input.spec_start, input.spec_end)) {
+            if (is_finite(input.eflux.safe(is,il))) {
+                has_spec.safe[is] = true;
+                break;
+            }
+        }
+    }
+
     // Pre-generate random fluctuations
     if (opts.n_sim > 0) {
         auto seed = make_seed(42);
@@ -304,57 +314,87 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
         // Compute weights and scaling factor
         double wfm = 0, wmm = 0;
-
         uint_t ndata = input.lambda.size();
-        if (opts.temp_err_file.empty()) {
-            for (uint_t il : range(input.lambda)) {
-                wsp.weight[il] = 1.0/input.eflux.safe(is,il);
+        uint_t iflx = 0;
 
-                wsp.wflux[il] = input.flux.safe(is,il)*wsp.weight[il];
-                wsp.wmodel[il] = model.flux.safe[il]*wsp.weight[il];
-
-                wfm += wsp.wmodel[il]*wsp.wflux[il];
-                wmm += sqr(wsp.wmodel[il]);
-            }
-        } else {
-            for (uint_t il : range(input.lambda)) {
-                wsp.weight[il] = 1.0/sqrt((sqr(input.eflux.safe(is,il)) +
-                    tpl_err.safe(iz,il)*sqr(input.flux.safe(is,il))));
-
-                wsp.wflux[il] = input.flux.safe(is,il)*wsp.weight[il];
-                wsp.wmodel[il] = model.flux.safe[il]*wsp.weight[il];
-
-                wfm += wsp.wmodel[il]*wsp.wflux[il];
-                wmm += sqr(wsp.wmodel[il]);
-            }
+        uint_t nscale = ndata;
+        bool spec_auto_scale = opts.auto_scale && has_spec.safe[is];
+        if (spec_auto_scale) {
+            nscale -= input.spec_end - input.spec_start;
         }
 
+        // Add LIR as a data point in the fit
         if (!input.lir.empty() && is_finite(input.lir.safe[is])) {
-            // Add LIR as a data point in the fit
-            wsp.weight[ndata] = 1.0/input.lir_err.safe[is];
-            wsp.wflux[ndata] = input.lir.safe[is]*wsp.weight[ndata];
-            wsp.wmodel[ndata] = model.props.safe[prop_id::ldust]*wsp.weight[ndata];
+            wsp.weight[0] = 1.0/input.lir_err.safe[is];
+            wsp.wflux[0] = input.lir.safe[is]*wsp.weight[0];
+            wsp.wmodel[0] = model.props.safe[prop_id::ldust]*wsp.weight[0];
 
-            wfm += wsp.wmodel[ndata]*wsp.wflux[ndata];
-            wmm += sqr(wsp.wmodel[ndata]);
+            wfm += wsp.wmodel[0]*wsp.wflux[0];
+            wmm += sqr(wsp.wmodel[0]);
 
             ++ndata;
+            ++nscale;
+            ++iflx;
+        }
+
+        for (uint_t il : range(nscale)) {
+            wsp.weight[iflx+il] = (opts.temp_err_file.empty() ?
+                1.0/input.eflux.safe(is,il) :
+                1.0/sqrt((sqr(input.eflux.safe(is,il)) +
+                    tpl_err.safe(iz,il)*sqr(input.flux.safe(is,il))))
+            );
+
+            wsp.wflux[iflx+il] = input.flux.safe(is,il)*wsp.weight[iflx+il];
+            wsp.wmodel[iflx+il] = model.flux.safe[il]*wsp.weight[iflx+il];
+
+            wfm += wsp.wmodel[iflx+il]*wsp.wflux[iflx+il];
+            wmm += sqr(wsp.wmodel[iflx+il]);
         }
 
         double scale = wfm/wmm;
+        double spec_scale = scale;
+
+        // Auto scaling for spectral data
+        // When enabled, spectral data doesn't participate in the global normalization,
+        // just to the chi2. It is separately rescaled to match the model, which is equivalent
+        // to assuming we don't know the absolute flux calibration but we are confident on
+        // the shape of the spectrum.
+        double swfm = 0, swmm = 0;
+        if (spec_auto_scale) {
+            for (uint_t il : range(input.spec_start, input.spec_end)) {
+                wsp.weight[iflx+il] = 1.0/input.eflux.safe(is,il);
+
+                wsp.wflux[iflx+il] = input.flux.safe(is,il)*wsp.weight[iflx+il];
+                wsp.wmodel[iflx+il] = model.flux.safe[il]*wsp.weight[iflx+il];
+
+                swfm += wsp.wmodel[iflx+il]*wsp.wflux[iflx+il];
+                swmm += sqr(wsp.wmodel[iflx+il]);
+            }
+
+            spec_scale = swfm/swmm;
+
+            if (!is_finite(spec_scale)) {
+                // No spectral data
+                spec_scale = scale;
+            }
+        }
 
         // Compute chi2
         double tchi2 = 0;
-        for (uint_t il : range(ndata)) {
+        for (uint_t il : range(nscale)) {
             tchi2 += sqr(wsp.wflux[il] - scale*wsp.wmodel[il]);
+        }
+        for (uint_t il : range(nscale, ndata)) {
+            tchi2 += sqr(wsp.wflux[il] - spec_scale*wsp.wmodel[il]);
         }
 
         if (keepfit) {
             // Save chi2 and properties
             wsp.chi2.safe[i] = tchi2;
             for (uint_t ip : range(model.props)) {
+                double tscale = (ip == prop_id::spec_scale ? scale/spec_scale : scale);
                 wsp.props.safe(i,ip) = (output.param_scale.safe[gridder.nparam+ip] ?
-                    scale*model.props.safe[ip] : model.props.safe[ip]
+                    tscale*model.props.safe[ip] : model.props.safe[ip]
                 );
             }
         }
@@ -378,18 +418,32 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
                 // NB: since we create the randomness just once at the beginning of the fit
                 // all models (and each galaxy) will use the same random numbers
                 wfm = 0;
-                for (uint_t il : range(ndata)) {
+                swfm = 0;
+                for (uint_t il : range(nscale)) {
                     // In weighted units, the random perturbations have a sigma of unity
                     wsp.rflux[il] = wsp.wflux[il] + sim_rnd.safe(im,il);
                     wfm += wsp.wmodel[il]*wsp.rflux[il];
                 }
+                for (uint_t il : range(nscale, ndata)) {
+                    // When auto scale is ON, spectral data doesn't participate in scale factor
+                    wsp.rflux[il] = wsp.wflux[il] + sim_rnd.safe(im,il);
+                    swfm += wsp.wmodel[il]*wsp.rflux[il];
+                }
 
                 scale = wfm/wmm;
+                if (!spec_auto_scale) {
+                    spec_scale = scale;
+                } else {
+                    spec_scale = swfm/swmm;
+                }
 
                 // Compute chi2
                 tchi2 = 0;
-                for (uint_t il : range(ndata)) {
+                for (uint_t il : range(nscale)) {
                     tchi2 += sqr(wsp.rflux[il] - scale*wsp.wmodel[il]);
+                }
+                for (uint_t il : range(nscale, ndata)) {
+                    tchi2 += sqr(wsp.rflux[il] - spec_scale*wsp.wmodel[il]);
                 }
 
                 if (opts.parallel == parallel_choice::none) {
@@ -399,9 +453,10 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
                         output.mc_best_chi2.safe(is,im)  = tchi2;
                         output.mc_best_model.safe(is,im) = model.igrid;
                         for (uint_t ip : range(model.props)) {
+                            double tscale = (ip == prop_id::spec_scale ? scale/spec_scale : scale);
                             output.mc_best_props.safe(is,ip,im) = (
                                 output.param_scale.safe[gridder.nparam+ip] ?
-                                scale*model.props.safe[ip] : model.props.safe[ip]
+                                tscale*model.props.safe[ip] : model.props.safe[ip]
                             );
                         }
                     }
@@ -410,8 +465,9 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
                     // them to the shared array in one batch
                     wsp.mc_chi2.safe[im] = tchi2;
                     for (uint_t ip : range(model.props)) {
+                        double tscale = (ip == prop_id::spec_scale ? scale/spec_scale : scale);
                         wsp.mc_props.safe(ip,im) = (output.param_scale.safe[gridder.nparam+ip] ?
-                            scale*model.props.safe[ip] : model.props.safe[ip]
+                            tscale*model.props.safe[ip] : model.props.safe[ip]
                         );
                     }
                 }

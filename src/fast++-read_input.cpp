@@ -1090,6 +1090,9 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
         state.eflux(sid[i],nplam-_) = serr(i,_);
     }
 
+    state.spec_start = nplam;
+    state.spec_end = nplam+nslam;
+
     return true;
 }
 

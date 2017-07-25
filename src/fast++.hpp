@@ -147,8 +147,8 @@ struct fast_filter_t {
 struct input_state_t {
     // List of filter ID used in the photometric catalog
     vec1u no_filt;                      // [nfilt]
-    // List of spectral bins ID in the spectroscopic catalog
-    vec1u no_spec;                      // [nspec]
+    // First and last ID of spectral measurements in the flux array
+    uint_t spec_start = npos, spec_end = npos; // [nspec]
     // Central wavelength of the filters
     vec1d lambda;                       // [nfilt+nspec]
 
@@ -179,7 +179,8 @@ struct grid_id {
 };
 
 struct prop_id {
-    static const constexpr uint_t scale = 0, mass = 1, sfr = 2, ssfr = 3, ldust = 4, lion = 5, custom = 6;
+    static const constexpr uint_t scale = 0, spec_scale = 1, mass = 2, sfr = 3, ssfr = 4,
+        ldust = 5, lion = 6, custom = 7;
 };
 
 // Holds the output state of the program
@@ -344,6 +345,7 @@ struct fitter_t {
 
     vec2d tpl_err;               // [nz,nfilt+nspec]
     vec1u idz, idzp, idzl, idzu; // [ngal]
+    vec1b has_spec;              // [ngal]
     vec2d sim_rnd;               // [nsim,nfilt]
 
     explicit fitter_t(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
