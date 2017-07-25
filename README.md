@@ -200,10 +200,11 @@ While the implementation of FAST++ was designed to resemble FAST-IDL as much as 
  * The input photometry catalog can contain columns starting with "F" or "E" which are not flux columns, provided the "F" or "E" is not followed by numbers. In FAST-IDL a catalog containing such columns was rejected.
 
 ## Spectra
- * The template error function is now also applied to the spectra, as for the photometry. In FAST-IDL this was not the case.
+ * The template error function is now also applied to the spectra (except if ```AUTO_SCALE``` is set to ```1```, see below). In FAST-IDL this was not the case.
  * Galaxies with a spectrum can still use the input photo-z. In FAST-IDL their photo-z was ignored.
  * An alternative format for the spectrum file is allowed (see [Better treatment of spectra](#better-treatment-of-spectra) below), but the old format is still supported.
- * The ```bin``` column is used in FAST++ to combine multiple spectral elements into one before the fit, using inverse variance weighting, which can speed up computations if the spectral resolution is very high. In FAST-IDL only the first element in a bin was used.
+ * The ```bin``` column is used in FAST++ to combine multiple spectral elements into one before the fit, using inverse variance weighting, which can speed up the fit considerably if the spectral resolution is very high. In FAST-IDL only the first element in a bin was used, for some reason.
+ * The ```AUTO_SCALE``` option behaves very differently. In FAST-IDL, enabling this option will automatically rescale the spectrum to match the broad band photometry. It will also perform the rescaling during the Monte Carlo simulations, so the confidence intervals will account for the uncertainty in the rescaling. In FAST++, enabling the option will automatically rescale the observed spectrum to the _model_ spectrum, independently of the rest of the photometry. Therefore, the spectrum does not influence the best-fitting (and Monte Carlo) value for the amplitude of the model, but it will still be counted in the chi2. This amounts to assuming that the absolute flux calibration of the spectrum is less well known than the _shape_ of this spectrum, i.e., there is an absorption feature here and a spectral break there. When this option is enabled, the template error function is not applied to the spectrum because the uncertainty on the template normalization at this wavelength has become irrelevant, only its detailed shape.
 
 ## Photo-z
  * If an input photo-z is negative, FAST++ will simply ignore the photo-z and let the redshift vary freely. In FAST-IDL a galaxy with a negative photo-z was ignored completely.
