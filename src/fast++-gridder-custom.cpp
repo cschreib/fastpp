@@ -377,16 +377,14 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
 
     // Integrate SFH on local time grid
     vec1d tpl_flux(ssp.lambda.size());
-    double tmodel_mass = 0.0;
     integrate_ssp(e10(output_age[ia]) - ctime, sfh, ssp.age,
         [&](uint_t it, double formed) {
-            tmodel_mass += formed*ssp.mass.safe[it];
             tpl_flux += formed*ssp.sed.safe(it,_);
         }
     );
 
     lam = ssp.lambda;
-    flux = tpl_flux/tmodel_mass;
+    flux = tpl_flux;
 
     return true;
 }

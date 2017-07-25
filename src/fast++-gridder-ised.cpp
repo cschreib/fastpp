@@ -370,8 +370,6 @@ bool gridder_t::build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux) const
 
     lam = ised.lambda;
     flux = ised.fluxes(p[0],_)*(1.0 - x) + ised.fluxes(p[1],_)*x;
-    float mass = ised.mass[p[0]]*(1.0 - x) + ised.mass[p[1]]*x;
-    flux /= mass;
 
     return true;
 }

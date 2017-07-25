@@ -41,15 +41,15 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     switch (opts.sfh) {
     case sfh_type::gridded:
         nparam = 5; // [z,av,age,tau,metal]
-        nprop = 5;  // [mass,sfr,ssfr,ldust,a2t]
+        nprop = 7;  // [scale,mass,sfr,ssfr,ldust,lion,a2t]
         break;
     case sfh_type::single:
         nparam = 4; // [z,av,age,metal]
-        nprop = 4;  // [mass,sfr,ssfr,ldust]
+        nprop = 6;  // [scale,mass,sfr,ssfr,ldust,lion]
         break;
     case sfh_type::custom:
         nparam = 4+opts.custom_params.size(); // [z,av,age,metal,...]
-        nprop = 4;  // [mass,sfr,ssfr,ldust]
+        nprop = 6;  // [scale,mass,sfr,ssfr,ldust,lion]
         break;
     }
 
@@ -105,10 +105,12 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     set_param(grid_id::av,    "Av",     "",                   false, false, 1e-2);
     set_param(grid_id::age,   "lage",   "log[age/yr]",        false, false, 1e-2);
     set_param(grid_id::metal, "metal",  "",                   false, false, 1e-4);
+    set_prop(prop_id::scale,  "lscale", "log[scale]",         true,  true,  1e-2);
     set_prop(prop_id::mass,   "lmass",  "log[mass/Msol]",     true,  true,  1e-2);
     set_prop(prop_id::sfr,    "lsfr",   "log[sfr/(Msol/yr)]", true,  true,  1e-2);
     set_prop(prop_id::ssfr,   "lssfr",  "log[ssfr*yr]",       false, true,  1e-2);
     set_prop(prop_id::ldust,  "lldust", "log[ldust/Lsol]",    true,  true,  1e-2);
+    set_prop(prop_id::lion,   "llion",  "log[lion/Lsol]",     true,  true,  1e-2);
 
     // Redshift grid
     vec1f& output_z = output.grid[grid_id::z];
@@ -220,7 +222,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
             opts.name_imf+"_"+opts.name_sfh+"_"+opts.dust_law+"_";
 
         std::string grid_hash = hash(output.grid[_-(grid_id::custom-1)], input.lambda,
-            opts.dust_noll_eb, opts.dust_noll_delta, opts.sfr_avg,
+            opts.dust_noll_eb, opts.dust_noll_delta, opts.sfr_avg, opts.lambda_ion,
             opts.cosmo.H0, opts.cosmo.wm, opts.cosmo.wL);
 
         // Additional grid parameter
@@ -449,10 +451,15 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
 
     vec1f& output_av = output.grid[grid_id::av];
     vec1f& output_z = output.grid[grid_id::z];
+    float& model_scale = model.props[prop_id::scale];
     float& model_ldust = model.props[prop_id::ldust];
+    float& model_lion = model.props[prop_id::lion];
+
+    model_scale = 1.0; // by definition
 
     // Pre-compute bolometric luminosity
     double lbol = integrate(lam, tpl_flux);
+    model_lion = integrate(lam, tpl_flux, lam.front(), opts.lambda_ion);
 
     for (uint_t id : range(output_av)) {
         idm[grid_id::av] = id;
@@ -689,12 +696,12 @@ bool gridder_t::write_seds() const {
         }
 
         std::string id = spl[0];
-        uint_t igrid; double mass;
+        uint_t igrid; double scale;
         if (!from_string(spl[1], igrid)) {
             error("could not convert '", spl[1], "' to integer at ", opts.make_seds, ":", l);
             return false;
         }
-        if (!from_string(spl[2], mass)) {
+        if (!from_string(spl[2], scale)) {
             error("could not convert '", spl[2], "' to double at ", opts.make_seds, ":", l);
             return false;
         }
@@ -704,8 +711,8 @@ bool gridder_t::write_seds() const {
             return false;
         }
 
-        sed *= mass;
-        flx *= mass;
+        sed *= scale;
+        flx *= scale;
 
         // Save model
         // TODO: use a more efficient serialization code

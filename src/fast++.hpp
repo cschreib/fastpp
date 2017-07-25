@@ -108,6 +108,7 @@ struct options_t {
     float sfr_avg = 0.0;
     bool  intrinsic_best_fit = false;
     std::string make_seds;
+    float lambda_ion = 912.0;
 
     // Custom SFH
     std::string custom_sfh;
@@ -178,7 +179,7 @@ struct grid_id {
 };
 
 struct prop_id {
-    static const constexpr uint_t mass = 0, sfr = 1, ssfr = 2, ldust = 3, custom = 4;
+    static const constexpr uint_t scale = 0, mass = 1, sfr = 2, ssfr = 3, ldust = 4, lion = 5, custom = 6;
 };
 
 // Holds the output state of the program

@@ -232,7 +232,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
     vec1f lam, sed, sed_nodust, flx;
     auto pg = progress_start(input.id.size());
     for (uint_t is : range(input.id)) {
-        float mass = output.best_params(is,gridder.nparam+prop_id::mass,0);
+        float scale = output.best_params(is,gridder.nparam+prop_id::scale,0);
 
         // Get model
         if (opts.intrinsic_best_fit) {
@@ -240,15 +240,15 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
                 return;
             }
 
-            sed_nodust *= mass;
+            sed_nodust *= scale;
         }
 
         if (!gridder.build_template(output.best_model[is], lam, sed, flx)) {
             return;
         }
 
-        sed *= mass;
-        flx *= mass;
+        sed *= scale;
+        flx *= scale;
 
         // Save model
         // TODO: use a more efficient serialization code
