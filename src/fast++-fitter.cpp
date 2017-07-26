@@ -337,18 +337,18 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             ++iflx;
         }
 
-        for (uint_t il : range(nscale)) {
-            wsp.weight[iflx+il] = (opts.temp_err_file.empty() ?
-                1.0/input.eflux.safe(is,il) :
-                1.0/sqrt((sqr(input.eflux.safe(is,il)) +
-                    tpl_err.safe(iz,il)*sqr(input.flux.safe(is,il))))
+        for (uint_t il : range(iflx, nscale)) {
+            wsp.weight[il] = (opts.temp_err_file.empty() ?
+                1.0/input.eflux.safe(is,il-iflx) :
+                1.0/sqrt((sqr(input.eflux.safe(is,il-iflx)) +
+                    tpl_err.safe(iz,il-iflx)*sqr(input.flux.safe(is,il-iflx))))
             );
 
-            wsp.wflux[iflx+il] = input.flux.safe(is,il)*wsp.weight[iflx+il];
-            wsp.wmodel[iflx+il] = model.flux.safe[il]*wsp.weight[iflx+il];
+            wsp.wflux[il] = input.flux.safe(is,il-iflx)*wsp.weight[il];
+            wsp.wmodel[il] = model.flux.safe[il]*wsp.weight[il];
 
-            wfm += wsp.wmodel[iflx+il]*wsp.wflux[iflx+il];
-            wmm += sqr(wsp.wmodel[iflx+il]);
+            wfm += wsp.wmodel[il]*wsp.wflux[il];
+            wmm += sqr(wsp.wmodel[il]);
         }
 
         double scale = wfm/wmm;
@@ -361,14 +361,13 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
         // the shape of the spectrum.
         double swfm = 0, swmm = 0;
         if (spec_auto_scale) {
-            for (uint_t il : range(input.spec_start, input.spec_end)) {
-                wsp.weight[iflx+il] = 1.0/input.eflux.safe(is,il);
+            for (uint_t il : range(nscale, ndata)) {
+                wsp.weight[il] = 1.0/input.eflux.safe(is,il-iflx);
+                wsp.wflux[il] = input.flux.safe(is,il-iflx)*wsp.weight[il];
+                wsp.wmodel[il] = model.flux.safe[il]*wsp.weight[il];
 
-                wsp.wflux[iflx+il] = input.flux.safe(is,il)*wsp.weight[iflx+il];
-                wsp.wmodel[iflx+il] = model.flux.safe[il]*wsp.weight[iflx+il];
-
-                swfm += wsp.wmodel[iflx+il]*wsp.wflux[iflx+il];
-                swmm += sqr(wsp.wmodel[iflx+il]);
+                swfm += wsp.wmodel[il]*wsp.wflux[il];
+                swmm += sqr(wsp.wmodel[il]);
             }
 
             spec_scale = swfm/swmm;
