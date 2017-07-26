@@ -345,7 +345,7 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             );
 
             wsp.wflux[il] = input.flux.safe(is,il-iflx)*wsp.weight[il];
-            wsp.wmodel[il] = model.flux.safe[il]*wsp.weight[il];
+            wsp.wmodel[il] = model.flux.safe[il-iflx]*wsp.weight[il];
 
             wfm += wsp.wmodel[il]*wsp.wflux[il];
             wmm += sqr(wsp.wmodel[il]);
@@ -364,7 +364,7 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             for (uint_t il : range(nscale, ndata)) {
                 wsp.weight[il] = 1.0/input.eflux.safe(is,il-iflx);
                 wsp.wflux[il] = input.flux.safe(is,il-iflx)*wsp.weight[il];
-                wsp.wmodel[il] = model.flux.safe[il]*wsp.weight[il];
+                wsp.wmodel[il] = model.flux.safe[il-iflx]*wsp.weight[il];
 
                 swfm += wsp.wmodel[il]*wsp.wflux[il];
                 swmm += sqr(wsp.wmodel[il]);
