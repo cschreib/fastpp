@@ -334,11 +334,11 @@ CUSTOM_PARAMS  = ''             # ['alpha', ...]
 # o If a grid has already been made for a specific LIBRARY, RESOLUTION,
 #   IMF, tau, age, z, A_v, metallicity, and filter set and/or spectral
 #   elements, the grid will be automatically read from the cache unless
-#   the NO_CACHE option is set to 1. This option will also prevent the
+#   the NO_CACHE option is set to "1". This option will also prevent the
 #   code from writing this cache in the first place.
 #
 # o NO_MAX_AGE: By default (0), ages that exceed the age of the universe
-#   are not allowed. However, when NO_MAX_AGE is put to 1 you can have
+#   are not allowed. However, when NO_MAX_AGE is put to "1" you can have
 #   older ages.
 #
 #-----------------------------------------------------------------------
@@ -372,10 +372,18 @@ OMEGA_L        = 0.7                # Omega lambda
 
 #--- SAVE INTERMEDIATE PRODUCTS ----------------------------------------
 #
-# - SAVE_CHI_GRID: if "1" then the temporary grid per objects will be
-#   saved as an idl ".save" file in the "tmp" directory. This option
-#   slows down the program.
+# o SAVE_CHI_GRID: if "1" then the chi2 grid for all objects will be
+#   saved in a ".grid" file in the output directory.
+#
+# o SAVE_BESTCHI: if anything else than "0", the models with a chi2
+#   less than SAVE_BESTCHI different from the best chi2 will be
+#   saved in a ".grid" file in the "best_chi2" directory, for each
+#   object separately. This will occupy less disk space than the
+#   SAVE_CHI_GRID option. Usual values are "1" to have 68% chance of
+#   including the "true" model, "2.71" for 90% and "6.63" for 95%.
+#   SAVE_CHI_GRID and SAVE_BESTCHI can be enabled together.
 #
 #-----------------------------------------------------------------------
 
 SAVE_CHI_GRID  = 0          # 0 / 1
+SAVE_BESTCHI   = 0          # 1 (68%) / 2.71 (90%) / 6.63 (95%) / etc

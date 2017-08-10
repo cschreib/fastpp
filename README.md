@@ -24,6 +24,7 @@
     - [Spectra](#spectra)
     - [Photo-z](#photo-z)
     - [Monte Carlo uncertainties](#monte-carlo-uncertainties)
+    - [Chi2 grid](#chi2-grid)
 - [Additional features](#additional-features)
     - [Controlling output to the terminal](#controlling-output-to-the-terminal)
     - [Multithreading](#multithreading)
@@ -213,6 +214,53 @@ While the implementation of FAST++ was designed to resemble FAST-IDL as much as 
 ## Monte Carlo uncertainties
  * The way FAST++ computes uncertainties using the Monte Carlo simulations is different from FAST-IDL, and this can lead to small differences in the resulting confidence intervals. In particulat, the Monte Carlo simulations always use the same constraints on the redshift as the best-fit solution (unless ```BEST_AT_ZPHOT``` is set). Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid. This should not be significant, and the accuracy of the uncertainties computed by FAST++ was verified using mock catalogs with known physical parameters.
 
+## Chi2 grid
+ * FAST-IDL uses the IDL "save" format to write the chi2 grid on the disk. This format is proprietary and can only be opened by IDL itself. Instead, FAST++ uses a custom binary format. The format is the following. The file starts with a header, and then lists the chi2 data for each model of the grid. In addition to the chi2, the model's best-fitting properties are also saved.
+```
+# Begin header
+# ------------
+[uint32]: number of bytes in header
+[uint32]: number of galaxies
+[uint32]: number of properties (mass, sfr, etc)
+  # For each property:
+  [char*]: name of the property ("lmass", "lsfr", etc)
+[uint32]: number of grid parameter
+  # For each grid parameter:
+  [char*]: name of the grid parameter ("z", "lage", "metal", etc)
+  [uint32]: number of elements in the grid
+  [float*]: values of the grid for this parameter
+# ----------
+# End header
+
+# Begin data
+# ----------
+# For each model in the grid
+[float*]: chi2 of each galaxy
+  # For each property
+  [float*]: values of the property for each galaxy
+# --------
+# End data
+```
+
+Strings (```[char*]```) are null-terminated (the string ends when the null character is found). Galaxies are ordered as in the input catalog. Models are ordered along the grid: the first model in the file corresponds to the first value of all the grid parameters, as defined in the header. The second model corresponds to the next value of the *last* grid parameter, and so on and so forth. For example, if the grid had only three parameters ```z=[1.0,1.2,1.4]```, ```lage=[8,9,10]``` and ```metal=[0.005,0.02,0.05]```, then models in the file would be ordered as:
+
+```
+# modelID         z      lage     metal
+  0               1.0    8        0.005
+  1               1.0    8        0.02
+  2               1.0    8        0.05
+  3               1.0    9        0.005
+  4               1.0    9        0.02
+  5               1.0    9        0.05
+  6               1.0    10       0.005
+  7               1.0    10       0.02
+  8               1.0    10       0.05
+  9               1.2    8        0.005
+  10              1.2    8        0.02
+  11              1.2    8        0.05
+  ...             ...    ...      ...
+```
+
 
 # Additional features
 
@@ -259,6 +307,31 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
  * ```BEST_SFHS```: possible values are ```0``` or ```1```. The default is ```0```. If set to ```1``, the program will output the best fit star formation history (SFH) to a file, in the ```best_fits``` directory (as for the best fit SEDs). If Monte Carlo simulations are enabled, the program will also output confidence intervals on the SFH for each time step, as well as the median SFH among all Monte Carlo simulations. This median may not correspond to any analytical form allowed by your chosen SFH model.
  * ```SFH_OUTPUT_STEP```: possible values are any strictly positive number, which defines the size of a time step in the output SFH (in Myr). The default is ```10``` Myr.
  * ```SFH_OUTPUT```: possible values are ```'sfr'``` or ```'mass'```. The default is ```'sfr'```, and the program outputs as "SFH" the evolution of the instantaneous SFR of each galaxy with time. If set to ```'mass'```, the program will output instead the evolution of the stellar mass with time (which is usually better behaved, see Glazebrook et al. 2017). Note that the evolution of the mass accounts for mass loss, so the mass slowly _decreases_ with time after a galaxy has quenched.
+ * ```SAVE_BESTCHI```: FAST++ can save the entire chi2 grid on the disk with the ```SAVE_CHI_GRID``` option. However, if you have *huge* grids, this can require too much disk space (I have been in situations where the chi2 grid would be as large as several TB!). Usually, one is not interested in the chi2 of *all* models, but only those that match the data within some tolerance threshold. This option allows you to only save on the disk the models that are worst than the best chi2 by some amount ```chi2 - best_chi2 < SAVE_BESTCHI``` (where ```SAVE_BESTCHI=1``` if you are interested in standard 68% confidence intervals, or ```2.71``` for 90% confidence, etc., see Avni 1976). These "good" models are saved in a separate ".grid" file for each galaxy of the input catalog, inside the ```best_chi2``` folder. The format is similar to the ".grid" file for the full chi2 grid (which is described above), but not identical:
+```
+# Begin header
+# ------------
+[uint32]: number of bytes in header
+[uint32]: number of properties (mass, sfr, etc)
+  # For each property:
+  [char*]: name of the property ("lmass", "lsfr", etc)
+[uint32]: number of grid parameter
+  # For each grid parameter:
+  [char*]: name of the grid parameter ("z", "lage", "metal", etc)
+  [uint32]: number of elements in the grid
+  [float*]: values of the grid for this parameter
+# ----------
+# End header
+
+# Begin data
+# ----------
+# For each good model
+[uint32]: ID of the model in the grid (= modelID, see description of SAVE_CHI_GRID)
+[float]: chi2 of the model
+[float*]: values of the properties of this model
+# --------
+# End data
+```
 
 ## Custom star formation histories
 In the original FAST, one has access to three star formation histories: the tau model (exponentially declining), the delayed tau model (delayed exponentially declining) and the constant truncated model (constant, then zero). All three are parametrized with the star formation timescale ```tau``` (either the exponential timescale for the first two SFH, or the duration of the star formation episode for the last one), which can be adjusted in the fit. These star formation histories are distributed as pre-gridded template libraries at various ages, which are then interpolated during the fit to obtain arbitrary ages.

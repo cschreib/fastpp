@@ -109,6 +109,7 @@ struct options_t {
     bool  intrinsic_best_fit = false;
     std::string make_seds;
     float lambda_ion = 912.0;
+    float save_bestchi = 0.0;
 
     // Custom SFH
     std::string custom_sfh;
@@ -312,8 +313,14 @@ struct fitter_t {
         std::mutex write_mutex;
     };
 
+    struct best_chi2_output_manager_t {
+        uint_t hpos = 0;
+        vec1c header;
+    };
+
     bool save_chi2 = false;
     chi2_output_manager_t ochi2;
+    best_chi2_output_manager_t obchi2;
 
     struct model_source_pair {
         model_t model;
@@ -347,6 +354,8 @@ struct fitter_t {
     vec1u idz, idzp, idzl, idzu; // [ngal]
     vec1b has_spec;              // [ngal]
     vec2d sim_rnd;               // [nsim,nfilt]
+    vec1f best_chi2;             // [ngal]
+    vec1s chi2_filename;         // [ngal]
 
     explicit fitter_t(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
         output_state_t& output);

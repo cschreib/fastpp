@@ -146,6 +146,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(grid_exclude)
         PARSE_OPTION(make_seds)
         PARSE_OPTION(lambda_ion)
+        PARSE_OPTION(save_bestchi)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
