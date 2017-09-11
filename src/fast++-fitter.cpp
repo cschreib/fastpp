@@ -422,7 +422,9 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
                 dofit = true;
                 keepfit = true;
             } else {
-                dofit = opts.n_sim != 0;
+                if (opts.n_sim == 0) {
+                    dofit = false;
+                }
                 keepfit = false;
             }
         }
