@@ -28,7 +28,7 @@ endif()
 ExternalProject_Add(cfitsio
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/cfitsio
     DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/cfitsio
-    GIT_REPOSITORY https://github.com/cschreib/cfitsio.git
+    GIT_REPOSITORY https://github.com/HEASARC/cfitsio.git
     CMAKE_ARGS
         -DBUILD_SHARED_LIBS=OFF
         -DUSE_PTHREADS=ON
