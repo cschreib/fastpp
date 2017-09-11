@@ -181,7 +181,7 @@ struct grid_id {
 
 struct prop_id {
     static const constexpr uint_t scale = 0, spec_scale = 1, mass = 2, sfr = 3, ssfr = 4,
-        ldust = 5, lion = 6, custom = 7;
+        ldust = 5, lion = 6, mform = 7, custom = 8;
 };
 
 // Holds the output state of the program

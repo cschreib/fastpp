@@ -289,6 +289,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
     const vec1f& output_z = output.grid[grid_id::z];
 
     float& model_mass = model.props[prop_id::mass];
+    float& model_mform = model.props[prop_id::mform];
     float& model_sfr = model.props[prop_id::sfr];
     float& model_ssfr = model.props[prop_id::ssfr];
 
@@ -322,13 +323,16 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
                 // Integrate SFH on local time grid
                 vec1d tpl_flux(ssp.lambda.size());
                 double tmodel_mass = 0.0;
+                double tformed_mass = 0.0;
                 vec1d ltime = e10(output_age[ia]) - ctime;
                 integrate_ssp(ltime, sfh, ssp.age, [&](uint_t it, double formed) {
                     tmodel_mass += formed*ssp.mass.safe[it];
+                    tformed_mass += formed*ssp.mass.safe[0];
                     tpl_flux += formed*ssp.sed.safe(it,_);
                 });
 
                 model_mass = tmodel_mass;
+                model_mform = tformed_mass;
 
                 if (opts.sfr_avg > 0) {
                     // Average SFR over the past X yr

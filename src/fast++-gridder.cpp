@@ -41,15 +41,15 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     switch (opts.sfh) {
     case sfh_type::gridded:
         nparam = 5; // [z,av,age,tau,metal]
-        nprop = 8;  // [scale,sscale,mass,sfr,ssfr,ldust,lion,a2t]
+        nprop = 9;  // [scale,sscale,mass,sfr,ssfr,ldust,lion,mformed,a2t]
         break;
     case sfh_type::single:
         nparam = 4; // [z,av,age,metal]
-        nprop = 7;  // [scale,sscale,mass,sfr,ssfr,ldust,lion]
+        nprop = 8;  // [scale,sscale,mass,sfr,ssfr,ldust,lion,mformed]
         break;
     case sfh_type::custom:
         nparam = 4+opts.custom_params.size(); // [z,av,age,metal,...]
-        nprop = 7;  // [scale,sscale,mass,sfr,ssfr,ldust,lion]
+        nprop = 8;  // [scale,sscale,mass,sfr,ssfr,ldust,lion,mformed]
         break;
     }
 
@@ -112,6 +112,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     set_prop(prop_id::ssfr,   "lssfr",  "log[ssfr*yr]",       false, true,  1e-2);
     set_prop(prop_id::ldust,  "lldust", "log[ldust/Lsol]",    true,  true,  1e-2);
     set_prop(prop_id::lion,   "llion",  "log[lion/Lsol]",     true,  true,  1e-2);
+    set_prop(prop_id::mform,  "lmform", "log[mformed/Msol]",  true,  true,  1e-2);
 
     // Redshift grid
     vec1f& output_z = output.grid[grid_id::z];
@@ -222,8 +223,8 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         cache.cache_filename = opts.output_dir+opts.library+"_"+opts.resolution+"_"+
             opts.name_imf+"_"+opts.name_sfh+"_"+opts.dust_law+"_";
 
-        std::string grid_hash = hash(output.grid[_-(grid_id::custom-1)], input.lambda,
-            opts.dust_noll_eb, opts.dust_noll_delta, opts.sfr_avg, opts.lambda_ion,
+        std::string grid_hash = hash(output.grid[_-(grid_id::custom-1)], output.param_names,
+            input.lambda, opts.dust_noll_eb, opts.dust_noll_delta, opts.sfr_avg, opts.lambda_ion,
             opts.cosmo.H0, opts.cosmo.wm, opts.cosmo.wL);
 
         // Additional grid parameter

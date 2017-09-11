@@ -79,7 +79,7 @@ struct file_wrapper {
 };
 
 struct galaxev_ised {
-    vec1f age, sfr, mass;
+    vec1f age, sfr, mass, mform;
     vec1f lambda;
     vec2f fluxes;
 
@@ -229,6 +229,10 @@ public :
 
         mass = extras(1,_);
         sfr = extras(2,_);
+        mform.resize(mass.size());
+        for (uint_t i : range(1, mform.size())) {
+            mform[i] = mform[i-1] + sfr[i]*(age[i]-age[i-1]);
+        }
 
         return true;
     }
@@ -288,6 +292,7 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
     const vec1f& output_z = output.grid[grid_id::z];
 
     float& model_mass = model.props[prop_id::mass];
+    float& model_mform = model.props[prop_id::mform];
     float& model_sfr = model.props[prop_id::sfr];
     float& model_ssfr = model.props[prop_id::ssfr];
     float& model_a2t = model.props[prop_id::custom+0];
@@ -323,6 +328,7 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
 
             tpl_flux = (1.0 - x)*ised.fluxes.safe(p[0],_) + x*ised.fluxes.safe(p[1],_);
             model_mass = (1.0 - x)*ised.mass.safe[p[0]] + x*ised.mass.safe[p[1]];
+            model_mform = (1.0 - x)*ised.mform.safe[p[0]] + x*ised.mform.safe[p[1]];
 
             if (opts.sfr_avg > 0) {
                 // Average SFR over the past X yr

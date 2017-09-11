@@ -212,12 +212,12 @@ AUTO_SCALE     = 0          # 0 / 1
 #   mass loss).
 #
 # o OUTPUT_COLUMNS: define here what columns to write in [CATALOG].fout
-#   Available columns: id, metal, lage, Av, lmass, lsfr, lssfr, lldust
-#   and chi2. If using the "standard" FAST templates, two additional
-#   columns are available: ltau and la2t. If using custom SFH, you can
-#   also choose any of your custom SFH parameter.
-#   By default all available parameters are written in the file
-#   (except lldust).
+#   Available columns: id, metal, lage, Av, lmass, lsfr, lssfr, lldust,
+#   llion, lmform and chi2. If using the "standard" FAST templates, two
+#   additional columns are available: ltau and la2t. If using custom SFH,
+#   you can also choose any of your custom SFH parameter. By default all
+#   available parameters are written in the file (except lldust, llion,
+#   and lmform).
 #
 #-----------------------------------------------------------------------
 
@@ -233,7 +233,7 @@ INTRINSIC_BEST_FIT = 0      # 0 / 1
 BEST_SFHS      = 0          # 0 / 1
 SFH_OUTPUT_STEP = 10        # 10 Myr, 100 Myr etc
 SFH_OUTPUT     = 'sfr'      # 'sfr' or 'mass'
-OUTPUT_COLUMNS = ''         # ['id','Av','mass','sfr', ...]
+OUTPUT_COLUMNS = ''         # ['id','Av','lmass','lsfr', ...]
 
 
 #--- CHOOSE STELLAR POPULATIONS LIBRARY --------------------------------
