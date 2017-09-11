@@ -69,7 +69,7 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
                 idzu.safe[is] = min_id(abs(output.z - input.zphot.safe(is,iup)));
 
                 // Check that zphot falls inside confidence interval
-                if (opts.best_at_zphot && idzp.safe[is] != npos &&
+                if (opts.best_at_zphot && idzp.safe[is] != npos && idz.safe[is] == npos &&
                     (idzp.safe[is] < idzl.safe[is] || idzp.safe[is] > idzu.safe[is])) {
                     warning("for galaxy ", input.id.safe[is], " the photo-z (",
                         input.zphot.safe(is,0), ") falls outside of the chosen confidence "
