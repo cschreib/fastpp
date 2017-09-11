@@ -1,7 +1,7 @@
 #include "fast++.hpp"
 #include <phypp/core/main.hpp>
 
-const char* fastpp_version = "legacy-1.2";
+const char* fastpp_version = "legacy-1.3";
 
 int phypp_main(int argc, char* argv[]) {
     std::string param_file = (argc >= 2 ? argv[1] : "fast.param");
