@@ -86,7 +86,7 @@ If you want to use arbitrary star formation histories beyond what the original F
 * C++ compiler: gcc 6.3.1 (-O3 -std=c++11)
 * IDL: 8.4
 * When run multithreaded, FAST++ is set to ```PARALLEL='models'```, ```MAX_QUEUED_FITS=1000``` and ```N_THREAD=8```.
-* These benchmarks were ran with FAST++ v1.0-legacy.
+* These benchmarks were ran with FAST++ v1.0.
 * Timings and memory usage were recorded with ```/usr/bin/time -v```
 
 ## Run 1: a catalog of galaxies with broadband fluxes
@@ -115,11 +115,11 @@ For each run, execution times are given in seconds, as measured by ```/usr/bin/t
 
 | Run name                    | FAST-IDL      | FAST++ (single thread)       | FAST++ (8 threads)          |
 | --------------------------- | ------------- | ---------------------------- | --------------------------- |
-| no_sim, no_cache            | 117           | 24.9 (**4.7** times faster)  | 17.0 (**6.8** times faster) |
-| no_sim, with_cache          | 99.4          | 11.8 (**8.4** times faster)  | 4.2 (**24** times faster)   |
-| with_sim, with_cache        | 1992          | 209 (**9.5** times faster)   | 58.6 (**34** times faster)  |
+| no_sim, no_cache            | 117           | 28.4 (**4.1** times faster)  | 22.0 (**5.3** times faster) |
+| no_sim, with_cache          | 99.4          | 14.8 (**6.7** times faster)  | 3.6 (**28** times faster)   |
+| with_sim, with_cache        | 1992          | 278.7 (**7.1** times faster)   | 136.7 (**15** times faster)  |
 
-FAST++ is from **5** to **10** times faster in a single thread, and **7** to **34** times faster with multi-threading enabled.
+FAST++ is from **4** to **7** times faster in a single thread, and **5** to **30** times faster with multi-threading enabled.
 
 ### Memory consumption
 
@@ -127,17 +127,17 @@ For each run, peak memory consumption of the process is given in MB, as measured
 
 | Run name                    | FAST-IDL      | FAST++ (single thread)    | FAST++ (8 threads)            |
 | --------------------------- | ------------- | ------------------------- | ----------------------------- |
-| no_sim, no_cache            | 195           | 22.9 (**8.5** times less) | 23.0 (**8.5** times less)     |
-| no_sim, with_cache          | 43.6          | 9.9 (**4.4** times less)  | 10.1 (**4.3** times less)     |
-| with_sim, with_cache        | 48.2          | 11.6 (**4.2** times less) | 12.1 (**4.0** times less)     |
+| no_sim, no_cache            | 195           | 20.8 (**9.4** times less) | 22.8 (**8.6** times less)     |
+| no_sim, with_cache          | 43.6          | 7.6 (**5.8** times less)  | 9.9 (**4.4** times less)     |
+| with_sim, with_cache        | 48.2          | 12.7 (**3.8** times less) | 15.0 (**3.2** times less)     |
 
-FAST++ consumes from **4** to **9** times less memory.
+FAST++ consumes from **3** to **10** times less memory.
 
 
 ## Run 2: one galaxy with a high resolution spectrum
 ### Parameters
 
-This run is meant to test the memory consumption using a large model flux grid. To do so we use a template grid a bit bigger than in the previous run, but also a much larger number of observed data points (about a thousand) using a high-resolution spectrum.
+This run is meant to test the memory consumption using a large model flux grid. To do so we use a template grid a bit bigger than in the previous run, but also a much larger number of observed data points (about 700) using a high-resolution spectrum.
 
 * SFH: delayed
 * Stellar population model: BC03
@@ -147,28 +147,28 @@ This run is meant to test the memory consumption using a large model flux grid. 
 * Av: 0 to 2, step 0.1 (14 values)
 * z: 3.710 to 3.720, step 0.001 (11 values)
 * 226380 models to fit (total grid size: 1.1GB)
-* 1 galaxy to fit, 35 broadband fluxes and 1136 spectral channels
+* 1 galaxy to fit, 35 broadband fluxes and 644 spectral channels
 * 1000 Monte Carlo simulations
 
 ### Recorded times
 
 | Run name                    | FAST-IDL      | FAST++ (single thread)       | FAST++ (8 threads)          |
 | --------------------------- | ------------- | ---------------------------- | --------------------------- |
-| no_sim, no_cache            | 208           | 95.2 (**2.2** times faster)  | 140 (**1.5** times faster)  |
-| no_sim, with_cache          | 15.0          | 3.1 (**4.8** times faster)   | 0.9 (**17** times faster)   |
-| with_sim, with_cache        | 11733         | 432 (**27.2** times faster)  | 74.4 (**158** times faster) |
+| no_sim, no_cache            | 157           | 76.2 (**2.1** times faster)  | 122 (**1.3** times faster)  |
+| no_sim, with_cache          | 8.3           | 1.8 (**4.6** times faster)   | 0.6 (**14** times faster)   |
+| with_sim, with_cache        | 5538          | 309 (**18** times faster)  | 64.7 (**86** times faster) |
 
-FAST++ is from **2** to **30** times faster in a single thread, and **1.5** to **160** times faster with multi-threading enabled. When the cache is not created yet, the multi-threaded version is actually *slower* than the single-threaded version because the main performance bottleneck is generating models, rather than fitting them. When a thread is given a model to fit, it finishes to do so before the gridder is able to provide the next model to fit, and the thread thus has to wait. If the cache is already created (and/or if Monte Carlo simulations are enabled), the fitting stage becomes the most time-consuming process, and the advantage of the multi-threaded version becomes clear.
+FAST++ is from **2** to **20** times faster in a single thread, and **1.3** to **90** times faster with multi-threading enabled. When the cache is not created yet, the multi-threaded version is actually *slower* than the single-threaded version because the main performance bottleneck is generating models, rather than fitting them. When a thread is given a model to fit, it finishes to do so before the gridder is able to provide the next model to fit, and the thread thus has to wait. If the cache is already created (and/or if Monte Carlo simulations are enabled), the fitting stage becomes the most time-consuming process, and the advantage of the multi-threaded version becomes clear.
 
 ### Memory consumption
 
 | Run name                    | FAST-IDL      | FAST++ (single thread)    | FAST++ (8 threads)            |
 | --------------------------- | ------------- | ------------------------- | ----------------------------- |
-| no_sim, no_cache            | 6216          | 16.9 (**368** times less) | 17.7 (**351** times less)     |
-| no_sim, with_cache          | 6081          | 10.2 (**596** times less) | 15.7 (**387** times less)     |
-| with_sim, with_cache        | 6089          | 19.1 (**319** times less) | 25.3 (**241** times less)     |
+| no_sim, no_cache            | 3575          | 14.8 (**241** times less) | 17.5 (**204** times less)     |
+| no_sim, with_cache          | 3530          | 7.9 (**447** times less)  | 13.1 (**269** times less)     |
+| with_sim, with_cache        | 3539          | 13.1 (**270** times less) | 18.9 (**190** times less)     |
 
-FAST++ consumes from **240** to **600** times less memory. The amount required is actually almost the same as for the other run, about 10 to 30 MB, while FAST-IDL requires 6 GB! If we had asked for a finer grid, FAST-IDL would not have been able to run.
+FAST++ consumes from **200** to **500** times less memory. The amount required is actually almost the same as for the other run, about 10 to 30 MB, while FAST-IDL requires 3.5 GB! If we had asked for a finer grid, FAST-IDL would not have been able to run on this machine.
 
 # What is the trick?
 ## Why is it faster?
