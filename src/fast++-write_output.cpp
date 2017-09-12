@@ -1,4 +1,5 @@
 #include "fast++.hpp"
+#include <iomanip>
 
 std::string pretty_library(const std::string& lib) {
     if (lib == "bc03") return "Bruzual & Charlot (2003)";
@@ -40,30 +41,17 @@ std::string pretty_grid(T x0, T x1, T step, uint_t ndecimal) {
            strn(round(dd*step)/dd);
 }
 
-template<typename T>
-std::string pretty_strn(T v) {
-    return strn(v);
-}
-
-template<typename T>
-std::string pretty_strn_float(T f) {
-    if (!is_nan(f) && !is_finite(f)) {
-        if (f < 0) {
-            return "-99";
+float pretty_value(float value, float prec) {
+    value = round(prec*value)/prec;
+    if (!is_nan(value) && !is_finite(value)) {
+        if (value < 0) {
+            value = -99.0f;
         } else {
-            return "99";
+            value = 99.0f;
         }
-    } else {
-        return strn(f);
     }
-}
 
-std::string pretty_strn(float f) {
-    return pretty_strn_float(f);
-}
-
-std::string pretty_strn(double f) {
-    return pretty_strn_float(f);
+    return value;
 }
 
 void write_catalog(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
@@ -138,7 +126,7 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
 
     fout << "#";
     for (uint_t ip : range(param)) {
-        fout << align_right(param[ip], cwidth[ip]);
+        fout << std::setw(cwidth[ip]) << param[ip];
     }
     fout << std::endl;
 
@@ -146,39 +134,48 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     for (uint_t is : range(input.id)) {
         fout << " ";
         uint_t c = 0;
-        fout << align_right(input.id[is], cwidth[c]); ++c;
+        fout << std::setw(cwidth[c]) << input.id[is]; ++c;
 
         for (uint_t ip : range(output.best_z.dims[1])) {
-            fout << align_right(pretty_strn(round(1e4*output.best_z(is,ip))/1e4), cwidth[c]); ++c;
+            fout << std::setw(cwidth[c]) << std::defaultfloat <<
+                pretty_value(output.best_z(is,ip), 1e4); ++c;
         }
         for (uint_t ip : range(output.best_tau.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*output.best_tau(is,ip))/1e2), cwidth[c]); ++c;
+            fout << std::setw(cwidth[c]) << std::defaultfloat <<
+                pretty_value(output.best_tau(is,ip), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_metal.dims[1])) {
-            fout << align_right(pretty_strn(round(1e4*output.best_metal(is,ip))/1e4), cwidth[c]); ++c;
+            fout << std::setw(cwidth[c]) << std::defaultfloat <<
+                pretty_value(output.best_metal(is,ip), 1e4); ++c;
         }
         for (uint_t ip : range(output.best_age.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*output.best_age(is,ip))/1e2), cwidth[c]); ++c;
+            fout << std::setw(cwidth[c]) << std::defaultfloat <<
+                pretty_value(output.best_age(is,ip), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_av.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*output.best_av(is,ip))/1e2), cwidth[c]); ++c;
+            fout << std::setw(cwidth[c]) << std::defaultfloat <<
+                pretty_value(output.best_av(is,ip), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_mass.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*log10(output.best_mass(is,ip)))/1e2), cwidth[c]); ++c;
+            fout << std::setw(cwidth[c]) << std::defaultfloat <<
+                pretty_value(log10(output.best_mass(is,ip)), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_sfr.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*log10(output.best_sfr(is,ip)))/1e2), cwidth[c]); ++c;
+            fout << std::setw(cwidth[c]) << std::defaultfloat <<
+                pretty_value(log10(output.best_sfr(is,ip)), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_ssfr.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*log10(output.best_ssfr(is,ip)))/1e2), cwidth[c]); ++c;
+            fout << std::setw(cwidth[c]) << std::defaultfloat <<
+                pretty_value(log10(output.best_ssfr(is,ip)), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_a2t.dims[1])) {
-            fout << align_right(pretty_strn(round(1e2*output.best_a2t(is,ip))/1e2), cwidth[c]); ++c;
+            fout << std::setw(cwidth[c]) << std::defaultfloat <<
+                pretty_value(output.best_a2t(is,ip), 1e2); ++c;
         }
 
         uint_t nobs = count(is_finite(input.eflux(is,_)));
         float chi2 = output.best_chi2[is]/max(1u, nobs > gridder.nparam ? nobs - gridder.nparam : 1u);
-        fout << align_right(strn_sci(chi2), cwidth[c]);
+        fout << std::setw(cwidth[c]) << std::scientific << chi2;
         fout << "\n";
         ++c;
 
@@ -214,9 +211,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         std::ofstream fout(odir+opts.catalog+"_"+input.id[is]+".fit");
         fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
         for (uint_t il : range(lam)) {
-            fout << align_right(strn(lam.safe[il]), 13)
-                 << align_right(strn(sed.safe[il]), 13)
-                 << "\n";
+            fout << std::setw(13) << lam.safe[il] << std::setw(13) << sed.safe[il] << "\n";
         }
         fout.close();
 
@@ -224,10 +219,10 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         fout.open(odir+opts.catalog+"_"+input.id[is]+".input_res.fit");
         fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
         for (uint_t il : range(input.lambda)) {
-            fout << align_right(strn(float(input.lambda[il])), 13)
-                 << align_right(strn(flx[il]), 13)
-                 << align_right(strn(input.flux(is,il)), 13)
-                 << align_right(strn(input.eflux(is,il)), 13) << "\n";
+            fout << std::setw(13) << float(input.lambda[il])
+                 << std::setw(13) << flx[il]
+                 << std::setw(13) << input.flux(is,il)
+                 << std::setw(13) << input.eflux(is,il) << "\n";
         }
         fout.close();
         if (opts.verbose) progress(pg, 13);
