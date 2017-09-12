@@ -136,41 +136,33 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
         uint_t c = 0;
         fout << std::setw(cwidth[c]) << input.id[is]; ++c;
 
+        fout.unsetf(std::ios_base::floatfield);
         for (uint_t ip : range(output.best_z.dims[1])) {
-            fout << std::setw(cwidth[c]) << std::defaultfloat <<
-                pretty_value(output.best_z(is,ip), 1e4); ++c;
+            fout << std::setw(cwidth[c]) << pretty_value(output.best_z(is,ip), 1e4); ++c;
         }
         for (uint_t ip : range(output.best_tau.dims[1])) {
-            fout << std::setw(cwidth[c]) << std::defaultfloat <<
-                pretty_value(output.best_tau(is,ip), 1e2); ++c;
+            fout << std::setw(cwidth[c]) << pretty_value(output.best_tau(is,ip), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_metal.dims[1])) {
-            fout << std::setw(cwidth[c]) << std::defaultfloat <<
-                pretty_value(output.best_metal(is,ip), 1e4); ++c;
+            fout << std::setw(cwidth[c]) << pretty_value(output.best_metal(is,ip), 1e4); ++c;
         }
         for (uint_t ip : range(output.best_age.dims[1])) {
-            fout << std::setw(cwidth[c]) << std::defaultfloat <<
-                pretty_value(output.best_age(is,ip), 1e2); ++c;
+            fout << std::setw(cwidth[c]) << pretty_value(output.best_age(is,ip), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_av.dims[1])) {
-            fout << std::setw(cwidth[c]) << std::defaultfloat <<
-                pretty_value(output.best_av(is,ip), 1e2); ++c;
+            fout << std::setw(cwidth[c]) << pretty_value(output.best_av(is,ip), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_mass.dims[1])) {
-            fout << std::setw(cwidth[c]) << std::defaultfloat <<
-                pretty_value(log10(output.best_mass(is,ip)), 1e2); ++c;
+            fout << std::setw(cwidth[c]) << pretty_value(log10(output.best_mass(is,ip)), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_sfr.dims[1])) {
-            fout << std::setw(cwidth[c]) << std::defaultfloat <<
-                pretty_value(log10(output.best_sfr(is,ip)), 1e2); ++c;
+            fout << std::setw(cwidth[c]) << pretty_value(log10(output.best_sfr(is,ip)), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_ssfr.dims[1])) {
-            fout << std::setw(cwidth[c]) << std::defaultfloat <<
-                pretty_value(log10(output.best_ssfr(is,ip)), 1e2); ++c;
+            fout << std::setw(cwidth[c]) << pretty_value(log10(output.best_ssfr(is,ip)), 1e2); ++c;
         }
         for (uint_t ip : range(output.best_a2t.dims[1])) {
-            fout << std::setw(cwidth[c]) << std::defaultfloat <<
-                pretty_value(output.best_a2t(is,ip), 1e2); ++c;
+            fout << std::setw(cwidth[c]) << pretty_value(output.best_a2t(is,ip), 1e2); ++c;
         }
 
         uint_t nobs = count(is_finite(input.eflux(is,_)));
