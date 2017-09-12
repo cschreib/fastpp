@@ -719,12 +719,10 @@ bool gridder_t::write_seds() const {
         flx *= scale;
 
         // Save model
-        // TODO: use a more efficient serialization code
         std::ofstream fout(odir+id+".fit");
         fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
         for (uint_t il : range(lam)) {
-            fout << align_right(strn(lam.safe[il]), 13)
-                 << align_right(strn(sed.safe[il]), 13) << "\n";
+            fout << std::setw(13) << lam.safe[il] << std::setw(13) << sed.safe[il] << "\n";
         }
         fout.close();
 
@@ -732,8 +730,7 @@ bool gridder_t::write_seds() const {
         fout.open(odir+id+".input_res.fit");
         fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
         for (uint_t il : range(input.lambda)) {
-            fout << align_right(strn(float(input.lambda[il])), 13)
-                 << align_right(strn(flx[il]), 13) << "\n";
+            fout << std::setw(13) << float(input.lambda[il]) << std::setw(13) << flx[il] << "\n";
         }
         fout.close();
 

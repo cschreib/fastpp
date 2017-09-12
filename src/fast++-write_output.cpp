@@ -40,32 +40,6 @@ std::string pretty_grid(T x0, T x1, T step, uint_t ndecimal) {
            strn(round(dd*step)/dd);
 }
 
-template<typename T>
-std::string pretty_strn(T v) {
-    return strn(v);
-}
-
-template<typename T>
-std::string pretty_strn_float(T f) {
-    if (!is_nan(f) && !is_finite(f)) {
-        if (f < 0) {
-            return "-99";
-        } else {
-            return "99";
-        }
-    } else {
-        return strn(f);
-    }
-}
-
-std::string pretty_strn(float f) {
-    return pretty_strn_float(f);
-}
-
-std::string pretty_strn(double f) {
-    return pretty_strn_float(f);
-}
-
 void write_catalog(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
     const output_state_t& output) {
 
@@ -192,14 +166,14 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
             if (iparam[ic] == npos) {
                 std::string cname = param[ic];
                 if (cname == "id") {
-                    fout << align_right(input.id[is], cwidth[ic]);
+                    fout << std::setw(cwidth[ic]) << input.id[is];
                 } else if (cname == "chi2") {
                     uint_t nobs = count(is_finite(input.eflux(is,_)));
                     if (!input.lir.empty() && is_finite(input.lir[is])) ++nobs;
 
                     uint_t ndof = (nobs > gridder.nfreeparam ? nobs - gridder.nfreeparam : 1u);
                     float chi2 = output.best_chi2[is]/ndof;
-                    fout << align_right(strn_sci(chi2), cwidth[ic]);
+                    fout << std::setw(cwidth[ic]) << std::scientific << chi2;
                 }
             } else {
                 float value = output.best_params.safe(is,iparam[ic],iconf[ic]);
@@ -209,7 +183,15 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
 
                 float precision = output.param_precision.safe[iparam[ic]];
                 value = round(value/precision)*precision;
-                fout << align_right(pretty_strn(value), cwidth[ic]);
+                if (!is_nan(value) && !is_finite(value)) {
+                    if (value < 0) {
+                        value = -99.0f;
+                    } else {
+                        value = 99.0f;
+                    }
+                }
+
+                fout << std::setw(cwidth[ic]) << std::defaultfloat << value;
             }
         }
 
@@ -251,7 +233,6 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         flx *= scale;
 
         // Save model
-        // TODO: use a more efficient serialization code
         std::ofstream fout(odir+opts.catalog+"_"+input.id[is]+".fit");
         if (opts.intrinsic_best_fit) {
             fout << "# wl fl fl_nodust (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
@@ -260,11 +241,10 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         }
 
         for (uint_t il : range(lam)) {
-            fout << align_right(strn(lam.safe[il]), 13)
-                 << align_right(strn(sed.safe[il]), 13);
+            fout << std::setw(13) << lam.safe[il] << std::setw(13) << sed.safe[il];
 
             if (opts.intrinsic_best_fit) {
-            fout << align_right(strn(sed_nodust.safe[il]), 13);
+            fout << std::setw(13) << sed_nodust.safe[il];
             }
 
             fout << "\n";
@@ -275,10 +255,10 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         fout.open(odir+opts.catalog+"_"+input.id[is]+".input_res.fit");
         fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
         for (uint_t il : range(input.lambda)) {
-            fout << align_right(strn(float(input.lambda[il])), 13)
-                 << align_right(strn(flx[il]), 13)
-                 << align_right(strn(input.flux(is,il)), 13)
-                 << align_right(strn(input.eflux(is,il)), 13) << "\n";
+            fout << std::setw(13) << float(input.lambda[il])
+                 << std::setw(13) << flx[il]
+                 << std::setw(13) << input.flux(is,il)
+                 << std::setw(13) << input.eflux(is,il) << "\n";
         }
         fout.close();
 
@@ -356,15 +336,14 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
         }
 
         // Save SFH
-        // TODO: use a more efficient serialization code
         std::ofstream fout(odir+opts.catalog+"_"+input.id[is]+".sfh");
         fout << header;
 
         for (uint_t it : range(t)) {
-            fout << align_right(strn_sci(t.safe[it]), 13);
+            fout << std::setw(13) << t.safe[it];
 
             for (uint_t ic : range(sfh.dims[1])) {
-                fout << align_right(strn_sci(sfh.safe(it,ic)), 13);
+                fout << std::setw(13) << sfh.safe(it,ic);
             }
 
             fout << "\n";

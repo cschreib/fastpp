@@ -11,6 +11,7 @@
 #include <phypp/math/base.hpp>
 #include <phypp/astro/astro.hpp>
 #include <phypp/io/ascii.hpp>
+#include <iomanip>
 #include "thread_worker_pool.hpp"
 
 using namespace phypp;
