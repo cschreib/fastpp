@@ -191,7 +191,8 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
                     }
                 }
 
-                fout << std::setw(cwidth[ic]) << std::defaultfloat << value;
+                fout.unsetf(std::ios_base::floatfield);
+                fout << std::setw(cwidth[ic]) << value;
             }
         }
 
