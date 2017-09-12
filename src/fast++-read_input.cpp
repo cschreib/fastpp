@@ -456,8 +456,31 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
         return false;
     }
 
+    if (opts.verbose) {
+        note("reading fluxes...");
+    }
+
+    // Read all lines to determine the number of galaxies
+    uint_t ngal = 0; {
+        std::ifstream in(catalog_file);
+        std::string line;
+        while (std::getline(in, line)) {
+            line = trim(line);
+            if (line.empty() || line[0] == '#') continue;
+
+            ++ngal;
+        }
+    }
+
+    // Resize arrays now to avoid reallocation later
+    state.id.resize(ngal);
+    state.zspec = replicate(fnan, ngal);
+    state.flux = replicate(fnan, ngal, state.no_filt.size());
+    state.eflux = replicate(fnan, ngal, state.no_filt.size());
+
     // Now read the catalog itself, only keeping the columns we are interested in
     uint_t l = 0;
+    uint_t gid = 0;
     std::ifstream in(catalog_file);
     std::string line;
     while (std::getline(in, line)) {
@@ -468,7 +491,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
         vec1s spl = split_any_of(line, " \t\n\r");
 
         // Read the ID
-        state.id.push_back(spl[col_id]);
+        state.id.safe[gid] = spl[col_id];
 
         // Read the zspec if any
         if (col_zspec != npos) {
@@ -484,7 +507,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
                 tz = fnan;
             }
 
-            state.zspec.push_back(tz);
+            state.zspec.safe[gid] = tz;
         }
 
         // Read the fluxes and uncertainties
@@ -524,17 +547,16 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
 
         // Flag bad values
         vec1u idb = where(err < 0 || !is_finite(flx) || !is_finite(err));
-        err[idb] = finf; flx[idb] = 0;
+        err.safe[idb] = finf; flx.safe[idb] = 0;
 
         // Save flux and uncertainties in the input state
-        append<0>(state.flux, reform(flx, 1, flx.size()));
-        append<0>(state.eflux, reform(err, 1, err.size()));
+        state.flux.safe(gid,_) = flx;
+        state.eflux.safe(gid,_) = err;
+
+        ++gid;
     }
 
-    if (col_zspec == npos) {
-        // If no zspec column, give no zspec to all galaxies
-        state.zspec = replicate(fnan, state.id.size());
-    } else {
+    if (col_zspec != npos) {
         // Check that zspecs are covered by the redshift grid
         if (min(state.zspec) < opts.z_min) {
             error("the smallest z_spec is outside of the grid (", min(state.zspec),
