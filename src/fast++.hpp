@@ -28,7 +28,7 @@ enum class parallel_choice {
 struct options_t {
     // Input catalog parameters
     std::string catalog;
-    float ab_zeropoint = 23.9;
+    float ab_zeropoint = 25.0;
     std::string name_zphot = "z_phot";
 
     // Input spectrum parameters
@@ -82,8 +82,8 @@ struct options_t {
     // NB: parameters below were not in original FAST
 
     bool force_zphot = false;
-    bool best_at_zphot = false;
-    float zphot_conf = fnan;
+    bool best_at_zphot = true;
+    float zphot_conf = 68.0;
     bool verbose = false;
     bool save_sim = false;
     bool best_from_sim = false;

@@ -1,4 +1,4 @@
-# FAST++
+# FAST++ (legacy)
 
 <!-- MarkdownTOC depth=0 -->
 
@@ -43,6 +43,7 @@ This is a C++ version of the popular SED fitting code [FAST](http://w.astro.berk
  - FAST++ is on average 5 times faster, and up to 30 times with multi-threading.
  - FAST++ uses 5 to 600 times less memory.
  - FAST++ can handle *much* larger parameter grids.
+ - Additional features are available in the non-legacy version.
 
 There are number of small differences between FAST++ and the original FAST, these are listed below in [Differences with FAST](#differences-with-fast).
 
@@ -189,7 +190,6 @@ At similar code size, deciding if a code is more complex than another is a subje
 While the implementation of FAST++ was designed to resemble FAST-IDL as much as possible, some aspects of FAST-IDL were not preserved. These are listed here.
 
 ## Photometry
- * The default "zero point" of the fluxes is 23.9 instead of 25. This means that your input fluxes are expected to be given in micro Janskys by default. You can of course specify your own "zero point" if this is not the case, as in FAST-IDL.
  * If a galaxy has no measured flux in a band (i.e., we have no information about it), the _uncertainty_ must be set to a negative value or "NaN". Note that there is a difference between "no measured flux" and "non-detection": the latter provides information that the fit can use. In FAST-IDL the _flux_ had to be set to -99, which was problematic because -99 could be a valid flux measurement (i.e., a non-detection).
  * The input photometry catalog can contain columns starting with "F" or "E" which are not flux columns, provided the "F" or "E" is not followed by numbers. In FAST-IDL a catalog containing such columns was rejected.
 
@@ -201,10 +201,9 @@ While the implementation of FAST++ was designed to resemble FAST-IDL as much as 
 
 ## Photo-z
  * If an input photo-z is negative, FAST++ will simply ignore the photo-z and let the redshift vary freely. In FAST-IDL a galaxy with a negative photo-z was ignored completely.
- * The EAzY redshifts and confidence intervals are used differently: by default the photo-z will not be enforced for the best-fitting solution, and only the confidence intervals are used to restrict the parameter space. This behavior can be modified to reproduce the original behavior of FAST-IDL. See [Photometric redshifts from EAzY](#photometric-redshifts-from-eazy) below.
 
 ## Monte Carlo uncertainties
- * The way FAST++ computes uncertainties using the Monte Carlo simulations is different from FAST-IDL, and this can lead to small differences in the resulting confidence intervals. In particulat, the Monte Carlo simulations always use the same constraints on the redshift as the best-fit solution (unless ```BEST_AT_ZPHOT``` is set). Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid. This should not be significant, and the accuracy of the uncertainties computed by FAST++ was verified using mock catalogs with known physical parameters.
+ * The way FAST++ computes uncertainties using the Monte Carlo simulations is different from FAST-IDL, and this can lead to small differences in the resulting confidence intervals. In particular, the Monte Carlo simulations always use the same constraints on the redshift as the best-fit solution (unless ```BEST_AT_ZPHOT``` is set). Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid. This should not be significant, and the accuracy of the uncertainties computed by FAST++ was verified using mock catalogs with known physical parameters.
 
 
 # Additional features
@@ -220,9 +219,9 @@ In addition to the base feature set provided by FAST-IDL, FAST++ has a number of
  * ```MAX_QUEUED_FITS```: possible values are ```0``` or any positive number. The default value is ```1000```. This defines the maximum number of models that are produced and waiting to be fit at any given instant. It is only used if multithreading is enabled, since single-threaded execution will always have a single model in memory at a time. Setting this to ```0``` will remove the restriction. The goal of this parameter is to limit the amount of consumed memory: the higher the value, the more models can be present in memory at once, waiting to be processed. The default value of ```1000``` has a *very* slight impact on performances (less than 10%), so you can most often ignore this parameter. Else, you can disable it if you know your model grid has modest size and memory usage will not be an issue, on on the contrary decrease the value if your models are very large.
 
 ## Photometric redshifts from EAzY
- * ```FORCE_ZPHOT```: possible values are ```0``` or ```1```. The default is ```0```, and FAST++ will ignore the photometric redshifts obtained by EAzY. This is different from the behavior of FAST-IDL, which always forces the redshift to that derived by EAzY (except for Monte Carlo simulations). You can recover the FAST-IDL behavior by setting this value to ```1```, but note that contrary to FAST-IDL this will also affect the Monte Carlo simulations. In practice, this option amounts to treating photometric redshifts as spectroscopic redshifts. It makes more sense than the FAST-IDL behavior if you really want to enforce the EAzY redshifts.
- * ```BEST_AT_ZPHOT```: possible values are ```0``` or ```1```. The default is ```0```. Setting this to ```1``` will get you closer to the FAST-IDL behavior. This will force the best-fitting solution to be taken at the photometric redshift determined by EAzY, but the Monte Carlo simulations will still use the entire redshift range allowed (or the one constrained by the EAzY confidence intervals). This will give the closest output compared to FAST-IDL, however note that the derived confidence intervals will be determined on the entire redshift grid, and will be centered on a solution which may not be at the redshift derived by EAzY.
- * ```ZPHOT_CONF```: possible values are ```0```, ```68```, ```95``` or ```99```. The default is ```0```. If set to anything else than ```0```, this will read the corresponding confidence interval on the photometric redshift determined by EAzY, and restrict the redshift grid to this interval for each source. So if the entire redshift grid ranges from ```0.1``` to ```8.5```, but a source has ```l68 = 2.2``` and ```u68 = 3.5```, then FAST++ will only consider redshifts between ```2.2``` and ```3.5``` for this source.
+ * ```BEST_AT_ZPHOT```: possible values are ```0``` or ```1```. The default is ```1```, and corresponds to the FAST-IDL behavior. This will force the best-fitting solution to be taken at the photometric redshift determined by EAzY, but the Monte Carlo simulations will still use the entire redshift range allowed (or the one constrained by the EAzY confidence intervals). This will give the closest output compared to FAST-IDL, however note that the derived confidence intervals will be determined on the entire redshift grid, and will be centered on a solution which may not be at the redshift derived by EAzY.
+ * ```FORCE_ZPHOT```: possible values are ```0``` or ```1```. The default is ```0```. This option is similar to the one above, except that it forces the photometric redshift both for the best fit and for the Monte Carlo simulations, which is more consistent.
+ * ```ZPHOT_CONF```: possible values are ```0```, ```68```, ```95``` or ```99```. The default is ```68```. If set to anything else than ```0```, this will read the corresponding confidence interval on the photometric redshift determined by EAzY, and restrict the redshift grid to this interval for each source. So if the entire redshift grid ranges from ```0.1``` to ```8.5```, but a source has ```l68 = 2.2``` and ```u68 = 3.5```, then FAST++ will only consider redshifts between ```2.2``` and ```3.5``` for this source.
 
 To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68```, ```BEST_AT_ZPHOT=1``` and ```ZPHOT_CONF=68``` (you can replace ```68``` by ```95``` or ```99```).
 
