@@ -77,6 +77,9 @@ This will create an executable called ```fast++``` in the ```fastpp/bin``` direc
 * C++ compiler: gcc 6.3.1 (-O3 -std=c++11)
 * IDL: 8.4
 * When run multithreaded, FAST++ is set to ```PARALLEL='models'```, ```MAX_QUEUED_FITS=1000``` and ```N_THREAD=8```.
+* These benchmarks were ran with FAST++ v1.0-legacy.
+* Timings and memory usage were recorded with ```/usr/bin/time -v```
+
 
 ## Run 1: a catalog of galaxies with broadband fluxes
 ### Parameters
