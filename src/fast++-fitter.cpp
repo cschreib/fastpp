@@ -64,6 +64,8 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
         uint_t ilow = 1 + 2*ic + 0;
         uint_t iup  = 1 + 2*ic + 1;
 
+        bool error_shown = false;
+
         for (uint_t is : range(input.id)) {
             if (is_finite(input.zphot.safe(is,ilow)) && is_finite(input.zphot.safe(is,iup))) {
                 // Get range from zlow and zup
@@ -77,8 +79,14 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
                         input.zphot.safe(is,0), ") falls outside of the chosen confidence "
                         "interval (", input.zphot.safe(is,ilow), " to ", input.zphot.safe(is,iup),
                         ")");
+                    error_shown = true;
                 }
             }
+        }
+
+        if (error_shown) {
+            warning("for these galaxies, the confidence intervals may not be consistent with "
+                "the best fit values");
         }
     }
 

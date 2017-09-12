@@ -753,20 +753,6 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
         ++gid;
     }
 
-    if (col_zspec != npos) {
-        // Check that zspecs are covered by the redshift grid
-        if (min(state.zspec) < opts.z_min) {
-            error("the smallest z_spec is outside of the grid (", min(state.zspec),
-                " vs. ", opts.z_min, ")");
-            return false;
-        }
-        if (max(state.zspec) > opts.z_max) {
-            error("the largest z_spec is outside of the grid (", max(state.zspec),
-                " vs. ", opts.z_max, ")");
-            return false;
-        }
-    }
-
     // Convert photometry from [catalog unit] to [uJy]
     float abzp = e10(0.4*(23.9 - opts.ab_zeropoint));
     // Convert photometry from fnu [uJy] to flambda [1e-19 x erg/s/cm2/A]
@@ -1255,30 +1241,6 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
         return false;
     }
 
-    // Check that zspecs are covered by the redshift grid
-    if (min(state.zspec) < opts.z_min) {
-        error("the smallest z_spec is outside of the grid ", min(state.zspec),
-            " vs. ", opts.z_min, ")");
-        return false;
-    }
-    if (max(state.zspec) > opts.z_max) {
-        error("the largest z_spec is outside of the grid ", max(state.zspec),
-            " vs. ", opts.z_max, ")");
-        return false;
-    }
-
-    // Check that zphots are covered by the redshift grid
-    if (min(state.zphot(_,0)) < opts.z_min) {
-        error("the smallest z_phot is outside of the grid ", min(state.zphot(_,0)),
-            " vs. ", opts.z_min, ")");
-        return false;
-    }
-    if (max(state.zphot(_,0)) > opts.z_max) {
-        error("the largest z_phot is outside of the grid ", max(state.zphot(_,0)),
-            " vs. ", opts.z_max, ")");
-        return false;
-    }
-
     return true;
 }
 
@@ -1401,6 +1363,58 @@ bool read_template_error(const options_t& opts, input_state_t& state) {
     return true;
 }
 
+bool check_input(options_t& opts, input_state_t& state) {
+    if (!state.zspec.empty()) {
+        // Check that zspecs are covered by the redshift grid
+        vec1u idb = where(state.zspec < opts.z_min);
+        if (!idb.empty()) {
+            warning("found ", idb.size(), " galaxies with z_spec lower than "
+                "the minimum value of the grid (z < ", opts.z_min, ")");
+            warning("will put them at z=", opts.z_min);
+
+            state.zspec[idb] = opts.z_min;
+        }
+
+        idb = where(state.zspec > opts.z_max);
+        if (!idb.empty()) {
+            warning("found ", idb.size(), " galaxies with z_spec lower than "
+                "the minimum value of the grid (z < ", opts.z_min, ")");
+            warning("will put them at z=", opts.z_min);
+
+            state.zspec[idb] = opts.z_max;
+        }
+    }
+
+    if (!state.zphot.empty()) {
+        // Check that zphots are covered by the redshift grid
+        for (uint_t c : range(state.zphot.dims[1])) {
+            vec1u idb = where(state.zphot(_,c) < opts.z_min);
+            if (!idb.empty()) {
+                if (c == 0) {
+                    warning("found ", idb.size(), " galaxies with z_phot lower than "
+                        "the minimum value of the grid (z < ", opts.z_min, ")");
+                    warning("will put them at z=", opts.z_min);
+                }
+
+                state.zphot(idb,c) = opts.z_min;
+            }
+
+            idb = where(state.zphot(_,c) > opts.z_max);
+            if (!idb.empty()) {
+                if (c == 0) {
+                    warning("found ", idb.size(), " galaxies with z_phot lower than "
+                        "the minimum value of the grid (z < ", opts.z_min, ")");
+                    warning("will put them at z=", opts.z_min);
+                }
+
+                state.zphot(idb,c) = opts.z_max;
+            }
+        }
+    }
+
+    return true;
+}
+
 bool read_input(options_t& opts, input_state_t& state, const std::string& filename) {
     // First read options from the parameter file
     if (!read_params(opts, state, filename)) {
@@ -1429,6 +1443,11 @@ bool read_input(options_t& opts, input_state_t& state, const std::string& filena
 
     // Read the template error function, if any
     if (!read_template_error(opts, state)) {
+        return false;
+    }
+
+    // Check and adjust input
+    if (!check_input(opts, state)) {
         return false;
     }
 
