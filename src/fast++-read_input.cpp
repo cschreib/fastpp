@@ -408,7 +408,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     std::string translate_file = opts.catalog+".translate";
     if (file::exists(translate_file)) {
         if (opts.verbose) {
-            note("using column translation file '", catalog_file, "'");
+            note("using column translation file '", translate_file, "'");
         }
 
         vec1s tr_from, tr_to;
