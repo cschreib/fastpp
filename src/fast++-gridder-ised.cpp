@@ -90,6 +90,7 @@ public :
     bool read(std::string filename, bool noflux = false) {
         std::string state;
         try {
+            state = "open file";
             file_wrapper lib(filename);
 
             // The file might have been written with a different endianess...
