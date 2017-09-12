@@ -734,12 +734,12 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     } else {
         // Check that zspecs are covered by the redshift grid
         if (min(state.zspec) < opts.z_min) {
-            error("the smallest z_spec is outside of the grid ", min(state.zspec),
+            error("the smallest z_spec is outside of the grid (", min(state.zspec),
                 " vs. ", opts.z_min, ")");
             return false;
         }
         if (max(state.zspec) > opts.z_max) {
-            error("the largest z_spec is outside of the grid ", max(state.zspec),
+            error("the largest z_spec is outside of the grid (", max(state.zspec),
                 " vs. ", opts.z_max, ")");
             return false;
         }
