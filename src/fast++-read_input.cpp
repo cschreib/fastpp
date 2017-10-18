@@ -1315,7 +1315,7 @@ bool read_lir(const options_t& opts, input_state_t& state) {
             return false;
         }
 
-        if (id != state.id[i]) {
+        if (i >= state.id.size() || id != state.id[i]) {
             error("infrared luminosity and photometry catalogs do not match");
             return false;
         }
