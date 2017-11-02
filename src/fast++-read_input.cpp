@@ -406,8 +406,9 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
     }
 
     if (!opts.make_seds.empty() && !file::exists(opts.make_seds)) {
-        warning("file '", opts.make_seds, "' is empty (MAKE_SEDS=...), ignoring");
-        opts.make_seds = "";
+        error("file '", opts.make_seds, "' is empty (MAKE_SEDS=...)");
+        error("if you do not want to generate these SEDs, remove the MAKE_SEDS=... option");
+        return false;
     }
 
     // Use the default 'share' directory if nothing is provided
