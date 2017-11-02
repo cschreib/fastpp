@@ -20,22 +20,24 @@ int phypp_main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Write SEDs if asked
-    gridder.write_seds();
+    if (opts.make_seds.empty()) {
+        // Initizalize the fitter
+        fitter_t fitter(opts, input, gridder, output);
 
-    // Initizalize the fitter
-    fitter_t fitter(opts, input, gridder, output);
+        // Build/read the grid and fit galaxies
+        if (!gridder.build_and_send(fitter)) {
+            return 1;
+        }
 
-    // Build/read the grid and fit galaxies
-    if (!gridder.build_and_send(fitter)) {
-        return 1;
+        // Compile results
+        fitter.find_best_fits();
+
+        // Write output to disk
+        write_output(opts, input, gridder, output);
+    } else {
+        // Write SEDs if asked
+        gridder.write_seds();
     }
-
-    // Compile results
-    fitter.find_best_fits();
-
-    // Write output to disk
-    write_output(opts, input, gridder, output);
 
     return 0;
 }
