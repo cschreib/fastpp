@@ -435,9 +435,9 @@ id lam trans
 ...
 ```
 
-In this example ```num_pts``` must be the number of data points in the filter response curve. Then for each data point, ```id``` is the identifier of that point (unused), ```lam``` is the wavelength in Angstrom, and ```trans``` is the filter transmission at that wavelength.
+In this example ```num_pts``` must be the number of data points in the filter response curve. Then for each data point, ```id``` is the identifier of that point. This ID is unused by FAST++, but it is recommended to make it start at one and increment by one for each data point (consistency checks may be implemented in the future). Then, ```lam``` is the wavelength in Angstrom, and ```trans``` is the filter transmission at that wavelength.
 
-The overall normalization factor of the filter transmission does not matter, as the filters are always automatically re-normalized to unit integral before being used in the fit. If ```FILTERS_FORMAT=0```, the integral of ```lam*trans``` is normalized to unity, and if ```FILTERS_FORMAT=1``` then the integral of ```lam^2*trans``` is set to unity. This is exactly the same behavior as in FAST and EAzY.
+The overall normalization factor of the filter transmission does not matter, as the filters are automatically re-normalized to unit integral before the fit. If ```FILTERS_FORMAT=0```, the integral of ```lam*trans``` is normalized to unity, and if ```FILTERS_FORMAT=1``` then the integral of ```lam^2*trans``` is set to unity. The flux in a band is then computed as the integral of ```lam*trans*flx``` (for ```FILTERS_FORMAT=0```) or ```lam^2*trans*flx``` (for ```FILTERS_FORMAT=1```), where ```flx``` is the flux density (```Slambda```) in ```erg/s/cm^2/A```. This is exactly the same behavior as in FAST and EAzY.
 
 To add new filters, simply append them to the end of the ```FILTER.RES``` file following the format above. For example, if your filter has 11 data points you would write:
 ```
