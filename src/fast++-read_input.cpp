@@ -1,5 +1,7 @@
 #include "fast++.hpp"
 
+extern const char* fastpp_version;
+
 std::string remove_first_last(std::string val, std::string charlist) {
     if (val.empty()) return val;
     uint_t p0 = 0, n = val.size();
@@ -147,6 +149,10 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         else {
             warning("unknown parameter '", key, "'");
         }
+    }
+
+    if (opts.verbose) {
+        note("this is FAST++ version '", fastpp_version, "'");
     }
 
     if (!opts.output_dir.empty()) {
