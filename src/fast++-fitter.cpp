@@ -344,7 +344,7 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             wsp.sfr.safe[i]  = scale*model.sfr;
         }
 
-        if (!opts.best_from_sim && opts.parallel == parallel_choice::none) {
+        if (opts.parallel == parallel_choice::none) {
             // Compare to best
             // WARNING: read/modify shared resource
             if (output.best_chi2.safe[is]   > wsp.chi2.safe[i]) {
@@ -422,7 +422,7 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
         }
     }
 
-    if (!opts.best_from_sim && opts.parallel != parallel_choice::none) {
+    if (opts.parallel != parallel_choice::none) {
         // Compare to best
         // WARNING: read/modify shared resource
         std::lock_guard<std::mutex> lock(output.fit_result_mutex);
