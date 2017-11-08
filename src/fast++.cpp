@@ -1,7 +1,7 @@
 #include "fast++.hpp"
 #include <phypp/core/main.hpp>
 
-const char* fastpp_version = "1.0";
+const char* fastpp_version = "1.1";
 
 const constexpr uint_t grid_id::z;
 const constexpr uint_t grid_id::av;
