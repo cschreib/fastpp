@@ -31,6 +31,8 @@
     - [Monte Carlo simulations](#monte-carlo-simulations)
     - [Controlling the cache](#controlling-the-cache)
     - [Better treatment of spectra](#better-treatment-of-spectra)
+- [Additional documentation](#additional-documentation)
+    - [Adding new filters](#adding-new-filters)
 
 <!-- /MarkdownTOC -->
 
@@ -262,3 +264,45 @@ Spectrum file (FAST++ format):
 In this example the information in both catalogs in the same. But the new syntax allows more possibilities, for example adaptive binning, or combining spectra from different instruments (or passbands) with large gaps in between or different spectral resolutions. The ```tr``` (transmission) column, which is just a binary "use/don't use" flag becomes useless since the grid does not need to be uniform anymore.
 
 Even when using the old format, the treatment of these spectrum files is also more correct in FAST++. The ```bin``` column correctly combines multiple data points into a single measurement (using inverse variance weighting) rather than simply using the first value of a bin (why this is implemented in this way in FAST-IDL, I do not know). The order of the columns in the file do not matter, while FAST-IDL assumes a fixed format (but does not tell you).
+
+
+# Additional documentation
+
+## Adding new filters
+
+For compatibility reasons, the filter database format is the same as that of EAzY and FAST. This is an ASCII/text file which contains all the filters, listed one after the other. The format must be:
+```
+num_pts [optional extra information...]
+id lam trans
+id lam trans
+id lam trans
+...
+num_pts [optional extra information...]
+id lam trans
+id lam trans
+id lam trans
+...
+```
+
+In this example ```num_pts``` must be the number of data points in the filter response curve. Then for each data point, ```id``` is the identifier of that point. This ID is unused by FAST++, but it is recommended to make it start at one and increment by one for each data point (consistency checks may be implemented in the future). Then, ```lam``` is the wavelength in Angstrom, and ```trans``` is the filter transmission at that wavelength.
+
+The overall normalization factor of the filter transmission does not matter, as the filters are automatically re-normalized to unit integral before the fit. If ```FILTERS_FORMAT=0```, the integral of ```lam*trans``` is normalized to unity, and if ```FILTERS_FORMAT=1``` then the integral of ```lam^2*trans``` is set to unity. The flux in a band is then computed as the integral of ```lam*trans*flx``` (for ```FILTERS_FORMAT=0```) or ```lam^2*trans*flx``` (for ```FILTERS_FORMAT=1```), where ```flx``` is the flux density (```Slambda```) in ```erg/s/cm^2/A```. This is exactly the same behavior as in FAST and EAzY.
+
+To add new filters, simply append them to the end of the ```FILTER.RES``` file following the format above. For example, if your filter has 11 data points you would write:
+```
+...
+11 my custom favorite filter (lambda0=5000 A)
+1    4000.0   0.00
+2    4200.0   0.10
+3    4400.0   0.20
+4    4600.0   0.40
+5    4800.0   0.50
+6    5000.0   0.55
+7    5200.0   0.60
+8    5400.0   0.40
+9    5600.0   0.20
+10   5800.0   0.10
+11   6000.0   0.00
+```
+
+The wavelength step of the tabulated filter does not need to be constant, and the filter is assumed to have zero transmission below the minimum and above the maximum tabulated wavelength.
