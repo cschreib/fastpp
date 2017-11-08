@@ -480,45 +480,61 @@ bool read_filters(const options_t& opts, input_state_t& state) {
         if (line.empty()) continue;
 
         vec1s spl = split_any_of(line, " \t\n\r");
-        if (spl.size() > 3) {
-            // Start of a new filter
+        uint_t npts;
+        if (!from_string(spl[0], npts)) {
+            warning("could not understand l.", l, " in ", opts.filters_res);
+            continue;
+        }
 
-            // Save the previous one, if any
-            if (!filt.wl.empty()) {
-                state.filters.push_back(filt);
+        // Start of a new filter
 
-                // Cleanup for next filter
-                filt.wl.clear();
-                filt.tr.clear();
-                filt.id = npos;
+        // Save the previous one, if any
+        if (!filt.wl.empty()) {
+            state.filters.push_back(filt);
+
+            // Cleanup for next filter
+            filt.wl.clear();
+            filt.tr.clear();
+            filt.id = npos;
+        }
+
+        ++ntotfilt;
+        filt.id = ntotfilt;
+
+        // Determine if this filter is used in the catalog
+        vec1u idused = where(state.no_filt == filt.id);
+        if (!idused.empty()) {
+            // It is there, keep the ID aside for later sorting
+            append(idcat, idused);
+            append(idfil, replicate(state.filters.size(), idused.size()));
+            doread = true;
+        } else {
+            // If not, discard its values
+            doread = false;
+        }
+
+        uint_t lcnt = 0;
+        while (lcnt < npts && std::getline(in, line)) {
+            ++l;
+
+            if (line.empty()) continue;
+
+            if (doread) {
+                // Reading the filter response line by line
+                spl = split_any_of(line, " \t\n\r");
+                float wl, tr;
+                if (!from_string(spl[1], wl) || !from_string(spl[2], tr)) {
+                    error("could not parse values from line ", l);
+                    note("reading '", opts.filters_res, "'");
+                    return false;
+                }
+
+                filt.wl.push_back(wl);
+                filt.tr.push_back(tr);
             }
 
-            ++ntotfilt;
-            filt.id = ntotfilt;
 
-            // Determine if this filter is used in the catalog
-            vec1u idused = where(state.no_filt == filt.id);
-            if (!idused.empty()) {
-                // It is there, keep the ID aside for later sorting
-                append(idcat, idused);
-                append(idfil, replicate(state.filters.size(), idused.size()));
-                doread = true;
-            } else {
-                // If not, discard its values
-                doread = false;
-            }
-
-        } else if (doread && spl.size() == 3) {
-            // Reading the filter response
-            float wl, tr;
-            if (!from_string(spl[1], wl) || !from_string(spl[2], tr)) {
-                error("could not parse values from line ", l);
-                note("reading '", opts.filters_res, "'");
-                return false;
-            }
-
-            filt.wl.push_back(wl);
-            filt.tr.push_back(tr);
+            ++lcnt;
         }
     }
 
