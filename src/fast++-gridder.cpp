@@ -677,7 +677,7 @@ bool gridder_t::write_seds() const {
     if (opts.make_seds.empty()) return true;
 
     if (opts.verbose) {
-        note("writing list of SEDs to "+opts.output_dir+"seds directory");
+        note("writing list of SEDs to "+opts.output_dir+"seds directory...");
     }
 
     std::string odir = opts.output_dir+"seds/";
