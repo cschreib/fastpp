@@ -1,0 +1,10 @@
+example/bc03*
+example/best_fits*
+bin/*
+build/*
+perf/*
+simulation/*
+test/*
+external/*
+share/libraries/ised*
+share/libraries/ssp*
