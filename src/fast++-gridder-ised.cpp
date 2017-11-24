@@ -298,6 +298,11 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
     float& model_ssfr = model.props[prop_id::ssfr];
     float& model_a2t = model.props[prop_id::custom+0];
 
+    if (opts.parallel == parallel_choice::generators) {
+        warning("parallel execution in 'generators' mode is not yet supported for "
+            "pre-gridded libraries");
+    }
+
     auto pg = progress_start(nmodel);
     for (uint_t im : range(output_metal))
     for (uint_t it : range(output_tau)) {

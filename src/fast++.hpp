@@ -22,7 +22,7 @@ extern const char* fastpp_version;
 // ------------------
 
 enum class parallel_choice {
-    none, sources, models
+    none, sources, models, generators
 };
 
 enum class sfh_type {
@@ -255,6 +255,10 @@ struct gridder_t {
     vec1d lum2fl;                    // [nz]
     vec1d auniv;                     // [nz]
     uint_t nparam = 0, nprop = 0, nfreeparam = 0, nmodel = 0, ncustom = 0;
+
+    // For thread safety
+    std::mutex progress_mutex;
+    std::mutex sfh_mutex;
 
     explicit gridder_t(const options_t& opts, const input_state_t& input, output_state_t& output);
 

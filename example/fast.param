@@ -30,16 +30,21 @@
 # o PARALLEL: sets which part of the code should be executed in parallel.
 #    - 'none': (default) no parallelization, the code will execute on
 #      one CPU.
+#    - 'generators': each model will be generated and adjusted to the
+#      photometry in a separate thread. Good when you have a huge number
+#      of models and very few galaxies to fit. Will fallback to 'models'
+#      if a model cache exists.
 #    - 'models': each model will be adjusted to the photometry in a
-#      different thread. Good when you have lots of models and few
-#      galaxies to fit.
+#      separate thread, but models are generated in the main thread only.
+#      Good when you have many models and few galaxies to fit, or when
+#      the models were already generated and cached on the disk.
 #    - 'sources': the input catalog will be split into equal parts, and
-#      each part will be analyzed in a different thread. Good when you
+#      each part will be analyzed in a separate thread. Good when you
 #      have few models but lots of galaxies.
 #
 # o N_THREAD: sets the maximum number of threads the program can use at
 #   once. This should be close to (or equal to) the number of available
-#   cores on your CPU, or (one minus) the number of nodes available on a
+#   cores on your CPU, or one less than the number of nodes available on a
 #   cluster. Setting this to zero will disable parallelization.
 #
 # o MAX_QUEUED_FITS: sets the maximum number of fits that are queued and
@@ -52,7 +57,7 @@
 #-----------------------------------------------------------------------
 
 VERBOSE = 1                 # 0 / 1
-PARALLEL = 'none'           # 'none', 'models', or 'sources'
+PARALLEL = 'none'           # 'none', 'generators', 'models', or 'sources'
 N_THREAD = 0
 MAX_QUEUED_FITS = 1000
 

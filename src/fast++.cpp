@@ -37,6 +37,15 @@ int phypp_main(int argc, char* argv[]) {
     }
 
     if (opts.make_seds.empty()) {
+        if (gridder.read_from_cache && opts.parallel == parallel_choice::generators &&
+            opts.n_thread > 0) {
+            if (opts.verbose) {
+                note("using cache, switched parallel execution from 'generators' to 'models'");
+            }
+
+            opts.parallel = parallel_choice::models;
+        }
+
         // Initizalize the fitter
         fitter_t fitter(opts, input, gridder, output);
 

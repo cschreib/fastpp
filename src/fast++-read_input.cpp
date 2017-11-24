@@ -33,9 +33,11 @@ bool parse_value_impl(std::string val, parallel_choice& out) {
         out = parallel_choice::sources;
     } else if (val == "models") {
         out = parallel_choice::models;
+    } else if (val == "generators") {
+        out = parallel_choice::generators;
     } else {
         error("unknown parallelization choice '", val, "'");
-        error("must be one of 'none', sources' or 'models'");
+        error("must be one of 'none', sources', 'models' or 'generators'");
         return false;
     }
     return true;

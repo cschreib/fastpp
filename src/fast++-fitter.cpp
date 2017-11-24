@@ -249,9 +249,7 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
     }
 
     // Start threads if using parallel execution
-    if (opts.parallel == parallel_choice::none) {
-        // nothing to do
-    } else if (opts.parallel == parallel_choice::models) {
+    if (opts.parallel == parallel_choice::models) {
         workers_multi_model = std::unique_ptr<workers_multi_model_t>(
             new workers_multi_model_t(*this)
         );
@@ -653,12 +651,12 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 }
 
 void fitter_t::fit(const model_t& model) {
-    if (opts.parallel == parallel_choice::none) {
-        fit_galaxies(model, 0, input.id.size());
-    } else if (opts.parallel == parallel_choice::sources) {
+    if (opts.parallel == parallel_choice::sources) {
         workers_multi_source->process(model);
     } else if (opts.parallel == parallel_choice::models) {
         workers_multi_model->process(model);
+    } else {
+        fit_galaxies(model, 0, input.id.size());
     }
 }
 

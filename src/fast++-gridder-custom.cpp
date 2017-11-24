@@ -277,10 +277,16 @@ void integrate_ssp(const vec1d& age, const vec1d& sfr, const vec1d& ssp_age, F&&
     }
 }
 
-bool gridder_t::build_and_send_custom(fitter_t& fitter) {
+struct model_id_pair {
     model_t model;
-    model.flux.resize(input.lambda.size());
-    model.props.resize(nprop);
+    vec1u idm;
+};
+
+bool gridder_t::build_and_send_custom(fitter_t& fitter) {
+    model_id_pair m;
+    m.model.flux.resize(input.lambda.size());
+    m.model.props.resize(nprop);
+    m.idm.resize(nparam);
 
     ssp_bc03 ssp;
 
@@ -288,19 +294,14 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
     const vec1f& output_age = output.grid[grid_id::age];
     const vec1f& output_z = output.grid[grid_id::z];
 
-    float& model_mass = model.props[prop_id::mass];
-    float& model_mform = model.props[prop_id::mform];
-    float& model_sfr = model.props[prop_id::sfr];
-    float& model_ssfr = model.props[prop_id::ssfr];
-
-    double dt = opts.custom_sfh_step;
-    vec1d ctime = reverse(dt*dindgen(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
+    const double dt = opts.custom_sfh_step;
+    const vec1d ctime = reverse(dt*dindgen(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
     // NB: age array is sorted from largest to smallest
 
     auto pg = progress_start(nmodel);
     for (uint_t im : range(output_metal)) {
-        vec1u idm(nparam);
-        idm[grid_id::metal] = im;
+        m.idm[_] = 0;
+        m.idm[grid_id::metal] = im;
 
         // Load SSP
         std::string filename = get_library_file_ssp(im);
@@ -312,47 +313,82 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
         vec1d dust_law = build_dust_law(ssp.lambda);
         vec2d igm_abs = build_igm_absorption(output_z, ssp.lambda);
 
+        // Function to build a model
+        auto do_model = [&](model_id_pair& tm) {
+            float& model_mass = tm.model.props[prop_id::mass];
+            float& model_mform = tm.model.props[prop_id::mform];
+            float& model_sfr = tm.model.props[prop_id::sfr];
+            float& model_ssfr = tm.model.props[prop_id::ssfr];
+            uint_t ia = tm.idm[grid_id::age];
+
+            // Build analytic SFH
+            vec1d sfh;
+            if (opts.parallel == parallel_choice::generators) {
+                std::lock_guard<std::mutex> lock(sfh_mutex);
+                evaluate_sfh_custom(tm.idm, ctime, sfh);
+            } else {
+                evaluate_sfh_custom(tm.idm, ctime, sfh);
+            }
+
+            // Integrate SFH on local time grid
+            vec1d tpl_flux(ssp.lambda.size());
+            double tmodel_mass = 0.0;
+            double tformed_mass = 0.0;
+            vec1d ltime = e10(output_age[ia]) - ctime;
+            integrate_ssp(ltime, sfh, ssp.age, [&](uint_t it, double formed) {
+                tmodel_mass += formed*ssp.mass.safe[it];
+                tformed_mass += formed*ssp.mass.safe[0];
+                tpl_flux += formed*ssp.sed.safe(it,_);
+            });
+
+            model_mass = tmodel_mass;
+            model_mform = tformed_mass;
+
+            if (opts.sfr_avg > 0) {
+                // Average SFR over the past X yr
+                double t1 = min(opts.sfr_avg, ltime.back());
+                model_sfr = integrate(ltime, sfh, 0.0, t1)/opts.sfr_avg;
+            } else {
+                // Use instantaneous SFR
+                model_sfr = interpolate(sfh, ltime, 0.0);
+            }
+
+            model_ssfr = model_sfr/model_mass;
+
+            // The rest is not specific to the SFH, use generic code
+            build_and_send_impl(fitter, pg, ssp.lambda, tpl_flux, dust_law, igm_abs,
+                output_age[ia], tm.idm, tm.model);
+        };
+
+        thread::worker_pool<model_id_pair> pool;
+        if (opts.parallel == parallel_choice::generators) {
+            pool.start(opts.n_thread, do_model);
+        }
+
+        // Iterate over all models
         for (uint_t ic = 0; ic < ncustom; ++ic) {
             for (uint_t ia : range(output_age)) {
-                idm[grid_id::age] = ia;
+                m.idm[grid_id::age] = ia;
 
-                // Build analytic SFH
-                vec1d sfh;
-                evaluate_sfh_custom(idm, ctime, sfh);
+                if (opts.parallel == parallel_choice::generators) {
+                    // Parallel
+                    while (opts.max_queued_fits > 0 &&
+                        pool.remaining() > opts.max_queued_fits) {
+                        thread::sleep_for(1e-6);
+                    }
 
-                // Integrate SFH on local time grid
-                vec1d tpl_flux(ssp.lambda.size());
-                double tmodel_mass = 0.0;
-                double tformed_mass = 0.0;
-                vec1d ltime = e10(output_age[ia]) - ctime;
-                integrate_ssp(ltime, sfh, ssp.age, [&](uint_t it, double formed) {
-                    tmodel_mass += formed*ssp.mass.safe[it];
-                    tformed_mass += formed*ssp.mass.safe[0];
-                    tpl_flux += formed*ssp.sed.safe(it,_);
-                });
-
-                model_mass = tmodel_mass;
-                model_mform = tformed_mass;
-
-                if (opts.sfr_avg > 0) {
-                    // Average SFR over the past X yr
-                    double t1 = min(opts.sfr_avg, ltime.back());
-                    model_sfr = integrate(ltime, sfh, 0.0, t1)/opts.sfr_avg;
+                    pool.process(m);
                 } else {
-                    // Use instantaneous SFR
-                    model_sfr = interpolate(sfh, ltime, 0.0);
+                    // Single threaded
+                    do_model(m);
                 }
-
-                model_ssfr = model_sfr/model_mass;
-
-                // The rest is not specific to the SFH, use generic code
-                build_and_send_impl(fitter, pg, ssp.lambda, tpl_flux, dust_law, igm_abs,
-                    output_age[ia], idm, model);
             }
 
             // Go to next model
-            increment_index_list(idm, grid_dims);
+            increment_index_list(m.idm, grid_dims);
         }
+
+        pool.join();
     }
 
     return true;
