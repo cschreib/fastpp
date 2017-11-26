@@ -275,7 +275,7 @@ struct gridder_t {
 
 private :
     void build_and_send_impl(fitter_t& fitter, progress_t& pg,
-        const vec1d& lam, const vec1d& tpl_flux, const vec1d& dust_law, const vec2d& igm_abs,
+        const vec1d& lam, const vec1d& tpl_flux, const vec2d& dust_law, const vec2d& igm_abs,
         float lage, vec1u& idm, model_t& model);
 
     bool build_and_send_ised(fitter_t& fitter);
@@ -292,7 +292,7 @@ private :
     std::string get_library_file_ised(uint_t im, uint_t it) const;
     std::string get_library_file_ssp(uint_t im) const;
 
-    vec1d build_dust_law(const vec1f& lambda) const;
+    vec2d build_dust_law(const vec1f& av, const vec1f& lambda) const;
     vec2d build_igm_absorption(const vec1f& z, const vec1f& lambda) const;
 
     bool get_age_bounds(const vec1f& ised_age, float nage, std::array<uint_t,2>& p, double& x) const;

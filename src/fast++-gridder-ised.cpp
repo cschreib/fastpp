@@ -291,6 +291,7 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
     const vec1f& output_tau = output.grid[grid_id::custom+0];
     const vec1f& output_age = output.grid[grid_id::age];
     const vec1f& output_z = output.grid[grid_id::z];
+    const vec1f& output_av = output.grid[grid_id::av];
 
     float& model_mass = model.props[prop_id::mass];
     float& model_mform = model.props[prop_id::mform];
@@ -315,8 +316,8 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
             return false;
         }
 
-        // Pre-compute dust law & IGM absorption (they don't change with age)
-        vec1d dust_law = build_dust_law(ised.lambda);
+        // Pre-compute dust law & IGM absorption (they don't change with SFH)
+        vec2d dust_law = build_dust_law(output_av, ised.lambda);
         vec2d igm_abs = build_igm_absorption(output_z, ised.lambda);
 
         for (uint_t ia : range(output_age)) {

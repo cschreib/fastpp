@@ -424,16 +424,22 @@ namespace igm {
     }
 }
 
-vec1d gridder_t::build_dust_law(const vec1f& lambda) const {
-    vec1d dust_law;
+vec2d gridder_t::build_dust_law(const vec1f& av, const vec1f& lambda) const {
+    vec2d dust_law(av.size(), lambda.size());
+
+    vec1d tdust_law;
     if (opts.dust_law == "calzetti") {
-        dust_law = dust::calzetti2000(lambda);
+        tdust_law = dust::calzetti2000(lambda);
     } else if (opts.dust_law == "mw") {
-        dust_law = dust::milky_way(lambda);
+        tdust_law = dust::milky_way(lambda);
     } else if (opts.dust_law == "noll") {
-        dust_law = dust::noll2009(lambda, opts.dust_noll_eb, opts.dust_noll_delta);
+        tdust_law = dust::noll2009(lambda, opts.dust_noll_eb, opts.dust_noll_delta);
     } else if (opts.dust_law == "kc") {
-        dust_law = dust::noll2009(lambda, 1.0, -0.1);
+        tdust_law = dust::noll2009(lambda, 1.0, -0.1);
+    }
+
+    for (uint_t ia : range(av)) {
+        dust_law(ia,_) = e10(-0.4*av.safe[ia]*tdust_law);
     }
 
     return dust_law;
@@ -448,7 +454,7 @@ vec2d gridder_t::build_igm_absorption(const vec1f& z, const vec1f& lambda) const
 }
 
 void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
-    const vec1d& lam, const vec1d& tpl_flux, const vec1d& dust_law, const vec2d& igm_abs,
+    const vec1d& lam, const vec1d& tpl_flux, const vec2d& dust_law, const vec2d& igm_abs,
     float lage, vec1u& idm, model_t& model) {
 
     vec1f& output_av = output.grid[grid_id::av];
@@ -472,7 +478,7 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
         vec1f tpl_att_flux = tpl_flux;
         if (output_av[id] > 0) {
             for (uint_t il : range(tpl_att_flux)) {
-                tpl_att_flux.safe[il] *= e10(-0.4*output_av[id]*dust_law.safe[il]);
+                tpl_att_flux.safe[il] *= dust_law.safe(id,il);
             }
 
             // Compute absorbed energy
@@ -629,10 +635,10 @@ bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
 
     // Apply dust reddening
     if (av > 0 && !nodust) {
-        vec1d dust_law = build_dust_law(lam);
+        vec2d dust_law = build_dust_law({av}, lam);
 
         for (uint_t il : range(flux)) {
-            flux.safe[il] *= e10(-0.4*av*dust_law.safe[il]);
+            flux.safe[il] *= dust_law.safe(0,il);
         }
     }
 

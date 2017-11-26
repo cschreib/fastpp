@@ -293,6 +293,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
     const vec1f& output_metal = output.grid[grid_id::metal];
     const vec1f& output_age = output.grid[grid_id::age];
     const vec1f& output_z = output.grid[grid_id::z];
+    const vec1f& output_av = output.grid[grid_id::av];
 
     const double dt = opts.custom_sfh_step;
     const vec1d ctime = reverse(dt*dindgen(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
@@ -309,8 +310,8 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
             return false;
         }
 
-        // Pre-compute dust law & IGM absorption (they don't change with age)
-        vec1d dust_law = build_dust_law(ssp.lambda);
+        // Pre-compute dust law & IGM absorption (they don't change with SFH)
+        vec2d dust_law = build_dust_law(output_av, ssp.lambda);
         vec2d igm_abs = build_igm_absorption(output_z, ssp.lambda);
 
         // Function to build a model
