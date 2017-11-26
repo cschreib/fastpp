@@ -280,10 +280,10 @@ bool gridder_t::get_age_bounds(const vec1f& ised_age, float nage,
 }
 
 bool gridder_t::build_and_send_ised(fitter_t& fitter) {
-    model_t model;
-    model.flux.resize(input.lambda.size());
-    model.props.resize(nprop);
-    vec1u idm(nparam);
+    model_id_pair m;
+    m.model.flux.resize(input.lambda.size());
+    m.model.props.resize(nprop);
+    m.idm.resize(nparam);
 
     galaxev_ised ised;
 
@@ -293,22 +293,11 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
     const vec1f& output_z = output.grid[grid_id::z];
     const vec1f& output_av = output.grid[grid_id::av];
 
-    float& model_mass = model.props[prop_id::mass];
-    float& model_mform = model.props[prop_id::mform];
-    float& model_sfr = model.props[prop_id::sfr];
-    float& model_ssfr = model.props[prop_id::ssfr];
-    float& model_a2t = model.props[prop_id::custom+0];
-
-    if (opts.parallel == parallel_choice::generators) {
-        warning("parallel execution in 'generators' mode is not yet supported for "
-            "pre-gridded libraries");
-    }
-
     auto pg = progress_start(nmodel);
     for (uint_t im : range(output_metal))
     for (uint_t it : range(output_tau)) {
-        idm[grid_id::metal] = im;
-        idm[grid_id::custom] = it;
+        m.idm[grid_id::metal] = im;
+        m.idm[grid_id::custom] = it;
 
         // Load CSP
         std::string filename = get_library_file_ised(im, it);
@@ -316,12 +305,26 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
             return false;
         }
 
+        // Make sure the requested age is covered by the library
+        std::array<uint_t,2> p;
+        double x;
+        if (!get_age_bounds(ised.age, e10(min(output_age)), p, x) ||
+            !get_age_bounds(ised.age, e10(max(output_age)), p, x)) {
+            return false;
+        }
+
         // Pre-compute dust law & IGM absorption (they don't change with SFH)
         vec2d dust_law = build_dust_law(output_av, ised.lambda);
         vec2d igm_abs = build_igm_absorption(output_z, ised.lambda);
 
-        for (uint_t ia : range(output_age)) {
-            idm[grid_id::age] = ia;
+        // Function to build a model
+        auto do_model = [&](model_id_pair& tm) {
+            float& model_mass = tm.model.props[prop_id::mass];
+            float& model_mform = tm.model.props[prop_id::mform];
+            float& model_sfr = tm.model.props[prop_id::sfr];
+            float& model_ssfr = tm.model.props[prop_id::ssfr];
+            float& model_a2t = tm.model.props[prop_id::custom+0];
+            uint_t ia = tm.idm[grid_id::age];
 
             // Interpolate the galaxev grid at the requested age
             vec1f tpl_flux;
@@ -329,9 +332,7 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
 
             std::array<uint_t,2> p;
             double x;
-            if (!get_age_bounds(ised.age, nage, p, x)) {
-                return false;
-            }
+            get_age_bounds(ised.age, nage, p, x);
 
             tpl_flux = (1.0 - x)*ised.fluxes.safe(p[0],_) + x*ised.fluxes.safe(p[1],_);
             model_mass = (1.0 - x)*ised.mass.safe[p[0]] + x*ised.mass.safe[p[1]];
@@ -352,7 +353,38 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
 
             // The rest is not specific to the SFH, use generic code
             build_and_send_impl(fitter, pg, ised.lambda, tpl_flux, dust_law, igm_abs,
-                output_age[ia], idm, model);
+                output_age[ia], tm.idm, tm.model);
+        };
+
+        thread::worker_pool<model_id_pair> pool;
+        if (opts.parallel == parallel_choice::generators) {
+            pool.start(opts.n_thread, do_model);
+        }
+
+        // Iterate over all models
+        for (uint_t ia : range(output_age)) {
+            m.idm[grid_id::age] = ia;
+
+            if (opts.parallel == parallel_choice::generators) {
+                // Parallel
+                while (opts.max_queued_fits > 0 &&
+                    pool.remaining() > opts.max_queued_fits) {
+                    thread::sleep_for(1e-6);
+                }
+
+                pool.process(m);
+            } else {
+                // Single threaded
+                do_model(m);
+            }
+        }
+
+        if (opts.parallel == parallel_choice::generators) {
+            while (pool.remaining() != 0) {
+                thread::sleep_for(1e-6);
+            }
+
+            pool.join();
         }
     }
 
