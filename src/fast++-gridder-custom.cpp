@@ -277,11 +277,6 @@ void integrate_ssp(const vec1d& age, const vec1d& sfr, const vec1d& ssp_age, F&&
     }
 }
 
-struct model_id_pair {
-    model_t model;
-    vec1u idm;
-};
-
 bool gridder_t::build_and_send_custom(fitter_t& fitter) {
     model_id_pair m;
     m.model.flux.resize(input.lambda.size());
@@ -389,7 +384,13 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
             increment_index_list(m.idm, grid_dims);
         }
 
-        pool.join();
+        if (opts.parallel == parallel_choice::generators) {
+            while (pool.remaining() != 0) {
+                thread::sleep_for(1e-6);
+            }
+
+            pool.join();
+        }
     }
 
     return true;

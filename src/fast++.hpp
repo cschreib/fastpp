@@ -218,6 +218,12 @@ struct model_t {
     uint_t igrid = npos;
 };
 
+// Structure holding a model and its associated grid ID
+struct model_id_pair {
+    model_t model;
+    vec1u idm;
+};
+
 struct fitter_t;
 struct te_expr;
 struct te_variable;
