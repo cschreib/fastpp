@@ -539,10 +539,10 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
             if (opts.parallel == parallel_choice::generators) {
                 std::lock_guard<std::mutex> lock(progress_mutex);
                 cache.write_model(model);
-                if (opts.verbose) progress(pg, 131);
+                if (opts.verbose) progress_tick(pg, 0.5);
             } else {
                 cache.write_model(model);
-                if (opts.verbose) progress(pg, 131);
+                if (opts.verbose) progress_tick(pg, 0.5);
             }
         }
     }
