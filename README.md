@@ -85,10 +85,10 @@ If you want to use arbitrary star formation histories beyond what the original F
 * 3.4 TB free hard drive disk space
 * 12 core 64bit Intel Xeon CPU (3.5 GHz)
 * Fedora 26
-* C++ compiler: gcc 6.3.1 (-O3 -std=c++11)
+* C++ compiler: gcc 6.4.1 (-O3 -std=c++11)
 * IDL: 8.4
-* When run multithreaded, FAST++ is set to ```PARALLEL='models'```, ```MAX_QUEUED_FITS=1000``` and ```N_THREAD=8```.
-* These benchmarks were ran with FAST++ v1.0.
+* When run multithreaded, FAST++ is set to ```PARALLEL='generators'```, ```MAX_QUEUED_FITS=1000``` and ```N_THREAD=8```.
+* These benchmarks were executed with FAST++ v1.2.
 * Timings and memory usage were recorded with ```/usr/bin/time -v```
 
 ## Run 1: a catalog of galaxies with broadband fluxes
@@ -115,25 +115,25 @@ Both FAST-IDL and FAST++ were ran from the same parameter file to fit a catalog 
 
 For each run, execution times are given in seconds, as measured by ```/usr/bin/time```. This includes all steps of the computation, including the startup time of IDL (3 seconds).
 
-| Run name                    | FAST-IDL      | FAST++ (single thread)       | FAST++ (8 threads)          |
-| --------------------------- | ------------- | ---------------------------- | --------------------------- |
-| no_sim, no_cache            | 117           | 28.4 (**4.1** times faster)  | 22.0 (**5.3** times faster) |
-| no_sim, with_cache          | 99.4          | 14.8 (**6.7** times faster)  | 3.6 (**28** times faster)   |
-| with_sim, with_cache        | 1992          | 278.7 (**7.1** times faster)   | 136.7 (**15** times faster)  |
+| Run name                    | FAST-IDL      | FAST++ (single thread)       | FAST++ (8 threads)           |
+| --------------------------- | ------------- | ---------------------------- | ---------------------------- |
+|            no_sim, no_cache |           131 |    23.1 (**5.7** times less) |      5.5 (**24** times less) |
+|          no_sim, with_cache |           106 |    14.4 (**7.3** times less) |      3.5 (**30** times less) |
+|        with_sim, with_cache |          3031 |      303 (**10** times less) |      131 (**23** times less) |
 
-FAST++ is from **4** to **7** times faster in a single thread, and **5** to **30** times faster with multi-threading enabled.
+FAST++ is from **6** to **10** times faster, and **23** to **30** times faster with multi-threading enabled.
 
 ### Memory consumption
 
 For each run, peak memory consumption of the process is given in MB, as measured by ```/usr/bin/time```. For reference, a fresh IDL session uses 16 MB of memory.
 
-| Run name                    | FAST-IDL      | FAST++ (single thread)    | FAST++ (8 threads)            |
-| --------------------------- | ------------- | ------------------------- | ----------------------------- |
-| no_sim, no_cache            | 195           | 20.8 (**9.4** times less) | 22.8 (**8.6** times less)     |
-| no_sim, with_cache          | 43.6          | 7.6 (**5.8** times less)  | 9.9 (**4.4** times less)     |
-| with_sim, with_cache        | 48.2          | 12.7 (**3.8** times less) | 15.0 (**3.2** times less)     |
+| Run name                    | FAST-IDL      | FAST++ (single thread)       | FAST++ (8 threads)           |
+| --------------------------- | ------------- | ---------------------------- | ---------------------------- |
+|            no_sim, no_cache |           191 |    21.7 (**8.8** times less) |    24.6 (**7.7** times less) |
+|          no_sim, with_cache |          41.9 |     7.5 (**5.6** times less) |     9.9 (**4.2** times less) |
+|        with_sim, with_cache |          46.1 |    12.5 (**3.7** times less) |      15 (**3.1** times less) |
 
-FAST++ consumes from **3** to **10** times less memory.
+FAST++ consumes from **3** to **9** times less memory.
 
 
 ## Run 2: one galaxy with a high resolution spectrum
@@ -154,23 +154,23 @@ This run is meant to test the memory consumption using a large model flux grid. 
 
 ### Recorded times
 
-| Run name                    | FAST-IDL      | FAST++ (single thread)       | FAST++ (8 threads)          |
-| --------------------------- | ------------- | ---------------------------- | --------------------------- |
-| no_sim, no_cache            | 157           | 76.2 (**2.1** times faster)  | 122 (**1.3** times faster)  |
-| no_sim, with_cache          | 8.3           | 1.8 (**4.6** times faster)   | 0.6 (**14** times faster)   |
-| with_sim, with_cache        | 5538          | 309 (**18** times faster)  | 64.7 (**86** times faster) |
+| Run name                    | FAST-IDL      | FAST++ (single thread)       | FAST++ (8 threads)           |
+| --------------------------- | ------------- | ---------------------------- | ---------------------------- |
+|            no_sim, no_cache |           160 |    39.2 (**4.1** times less) |      9.7 (**17** times less) |
+|          no_sim, with_cache |           8.3 |     1.7 (**4.9** times less) |      0.5 (**18** times less) |
+|        with_sim, with_cache |          5538 |      343 (**16** times less) |     87.9 (**63** times less) |
 
-FAST++ is from **2** to **20** times faster in a single thread, and **1.3** to **90** times faster with multi-threading enabled. When the cache is not created yet, the multi-threaded version is actually *slower* than the single-threaded version because the main performance bottleneck is generating models, rather than fitting them. When a thread is given a model to fit, it finishes to do so before the gridder is able to provide the next model to fit, and the thread thus has to wait. If the cache is already created (and/or if Monte Carlo simulations are enabled), the fitting stage becomes the most time-consuming process, and the advantage of the multi-threaded version becomes clear.
+FAST++ is from **4** to **16** times faster, and **17** to **63** times faster with multi-threading enabled.
 
 ### Memory consumption
 
-| Run name                    | FAST-IDL      | FAST++ (single thread)    | FAST++ (8 threads)            |
-| --------------------------- | ------------- | ------------------------- | ----------------------------- |
-| no_sim, no_cache            | 3575          | 14.8 (**241** times less) | 17.5 (**204** times less)     |
-| no_sim, with_cache          | 3530          | 7.9 (**447** times less)  | 13.1 (**269** times less)     |
-| with_sim, with_cache        | 3539          | 13.1 (**270** times less) | 18.9 (**190** times less)     |
+| Run name                    | FAST-IDL      | FAST++ (single thread)       | FAST++ (8 threads)           |
+| --------------------------- | ------------- | ---------------------------- | ---------------------------- |
+|            no_sim, no_cache |          3575 |    15.6 (**230** times less) |    19.3 (**186** times less) |
+|          no_sim, with_cache |          3530 |       8 (**443** times less) |    12.3 (**286** times less) |
+|        with_sim, with_cache |          3539 |    13.3 (**266** times less) |    19.7 (**180** times less) |
 
-FAST++ consumes from **200** to **500** times less memory. The amount required is actually almost the same as for the other run, about 10 to 30 MB, while FAST-IDL requires 3.5 GB! If we had asked for a finer grid, FAST-IDL would not have been able to run on this machine.
+FAST++ consumes from **200** to **450** times less memory. The amount required is actually almost the same as for the other run, about 10 to 30 MB, while FAST-IDL requires 3.5 GB! If we had asked for a finer grid, FAST-IDL would not have been able to run on this machine.
 
 # What is the trick?
 ## Why is it faster?
