@@ -305,6 +305,11 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
             return false;
         }
 
+        // Apply velocity dispersion
+        if (is_finite(opts.apply_vdisp)) {
+            ssp.sed = convolve_vdisp(ssp.lambda, ssp.sed, opts.apply_vdisp);
+        }
+
         // Pre-compute dust law & IGM absorption (they don't change with SFH)
         vec2d dust_law = build_dust_law(output_av, ssp.lambda);
         vec2d igm_abs = build_igm_absorption(output_z, ssp.lambda);

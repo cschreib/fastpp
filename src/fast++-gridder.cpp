@@ -225,7 +225,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
 
         std::string grid_hash = hash(output.grid[_-(grid_id::custom-1)], output.param_names,
             input.lambda, opts.dust_noll_eb, opts.dust_noll_delta, opts.sfr_avg, opts.lambda_ion,
-            opts.cosmo.H0, opts.cosmo.wm, opts.cosmo.wL);
+            opts.cosmo.H0, opts.cosmo.wm, opts.cosmo.wL, opts.apply_vdisp);
 
         // Additional grid parameter
         switch (opts.sfh) {
@@ -549,6 +549,10 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
 }
 
 bool gridder_t::build_and_send(fitter_t& fitter) {
+    if (opts.verbose) {
+        note("start fitting...");
+    }
+
     if (read_from_cache) {
         model_t model;
         model.flux.resize(input.lambda.size());
@@ -633,6 +637,11 @@ bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
         return false;
     }
 
+    // Apply velocity dispersion
+    if (is_finite(opts.apply_vdisp)) {
+        flux = flatten(convolve_vdisp(lam, reform(flux, 1, flux.size()), opts.apply_vdisp));
+    }
+
     // Apply dust reddening
     if (av > 0 && !nodust) {
         vec2d dust_law = build_dust_law({av}, lam);
@@ -683,6 +692,36 @@ bool gridder_t::get_sfh(uint_t igrid, const vec1d& t, vec1d& sfh) const {
     }
 }
 
+vec2d gridder_t::convolve_vdisp(const vec1d& lam, const vec2d& osed, double vdisp) const {
+    vec2d sed(osed.dims);
+
+    const uint_t nlam = lam.size();
+    const double max_sigma = 5.0;
+    for (uint_t l : range(lam)) {
+        // Get sigma in wavelength units
+        double sigma = lam.safe[l]*(vdisp/2.99792e5);
+
+        // Find bounds
+        uint_t i0 = l, i1 = l;
+        double l0 = lam.safe[l] - max_sigma*sigma;
+        while (i0 > 1 && lam.safe[i0] > l0) --i0;
+        double l1 = lam.safe[l] + max_sigma*sigma;
+        while (i1 < nlam-2 && lam.safe[i1] < l1) ++i1;
+
+        // Integrate
+        for (uint_t tl = i0; tl <= i1; ++tl) {
+            l0 = 0.5*(lam.safe[tl] + lam.safe[tl-1]);
+            l1 = 0.5*(lam.safe[tl] + lam.safe[tl+1]);
+
+            double k = (l1 - l0)*integrate_gauss(l0, l1, lam.safe[l], sigma);
+            for (uint_t s : range(osed.dims[0])) {
+                sed.safe(s,l) += osed.safe(s,tl)*k;
+            }
+        }
+    }
+
+    return sed;
+}
 
 bool gridder_t::write_seds() const {
     if (opts.make_seds.empty()) return true;

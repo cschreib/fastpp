@@ -1,4 +1,4 @@
-#... FAST++ V1.0: parameter file .......................................
+#... FAST++ V1.2: parameter file .......................................
 
 
 #--- GENERAL INFORMATION -----------------------------------------------
@@ -56,9 +56,9 @@
 #
 #-----------------------------------------------------------------------
 
-VERBOSE = 1                 # 0 / 1
-PARALLEL = 'none'           # 'none', 'generators', 'models', or 'sources'
-N_THREAD = 0
+VERBOSE         = 1         # 0 / 1
+PARALLEL        = 'none'    # 'none', 'generators', 'models', or 'sources'
+N_THREAD        = 0
 MAX_QUEUED_FITS = 1000
 
 
@@ -166,10 +166,17 @@ USE_LIR        = 0          # 0 / 1
 #   Note that when this feature is enabled, the template error function,
 #   if used, will not be applied to the spectral data.
 #
+# o APPLY_VDISP: Velocity dispersion of the spectral templates. Setting
+#   this parameter to a non-zero value will broaden the templates with
+#   a fixed velocity dispersion before the fit. This is only relevant
+#   when fitting spectra, and has an impact on performances (a couple
+#   seconds of extra delay), so it is disabled by default.
+#
 #-----------------------------------------------------------------------
 
 SPECTRUM       = ''
 AUTO_SCALE     = 0          # 0 / 1
+APPLY_VDISP    = 0          # km/s
 
 
 #--- OUTPUT INFORMATION  -----------------------------------------------
@@ -226,19 +233,19 @@ AUTO_SCALE     = 0          # 0 / 1
 #
 #-----------------------------------------------------------------------
 
-OUTPUT_DIR     = ''
-OUTPUT_FILE    = ''
-N_SIM          = 100
-C_INTERVAL     = 68         # 68 / 95 / 99 or [68,95] etc
-BEST_FIT       = 0          # 0 / 1
-BEST_FROM_SIM  = 0          # 0 / 1
-SAVE_SIM       = 0          # 0 / 1
-SFR_AVG        = 0          # 0, 100 Myr, 300 Myr etc
-INTRINSIC_BEST_FIT = 0      # 0 / 1
-BEST_SFHS      = 0          # 0 / 1
-SFH_OUTPUT_STEP = 10        # 10 Myr, 100 Myr etc
-SFH_OUTPUT     = 'sfr'      # 'sfr' or 'mass'
-OUTPUT_COLUMNS = ''         # ['id','Av','lmass','lsfr', ...]
+OUTPUT_DIR         = ''
+OUTPUT_FILE        = ''
+N_SIM              = 100
+C_INTERVAL         = 68         # 68 / 95 / 99 or [68,95] etc
+BEST_FIT           = 0          # 0 / 1
+BEST_FROM_SIM      = 0          # 0 / 1
+SAVE_SIM           = 0          # 0 / 1
+SFR_AVG            = 0          # 0, 100 Myr, 300 Myr etc
+INTRINSIC_BEST_FIT = 0          # 0 / 1
+BEST_SFHS          = 0          # 0 / 1
+SFH_OUTPUT_STEP    = 10         # 10 Myr, 100 Myr etc
+SFH_OUTPUT         = 'sfr'      # 'sfr' or 'mass'
+OUTPUT_COLUMNS     = ''         # ['id','Av','lmass','lsfr', ...]
 
 
 #--- CHOOSE STELLAR POPULATIONS LIBRARY --------------------------------

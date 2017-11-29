@@ -98,6 +98,9 @@ struct options_t {
     // LIR prior
     bool use_lir = false;
 
+    // Velocity dispersion
+    float apply_vdisp = fnan;
+
     // Grid control
     std::string grid_exclude;
 
@@ -303,6 +306,8 @@ private :
 
     bool get_age_bounds(const vec1f& ised_age, float nage, std::array<uint_t,2>& p, double& x) const;
     void evaluate_sfh_custom(const vec1u& idm, const vec1d& t, vec1d& sfh) const;
+
+    vec2d convolve_vdisp(const vec1d& lam, const vec2d& osed, double vdisp) const;
 
     mutable tinyexpr_wrapper sfh_expr;
     mutable tinyexpr_wrapper exclude_expr;

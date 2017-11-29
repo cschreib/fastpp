@@ -151,6 +151,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(make_seds)
         PARSE_OPTION(lambda_ion)
         PARSE_OPTION(save_bestchi)
+        PARSE_OPTION(apply_vdisp)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
@@ -345,6 +346,13 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         opts.zphot_conf /= 100.0;
     }
 
+    if (opts.apply_vdisp <= 0.0) {
+        opts.apply_vdisp = fnan;
+        if (opts.verbose) {
+            note("convolving templates with sigma=", opts.apply_vdisp, " km/s");
+        }
+    }
+
     if (opts.metal.empty()) {
         if (opts.library == "bc03" || opts.library == "ma05") {
             opts.metal = {0.02};
@@ -380,7 +388,6 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
         }
     }
-
 
     if (!opts.custom_params.empty()) {
         // Add tau to the custom parameter grid if the user used it
