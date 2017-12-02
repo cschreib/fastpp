@@ -485,9 +485,7 @@ bool read_filters(const options_t& opts, input_state_t& state) {
 
     // Read the required filters from the database
     std::string line; uint_t l = 0;
-    fast_filter_t filt;
     vec1u idcat, idfil;
-    bool doread = false;
     uint_t ntotfilt = 0;
     while (std::getline(in, line)) {
         ++l;
@@ -502,30 +500,21 @@ bool read_filters(const options_t& opts, input_state_t& state) {
         }
 
         // Start of a new filter
-
-        // Save the previous one, if any
-        if (!filt.wl.empty()) {
-            state.filters.push_back(filt);
-
-            // Cleanup for next filter
-            filt.wl.clear();
-            filt.tr.clear();
-            filt.id = npos;
-        }
+        fast_filter_t filt;
 
         ++ntotfilt;
         filt.id = ntotfilt;
 
         // Determine if this filter is used in the catalog
         vec1u idused = where(state.no_filt == filt.id);
+        bool doread = false;
+        bool cat_filt = false;
+
         if (!idused.empty()) {
-            // It is there, keep the ID aside for later sorting
-            append(idcat, idused);
-            append(idfil, replicate(state.filters.size(), idused.size()));
             doread = true;
+            cat_filt = true;
         } else {
             // If not, discard its values
-            doread = false;
         }
 
         uint_t lcnt = 0;
@@ -548,14 +537,17 @@ bool read_filters(const options_t& opts, input_state_t& state) {
                 filt.tr.push_back(tr);
             }
 
-
             ++lcnt;
         }
-    }
 
-    // Save the last filter, if any
-    if (!filt.wl.empty()) {
-        state.filters.push_back(filt);
+        if (cat_filt) {
+            // Keep the ID aside for later sorting
+            append(idcat, idused);
+            append(idfil, replicate(state.filters.size(), idused.size()));
+
+            // Add filter to database
+            state.filters.push_back(filt);
+        }
     }
 
     if (opts.verbose) {
