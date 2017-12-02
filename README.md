@@ -309,8 +309,8 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
      * ```'ldust'```: the log10 of the dust luminosity (in units of total solar luminosity)
      * ```'ltau'```: (only for gridded SFH) the log10 of the star formation timescale (in years)
      * ```'la2t'```: (only for gridded SFH) the log10 of the ratio of age to SF timescale
-     * + any rest-frame magnitude (see 'REST_MAG' above)
-     * + any custom SFH parameter (see 'CUSTOM_SFH' below)
+     * ... plus any of the rest-frame magnitudes listed in 'REST_MAG' (see above)
+     * ... plus any of the custom SFH parameters (see 'CUSTOM_SFH' below)
  * ```INTRINSIC_BEST_FIT```: possible values are ```0``` or ```1```. The default is ```0```. If set to ```1``` and ```BEST_FIT``` is also set to ```1```, the program will output the intrinsic best-fit SED of a galaxy (i.e., the SED of the galaxy prior to attenuation by dust) alongside the best-fitting template.
  * ```BEST_SFHS```: possible values are ```0``` or ```1```. The default is ```0```. If set to ```1```, the program will output the best fit star formation history (SFH) to a file, in the ```best_fits``` directory (as for the best fit SEDs). If Monte Carlo simulations are enabled, the program will also output confidence intervals on the SFH for each time step, as well as the median SFH among all Monte Carlo simulations. This median may not correspond to any analytical form allowed by your chosen SFH model.
  * ```SFH_OUTPUT_STEP```: possible values are any strictly positive number, which defines the size of a time step in the output SFH (in Myr). The default is ```10``` Myr.
