@@ -48,6 +48,12 @@ bool parse_value_impl(std::string val, vec<1,T>& out) {
     if (val.empty()) return true;
     val = remove_first_last(val, "[]");
     vec1s spl = trim(split(val, ","));
+
+    if (spl.size() == 1 && spl[0].empty()) {
+        out.clear();
+        return true;
+    }
+
     out.resize(spl.size());
     for (uint_t i : range(spl)) {
         if (!parse_value_impl(spl[i], out[i])) {
@@ -152,6 +158,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(lambda_ion)
         PARSE_OPTION(save_bestchi)
         PARSE_OPTION(apply_vdisp)
+        PARSE_OPTION(rest_mag)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
@@ -288,7 +295,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
     }
 
     if (opts.best_sfhs && !opts.my_sfh.empty()) {
-        warning("cannot output best fit SFH when using custom SFH");
+        warning("cannot output best fit SFH when using 'MY_SFH'");
         opts.best_sfhs = false;
     }
 
@@ -348,9 +355,8 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
     if (opts.apply_vdisp <= 0.0) {
         opts.apply_vdisp = fnan;
-        if (opts.verbose) {
-            note("convolving templates with sigma=", opts.apply_vdisp, " km/s");
-        }
+    } else if (opts.verbose) {
+        note("convolving templates with sigma=", opts.apply_vdisp, " km/s");
     }
 
     if (opts.metal.empty()) {
@@ -364,18 +370,17 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         }
     }
 
-    if (opts.output_columns.empty() ||
-        (opts.output_columns.size() == 1 && opts.output_columns[0].empty())) {
+    if (opts.output_columns.empty()) {
         // Default columns to display
         switch (opts.sfh) {
         case sfh_type::gridded:
             opts.output_columns = {
-                "id", "z", "ltau", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "la2t", "chi2"
+                "id", "z", "ltau", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "la2t"
             };
             break;
         case sfh_type::single:
             opts.output_columns = {
-                "id", "z", "metal", "lage", "Av", "lmass", "lsfr", "lssfr", "chi2"
+                "id", "z", "metal", "lage", "Av", "lmass", "lsfr", "lssfr"
             };
             break;
         case sfh_type::custom:
@@ -383,10 +388,14 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
                 "id", "z", "metal", "lage", "Av", "lmass", "lsfr", "lssfr"
             };
             append(opts.output_columns, opts.custom_params);
-            opts.output_columns.push_back("chi2");
             break;
-
         }
+
+        if (!opts.rest_mag.empty()) {
+            append(opts.output_columns, "M"+strna(opts.rest_mag));
+        }
+
+        opts.output_columns.push_back("chi2");
     }
 
     if (!opts.custom_params.empty()) {
@@ -467,6 +476,23 @@ bool read_header(const std::string& filename, vec1s& header) {
     return false;
 }
 
+bool adjust_filter(const options_t& opts, fast_filter_t& f) {
+    if (opts.filters_format == 1) {
+        f.tr *= f.wl;
+    } else {
+        f.tr *= sqr(f.wl);
+    }
+
+    double ttot = integrate(f.wl, f.tr);
+    if (!is_finite(ttot) || ttot == 0) {
+        error("filter ", f.id, " has zero or invalid througput");
+        return false;
+    }
+
+    f.tr /= ttot;
+    return true;
+}
+
 bool read_filters(const options_t& opts, input_state_t& state) {
     if (opts.filters_res.empty()) {
         // No filter, maybe just trying to fit a spectrum?
@@ -482,6 +508,8 @@ bool read_filters(const options_t& opts, input_state_t& state) {
         error("could not open filter file '", opts.filters_res, "'");
         return false;
     }
+
+    state.rf_filters.resize(opts.rest_mag.size());
 
     // Read the required filters from the database
     std::string line; uint_t l = 0;
@@ -506,15 +534,20 @@ bool read_filters(const options_t& opts, input_state_t& state) {
         filt.id = ntotfilt;
 
         // Determine if this filter is used in the catalog
-        vec1u idused = where(state.no_filt == filt.id);
         bool doread = false;
         bool cat_filt = false;
+        bool rf_filt = false;
 
+        vec1u idused = where(state.no_filt == filt.id);
         if (!idused.empty()) {
             doread = true;
             cat_filt = true;
-        } else {
-            // If not, discard its values
+        }
+
+        uint_t idrf = where_first(opts.rest_mag == filt.id);
+        if (idrf != npos) {
+            doread = true;
+            rf_filt = true;
         }
 
         uint_t lcnt = 0;
@@ -546,21 +579,29 @@ bool read_filters(const options_t& opts, input_state_t& state) {
             append(idfil, replicate(state.filters.size(), idused.size()));
 
             // Add filter to database
-            state.filters.push_back(filt);
+            state.filters.push_back(std::move(filt));
+        }
+
+        if (rf_filt) {
+            // Add filter to database
+            state.rf_filters[idrf] = std::move(filt);
         }
     }
 
     if (opts.verbose) {
         note("found ", ntotfilt, " filters in the database, will use ",
             state.filters.size(), " of them");
+        if (!state.rf_filters.empty()) {
+            note("... plus ", state.rf_filters.size(), " for rest-frame magnitudes");
+        }
     }
 
     // Sort the filter list as in the catalog
     state.filters = state.filters[idfil[sort(idcat)]];
 
     // Make sure we are not missing any
+    vec1u notfound;
     if (state.filters.size() != state.no_filt.size()) {
-        vec1u notfound;
         for (uint_t b : state.no_filt) {
             bool found = false;
             for (auto& f : state.filters) {
@@ -574,28 +615,34 @@ bool read_filters(const options_t& opts, input_state_t& state) {
                 notfound.push_back(b);
             }
         }
+    }
 
+    for (uint_t f : range(opts.rest_mag)) {
+        if (state.rf_filters[f].tr.empty()) {
+            notfound.push_back(opts.rest_mag[f]);
+        }
+    }
+
+    if (!notfound.empty()) {
         error("filters ", notfound, " are missing from the filter library");
         return false;
     }
 
-    // Normalize filter and compute the central wavelength
+    // Normalize filters and compute the central wavelength
     for (auto& f : state.filters) {
-        if (opts.filters_format == 1) {
-            f.tr *= f.wl;
-        } else {
-            f.tr *= sqr(f.wl);
-        }
-
-        double ttot = integrate(f.wl, f.tr);
-        if (!is_finite(ttot) || ttot == 0) {
-            error("filter ", f.id, " has zero or invalid througput");
+        if (!adjust_filter(opts, f)) {
             return false;
         }
 
-        f.tr /= ttot;
-
         state.lambda.push_back(integrate(f.wl, f.wl*f.tr));
+    }
+
+    for (auto& f : state.rf_filters) {
+        if (!adjust_filter(opts, f)) {
+            return false;
+        }
+
+        state.rf_lambda.push_back(integrate(f.wl, f.wl*f.tr));
     }
 
     return true;

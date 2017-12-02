@@ -53,6 +53,9 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         break;
     }
 
+    output.ifirst_rlum = nprop;
+    nprop += opt.rest_mag.size();
+
     output.grid.resize(nparam);
     output.param_names.resize(nparam+nprop);
     output.param_descriptions.resize(nparam+nprop);
@@ -61,18 +64,18 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     output.param_precision.resize(nparam+nprop);
 
     auto set_param = [&](uint_t id, std::string name, std::string desc,
-        bool scale, bool log, float precision) {
+        bool scale, uint_t lstyle, float precision) {
 
         output.param_names[id]        = name;
         output.param_descriptions[id] = desc;
         output.param_scale[id]        = scale;
-        output.param_log[id]          = log;
+        output.param_log[id]          = lstyle;
         output.param_precision[id]    = precision;
     };
 
     auto set_prop = [&](uint_t id, std::string name, std::string desc,
-        bool scale, bool log, float precision) {
-        set_param(nparam+id, name, desc, scale, log, precision);
+        bool scale, uint_t lstyle, float precision) {
+        set_param(nparam+id, name, desc, scale, lstyle, precision);
     };
 
     // Custom grid & properties
@@ -80,8 +83,8 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     case sfh_type::gridded:
         output.grid[grid_id::custom] = rgen_step(opts.log_tau_min, opts.log_tau_max, opts.log_tau_step);
 
-        set_param(grid_id::custom, "ltau", "log[tau/yr]",  false, false, 1e-2);
-        set_prop(prop_id::custom,  "la2t", "log[age/tau]", false, false, 1e-2);
+        set_param(grid_id::custom, "ltau", "log[tau/yr]",  false, log_style::none, 1e-2);
+        set_prop(prop_id::custom,  "la2t", "log[age/tau]", false, log_style::none, 1e-2);
         break;
     case sfh_type::single:
         break;
@@ -91,7 +94,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
                 opts.custom_params_min[ig], opts.custom_params_max[ig], opts.custom_params_step[ig]
             );
 
-            set_param(grid_id::custom+ig, opts.custom_params[ig], "", false, false, 1e-2);
+            set_param(grid_id::custom+ig, opts.custom_params[ig], "", false, log_style::none, 1e-2);
         }
         break;
     }
@@ -101,18 +104,24 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     output.grid[grid_id::age]   = rgen_step(opts.log_age_min, opts.log_age_max, opts.log_age_step);
     output.grid[grid_id::metal] = opts.metal;
 
-    set_param(grid_id::z,     "z",      "",                   false, false, 1e-4);
-    set_param(grid_id::av,    "Av",     "",                   false, false, 1e-2);
-    set_param(grid_id::age,   "lage",   "log[age/yr]",        false, false, 1e-2);
-    set_param(grid_id::metal, "metal",  "",                   false, false, 1e-4);
-    set_prop(prop_id::scale,  "lscale", "log[scale]",         true,  true,  1e-2);
-    set_prop(prop_id::spec_scale, "sscale", "spec_rescale",   true,  false, 1e-3);
-    set_prop(prop_id::mass,   "lmass",  "log[mass/Msol]",     true,  true,  1e-2);
-    set_prop(prop_id::sfr,    "lsfr",   "log[sfr/(Msol/yr)]", true,  true,  1e-2);
-    set_prop(prop_id::ssfr,   "lssfr",  "log[ssfr*yr]",       false, true,  1e-2);
-    set_prop(prop_id::ldust,  "lldust", "log[ldust/Lsol]",    true,  true,  1e-2);
-    set_prop(prop_id::lion,   "llion",  "log[lion/Lsol]",     true,  true,  1e-2);
-    set_prop(prop_id::mform,  "lmform", "log[mformed/Msol]",  true,  true,  1e-2);
+    set_param(grid_id::z,     "z",      "",                   false, log_style::none,    1e-4);
+    set_param(grid_id::av,    "Av",     "",                   false, log_style::none,    1e-2);
+    set_param(grid_id::age,   "lage",   "log[age/yr]",        false, log_style::none,    1e-2);
+    set_param(grid_id::metal, "metal",  "",                   false, log_style::none,    1e-4);
+    set_prop(prop_id::scale,  "lscale", "log[scale]",         true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::spec_scale, "sscale", "spec_rescale",   true,  log_style::none,    1e-3);
+    set_prop(prop_id::mass,   "lmass",  "log[mass/Msol]",     true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::sfr,    "lsfr",   "log[sfr/(Msol/yr)]", true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::ssfr,   "lssfr",  "log[ssfr*yr]",       false, log_style::decimal, 1e-2);
+    set_prop(prop_id::ldust,  "lldust", "log[lum/Lsol]",      true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::lion,   "llion",  "log[lum/Lsol]",      true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::mform,  "lmform", "log[mass/Msol]",     true,  log_style::decimal, 1e-2);
+
+    // Rest luminosities
+    for (uint_t i : range(opt.rest_mag)) {
+        set_prop(output.ifirst_rlum+i, "M"+strn(opt.rest_mag[i]),
+            "[ABmag]", true, log_style::abmag, 1e-2);
+    }
 
     // Redshift grid
     vec1f& output_z = output.grid[grid_id::z];
@@ -156,6 +165,13 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         const double lum_sol_to_cgs  = 3.839e33;  // [erg/s/Lsol]
         const double factor = 1e19*lum_sol_to_cgs/sqr(dist_Mpc_to_cgs);
         lum2fl = factor/(4.0*dpi*(1.0+output_z)*sqr(astro::lumdist(output_z, opts.cosmo)));
+
+        const double dist_Mpc_to_si = 3.0856e22; // [m/Mpc]
+        const double lum_sol_to_si  = 3.839e26;  // [W/Lsol]
+        const double flux_to_uJy    = 1.0e32;    // [uJy/(W/m2/Hz)]
+        const double speed_of_light = 2.9979e18; // [A/s]
+        const double rffactor = flux_to_uJy*lum_sol_to_si/(speed_of_light*sqr(dist_Mpc_to_si));
+        rflum2fl = rffactor/(4.0*dpi*sqr(1e-5));
     }
 
     // Pre-compute age of Universe
@@ -486,6 +502,19 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
             model_ldust = lbol - lobs;
         } else {
             model_ldust = 0;
+        }
+
+        // Compute rest-frame luminosities
+        for (uint_t i : range(opts.rest_mag)) {
+            model.props[output.ifirst_rlum+i] = rflum2fl*sqr(input.rf_lambda[i])*astro::sed2flux(
+                input.rf_filters.safe[i].wl, input.rf_filters.safe[i].tr,
+                lam, tpl_att_flux
+            );
+
+            if (!is_finite(model.props[output.ifirst_rlum+i])) {
+                // Filter goes out of model coverage, assume zero
+                model.props[output.ifirst_rlum+i] = 0;
+            }
         }
 
         for (uint_t iz : range(output_z)) {

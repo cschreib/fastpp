@@ -177,8 +177,10 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
                 }
             } else {
                 float value = output.best_params.safe(is,iparam[ic],iconf[ic]);
-                if (output.param_log.safe[iparam[ic]]) {
+                if (output.param_log.safe[iparam[ic]] == log_style::decimal) {
                     value = log10(value);
+                } else if (output.param_log.safe[iparam[ic]] == log_style::abmag) {
+                    value = -2.5*log10(value) + opts.ab_zeropoint;
                 }
 
                 float precision = output.param_precision.safe[iparam[ic]];

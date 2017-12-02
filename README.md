@@ -32,6 +32,7 @@
     - [Monte Carlo simulations](#monte-carlo-simulations)
     - [Controlling the cache](#controlling-the-cache)
     - [More output options](#more-output-options)
+    - [Rest-frame magnitudes and colors](#rest-frame-magnitudes-and-colors)
     - [Custom star formation histories](#custom-star-formation-histories)
     - [Using priors on the infrared luminosity](#using-priors-on-the-infrared-luminosity)
     - [Better treatment of spectra](#better-treatment-of-spectra)
@@ -294,6 +295,7 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
 
 ## More output options
  * ```SFR_AVG```: possible values are any positive number, which define the averaging time for the output SFR (in Myr). The default is ```0```, and the output SFR is the "instantaneous" SFR at the chosen age of the corresponding template, as in FAST. This is not necessarily a good choice, because photometry alone is mostly unable to distinguish variations of SFR on timescales lower than a hundred million years. For this reason in FAST++ you have the option to average the SFRs over an arbitrary interval of time prior to observation. This has no impact on the chosen best-fit SED, and only affects the value of the best-fit SFR (and its error bar).
+ * ```REST_MAG```: array of integers corresponding to IDs in the filter database. Much like EAzY, FAST++ can output rest-frame magnitudes (absolute magnitudes, at 10pc), which can be used to classify galaxies into broad classes (blue vs. red, or quiescent vs. star-forming). If you list some filter IDs in ```REST_MAG```, FAST++ will add new columns to the output catalog, listing the absolute magnitudes in these filters for each galaxy of the input catalog. The magnitudes are given in the AB system, using the zero point you specified in 'AB_ZEROPOINT'.
  * ```OUTPUT_COLUMNS```: array of strings determining which columns to show in the output file. The default is to show the same columns as FAST-IDL, namely, ```['id','z','ltau','metal','lage','Av','lmass','lsfr','lssfr','la2t','chi2']```. Possible values are:
      * ```'id'```: the ID of each galaxy, as in the photometric catalog
      * ```'chi2'```: the reduced chi squared of the best fit template
@@ -307,6 +309,8 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
      * ```'ldust'```: the log10 of the dust luminosity (in units of total solar luminosity)
      * ```'ltau'```: (only for gridded SFH) the log10 of the star formation timescale (in years)
      * ```'la2t'```: (only for gridded SFH) the log10 of the ratio of age to SF timescale
+     * + any rest-frame magnitude (see 'REST_MAG' above)
+     * + any custom SFH parameter (see 'CUSTOM_SFH' below)
  * ```INTRINSIC_BEST_FIT```: possible values are ```0``` or ```1```. The default is ```0```. If set to ```1``` and ```BEST_FIT``` is also set to ```1```, the program will output the intrinsic best-fit SED of a galaxy (i.e., the SED of the galaxy prior to attenuation by dust) alongside the best-fitting template.
  * ```BEST_SFHS```: possible values are ```0``` or ```1```. The default is ```0```. If set to ```1```, the program will output the best fit star formation history (SFH) to a file, in the ```best_fits``` directory (as for the best fit SEDs). If Monte Carlo simulations are enabled, the program will also output confidence intervals on the SFH for each time step, as well as the median SFH among all Monte Carlo simulations. This median may not correspond to any analytical form allowed by your chosen SFH model.
  * ```SFH_OUTPUT_STEP```: possible values are any strictly positive number, which defines the size of a time step in the output SFH (in Myr). The default is ```10``` Myr.
@@ -336,6 +340,8 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
 # --------
 # End data
 ```
+
+## Rest-frame magnitudes and colors
 
 ## Custom star formation histories
 In the original FAST, one has access to three star formation histories: the tau model (exponentially declining), the delayed tau model (delayed exponentially declining) and the constant truncated model (constant, then zero). All three are parametrized with the star formation timescale ```tau``` (either the exponential timescale for the first two SFH, or the duration of the star formation episode for the last one), which can be adjusted in the fit. These star formation histories are distributed as pre-gridded template libraries at various ages, which are then interpolated during the fit to obtain arbitrary ages.
@@ -420,7 +426,8 @@ Even when using the old format, the treatment of these spectrum files is also mo
 ## Velocity broadening
 By default, the template spectra produced by FAST++ assume no velocity dispersion of the stars inside the galaxy. This is a good approximation when only fitting broadband photometry, but it becomes incorrect when fitting high spectral resolution data, such as narrow band photometry or spectra, which can sample the spectral profile of the various absorption lines that compose the spectrum (i.e., mostly the Balmer series).
 
-The solution implemented in FAST++ is to broaden all the spectral templates with a fixed velocity dispersion, specified in ```APPLY_VDISP``` (in km/s). Because of the architecture of the code, it is not possible to specify different velocity dispersions for each galaxy of the input catalog. If you need this, you will have to fit each galaxy separately, in different FAST++ runs.
+The solution implemented in FAST++ is to broaden all the spectral templates with a fixed velocity dispersion, specified in ```APPLY_VDISP``` (in km/s). Note that this is the value of the velocity *dispersion* (i.e., the "sigma" of the Guassian velocity profile), not the FWHM. Unfortunately, because of the architecture of the code, it is not possible to specify different velocity dispersions for each galaxy of the input catalog. If you need to do this, you will have to fit each galaxy separately, in different FAST++ runs.
+
 
 # Additional documentation
 

@@ -223,29 +223,35 @@ APPLY_VDISP    = 0          # km/s
 #   with time, while 'mass' will show the total stellar mass (including
 #   mass loss).
 #
+# o REST_MAG: list of filter ID to use to compute rest-frame magnitudes.
+#   These absolute magnitudes are then given at 10pc in the AB system,
+#   using AB_ZEROPOINT, and are not corrected for attenuation.
+#
 # o OUTPUT_COLUMNS: define here what columns to write in [CATALOG].fout
 #   Available columns: id, metal, lage, Av, lmass, lsfr, lssfr, lldust,
 #   llion, lmform and chi2. If using the "standard" FAST templates, two
 #   additional columns are available: ltau and la2t. If using custom SFH,
-#   you can also choose any of your custom SFH parameter. By default all
-#   available parameters are written in the file (except lldust, llion,
-#   and lmform).
+#   you can also choose any of your custom SFH parameter. Rest-frame
+#   magnitudes specified in 'REST_MAG' are also available, the format is
+#   "M[...]" where "[...]" is the filter ID. By default all available
+#   parameters are written in the file (except lldust, llion, and lmform).
 #
 #-----------------------------------------------------------------------
 
 OUTPUT_DIR         = ''
 OUTPUT_FILE        = ''
 N_SIM              = 100
-C_INTERVAL         = 68         # 68 / 95 / 99 or [68,95] etc
-BEST_FIT           = 0          # 0 / 1
-BEST_FROM_SIM      = 0          # 0 / 1
-SAVE_SIM           = 0          # 0 / 1
-SFR_AVG            = 0          # 0, 100 Myr, 300 Myr etc
-INTRINSIC_BEST_FIT = 0          # 0 / 1
-BEST_SFHS          = 0          # 0 / 1
-SFH_OUTPUT_STEP    = 10         # 10 Myr, 100 Myr etc
-SFH_OUTPUT         = 'sfr'      # 'sfr' or 'mass'
-OUTPUT_COLUMNS     = ''         # ['id','Av','lmass','lsfr', ...]
+C_INTERVAL         = 68            # 68 / 95 / 99 or [68,95] etc
+BEST_FIT           = 0             # 0 / 1
+BEST_FROM_SIM      = 0             # 0 / 1
+SAVE_SIM           = 0             # 0 / 1
+SFR_AVG            = 0             # 0, 100 Myr, 300 Myr etc
+INTRINSIC_BEST_FIT = 0             # 0 / 1
+BEST_SFHS          = 0             # 0 / 1
+SFH_OUTPUT_STEP    = 10            # 10 Myr, 100 Myr etc
+SFH_OUTPUT         = 'sfr'         # 'sfr' or 'mass'
+REST_MAG           = []            # [140,142,161] for UVJ colors
+OUTPUT_COLUMNS     = []            # ['id','Av','lmass','lsfr', ...]
 
 
 #--- CHOOSE STELLAR POPULATIONS LIBRARY --------------------------------

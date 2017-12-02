@@ -99,7 +99,7 @@ struct options_t {
     bool use_lir = false;
 
     // Velocity dispersion
-    float apply_vdisp = 0.0;
+    float apply_vdisp = fnan;
 
     // Grid control
     std::string grid_exclude;
@@ -114,6 +114,7 @@ struct options_t {
     std::string make_seds;
     float lambda_ion = 912.0;
     float save_bestchi = 0.0;
+    vec1u rest_mag;
 
     // Custom SFH
     std::string custom_sfh;
@@ -156,6 +157,7 @@ struct input_state_t {
     uint_t spec_start = npos, spec_end = npos; // [nspec]
     // Central wavelength of the filters
     vec1d lambda;                       // [nfilt+nspec]
+    vec1d rf_lambda;                    // [nrffilt]
 
     // Photometry & parameters of all sources in the catalog
     vec1s id;                           // [ngal]
@@ -171,6 +173,7 @@ struct input_state_t {
     // NB: for reference, in FAST: filters = [4,nfilt+nspec], with 4={ID,wl,tr,type}
     // with 'type=1' for photometry and 'type=0' for spectroscopy
     vec<1,fast_filter_t> filters; // [nfilt+nspec]
+    vec<1,fast_filter_t> rf_filters; // [nrffilt]
 
     // Template error function
     vec1f tplerr_lam, tplerr_err;
@@ -188,6 +191,10 @@ struct prop_id {
         ldust = 5, lion = 6, mform = 7, custom = 8;
 };
 
+struct log_style {
+    static const constexpr uint_t none = 0, decimal = 1, abmag = 2;
+};
+
 // Holds the output state of the program
 struct output_state_t {
     // Grid parameters
@@ -197,7 +204,7 @@ struct output_state_t {
     vec1s param_names;                // [ngrid+nprop]
     vec1s param_descriptions;         // [ngrid+nprop]
     vec1b param_scale;                // [ngrid+nprop]
-    vec1b param_log;                  // [ngrid+nprop]
+    vec1u param_log;                  // [ngrid+nprop]
     vec1f param_precision;            // [ngrid+nprop]
 
     // Best fits
@@ -209,6 +216,9 @@ struct output_state_t {
     vec3f mc_best_props;             // [ngal,nprop,nsim]
     vec2f mc_best_chi2;              // [ngal,nsim]
     vec2u mc_best_model;             // [ngal,nsim]
+
+    // Indices
+    uint_t ifirst_rlum = npos;
 
     // For thread safety
     std::mutex fit_result_mutex;
@@ -262,6 +272,7 @@ struct gridder_t {
     vec1u grid_dims_pitch;           // [ngrid]
 
     vec1d lum2fl;                    // [nz]
+    double rflum2fl;
     vec1d auniv;                     // [nz]
     uint_t nparam = 0, nprop = 0, nfreeparam = 0, nmodel = 0, ncustom = 0;
 

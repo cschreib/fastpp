@@ -19,6 +19,11 @@ const constexpr uint_t prop_id::lion;
 const constexpr uint_t prop_id::mform;
 const constexpr uint_t prop_id::custom;
 
+const constexpr uint_t log_style::none;
+const constexpr uint_t log_style::decimal;
+const constexpr uint_t log_style::abmag;
+
+
 int phypp_main(int argc, char* argv[]) {
     std::string param_file = (argc >= 2 ? argv[1] : "fast.param");
 
