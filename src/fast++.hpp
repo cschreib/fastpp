@@ -99,7 +99,7 @@ struct options_t {
     bool use_lir = false;
 
     // Velocity dispersion
-    float apply_vdisp = fnan;
+    float apply_vdisp = 0.0;
 
     // Grid control
     std::string grid_exclude;
