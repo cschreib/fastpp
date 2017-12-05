@@ -552,6 +552,9 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
 
             if (!nofit && !opts.grid_exclude.empty()) {
                 // Custom exclude function
+                auto lock = (opts.parallel == parallel_choice::generators ?
+                    std::unique_lock<std::mutex>(exclude_mutex) : std::unique_lock<std::mutex>());
+
                 for (uint_t i : range(nparam)) {
                     exclude_expr.vars.safe[i] = output.grid.safe[i].safe[idm.safe[i]];
                 }
@@ -564,12 +567,11 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
                 fitter.fit(model);
             }
 
-            // Cache
-            if (opts.parallel == parallel_choice::generators) {
-                std::lock_guard<std::mutex> lock(progress_mutex);
-                cache.write_model(model);
-                if (opts.verbose) progress_tick(pg, 0.5);
-            } else {
+            // Cache and print progress
+            {
+                auto lock = (opts.parallel == parallel_choice::generators ?
+                    std::unique_lock<std::mutex>(progress_mutex) : std::unique_lock<std::mutex>());
+
                 cache.write_model(model);
                 if (opts.verbose) progress_tick(pg, 0.5);
             }

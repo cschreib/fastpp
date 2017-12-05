@@ -189,7 +189,7 @@ struct ssp_bc03 {
         fits::input_table itbl(filename);
         if (!itbl.read_column("age", age)) {
             print("");
-            error("could not read column 'T' (time) from FITS file '", filename, "'");
+            error("could not read column 'AGE' (time) from FITS file '", filename, "'");
             print("");
             return false;
         }
@@ -323,11 +323,10 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
             uint_t ia = tm.idm[grid_id::age];
 
             // Build analytic SFH
-            vec1d sfh;
-            if (opts.parallel == parallel_choice::generators) {
-                std::lock_guard<std::mutex> lock(sfh_mutex);
-                evaluate_sfh_custom(tm.idm, ctime, sfh);
-            } else {
+            vec1d sfh; {
+                auto lock = (opts.parallel == parallel_choice::generators ?
+                    std::unique_lock<std::mutex>(sfh_mutex) : std::unique_lock<std::mutex>());
+
                 evaluate_sfh_custom(tm.idm, ctime, sfh);
             }
 

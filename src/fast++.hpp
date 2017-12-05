@@ -279,6 +279,7 @@ struct gridder_t {
     // For thread safety
     std::mutex progress_mutex;
     std::mutex sfh_mutex;
+    std::mutex exclude_mutex;
 
     explicit gridder_t(const options_t& opts, const input_state_t& input, output_state_t& output);
 
