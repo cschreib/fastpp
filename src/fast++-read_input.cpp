@@ -356,7 +356,9 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
     if (opts.apply_vdisp <= 0.0) {
         opts.apply_vdisp = fnan;
-    } else if (opts.verbose) {
+    }
+
+    if (is_finite(opts.apply_vdisp) && opts.verbose) {
         note("convolving templates with sigma=", opts.apply_vdisp, " km/s");
     }
 
