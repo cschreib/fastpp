@@ -32,7 +32,6 @@
     - [Monte Carlo simulations](#monte-carlo-simulations)
     - [Controlling the cache](#controlling-the-cache)
     - [More output options](#more-output-options)
-    - [Rest-frame magnitudes and colors](#rest-frame-magnitudes-and-colors)
     - [Custom star formation histories](#custom-star-formation-histories)
     - [Using priors on the infrared luminosity](#using-priors-on-the-infrared-luminosity)
     - [Better treatment of spectra](#better-treatment-of-spectra)
@@ -340,8 +339,6 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
 # --------
 # End data
 ```
-
-## Rest-frame magnitudes and colors
 
 ## Custom star formation histories
 In the original FAST, one has access to three star formation histories: the tau model (exponentially declining), the delayed tau model (delayed exponentially declining) and the constant truncated model (constant, then zero). All three are parametrized with the star formation timescale ```tau``` (either the exponential timescale for the first two SFH, or the duration of the star formation episode for the last one), which can be adjusted in the fit. These star formation histories are distributed as pre-gridded template libraries at various ages, which are then interpolated during the fit to obtain arbitrary ages.
