@@ -244,8 +244,9 @@ void gridder_t::evaluate_sfh_custom(const vec1u& idm, const vec1d& t, vec1d& sfh
     }
 
     sfh.resize(t.size());
+    double nage = e10(output.grid[grid_id::age][idm[grid_id::age]]);
     for (uint_t i : range(t)) {
-        sfh_expr.vars[0] = t.safe[i];
+        sfh_expr.vars[0] = (opts.custom_sfh_lookback ? nage - t.safe[i] : t.safe[i]);
         sfh.safe[i] = sfh_expr.eval();
     }
 }
@@ -290,6 +291,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
     const vec1f& output_z = output.grid[grid_id::z];
     const vec1f& output_av = output.grid[grid_id::av];
 
+    // Compute "cosmic" time (t=0 is when the galaxy is born)
     const double dt = opts.custom_sfh_step;
     const vec1d ctime = reverse(dt*dindgen(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
     // NB: age array is sorted from largest to smallest
@@ -316,11 +318,14 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
 
         // Function to build a model
         auto do_model = [&](model_id_pair& tm) {
-            float& model_mass = tm.model.props[prop_id::mass];
+            float& model_mass  = tm.model.props[prop_id::mass];
             float& model_mform = tm.model.props[prop_id::mform];
-            float& model_sfr = tm.model.props[prop_id::sfr];
-            float& model_ssfr = tm.model.props[prop_id::ssfr];
+            float& model_sfr   = tm.model.props[prop_id::sfr];
+            float& model_ssfr  = tm.model.props[prop_id::ssfr];
+
+            // Compute lookback time (t=0 is when the galaxy is observed, t>0 is in the past)
             uint_t ia = tm.idm[grid_id::age];
+            vec1d ltime = e10(output_age[ia]) - ctime;
 
             // Build analytic SFH
             vec1d sfh; {
@@ -332,13 +337,12 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
 
             // Integrate SFH on local time grid
             vec1d tpl_flux(ssp.lambda.size());
-            double tmodel_mass = 0.0;
+            double tmodel_mass  = 0.0;
             double tformed_mass = 0.0;
-            vec1d ltime = e10(output_age[ia]) - ctime;
             integrate_ssp(ltime, sfh, ssp.age, [&](uint_t it, double formed) {
-                tmodel_mass += formed*ssp.mass.safe[it];
+                tmodel_mass  += formed*ssp.mass.safe[it];
                 tformed_mass += formed*ssp.mass.safe[0];
-                tpl_flux += formed*ssp.sed.safe(it,_);
+                tpl_flux     += formed*ssp.sed.safe(it,_);
             });
 
             model_mass = tmodel_mass;

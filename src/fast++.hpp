@@ -119,6 +119,7 @@ struct options_t {
     // Custom SFH
     std::string custom_sfh;
     float       custom_sfh_step = 1.0;
+    bool        custom_sfh_lookback = false;
     vec1s       custom_params;
     vec1f       custom_params_min;
     vec1f       custom_params_max;

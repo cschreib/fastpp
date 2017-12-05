@@ -216,8 +216,8 @@ APPLY_VDISP    = 0          # km/s
 #   simulations are enabled, the confidence intervals of the SFH will
 #   also be written.
 #
-# o SFH_OUTPUT_STEP: if BEST_SFHS=1, sets the time step of the output SFH in
-#   million years. The default is 10 Myr.
+# o SFH_OUTPUT_STEP: if BEST_SFHS=1, sets the time step of the output SFH 
+#   in million years. The default is 10 Myr.
 #
 # o SFH_OUTPUT: 'sfr' will output the evolution of the star formation rate
 #   with time, while 'mass' will show the total stellar mass (including
@@ -309,7 +309,7 @@ OUTPUT_COLUMNS     = []            # ['id','Av','lmass','lsfr', ...]
 #   composite models from "csp_galaxev". You can therefore fit any
 #   star formation history. The SFH must be a mathematical expression
 #   which returns the SFR as a function of the time 't' since the galaxy
-#   was born (the units of the SFR do not matter). Custom grid parameters
+#   was born (the unit of the SFR doest not matter). Custom grid parameters
 #   can be referenced in this function (see below) but not the age or the
 #   dust attenuation.
 #
@@ -318,22 +318,29 @@ OUTPUT_COLUMNS     = []            # ['id','Av','lmass','lsfr', ...]
 #   must provide the _MIN, _MAX and _STEP values, as for the other
 #   grid parameters.
 #
+# o CUSTOM_SFH_LOOKBACK: changes the meaning of the time 't' in the SFH
+#   expression, so that 't' refers to the lookback time. The instant t=0
+#   then refers to the moment where the galaxy is observed, and larger
+#   values correspond to earlier times in the past. This is equivalent
+#   to substituting 't' for '10^lage - t' in the SFH expression.
+#
 #-----------------------------------------------------------------------
 
-LIBRARY_DIR    = '../share/libraries/'
-LIBRARY        = 'bc03'         # 'bc03' / 'ma05' / 'co11'
-RESOLUTION     = 'hr'           # 'pr' / 'lr' / 'hr'
-IMF            = 'ch'           # 'ch' / 'sa' / 'kr'
-SFH            = 'del'          # 'exp' / 'del' / 'tru'
-DUST_LAW       = 'calzetti'     # 'calzetti' / 'mw' / 'kc' / 'noll'
-# E_B          = 1              # only define for 'noll' dust law
-# delta        = -0.2           # only define for 'noll' dust law
-MY_SFH         = ''
-CUSTOM_SFH     = ''             # '(1 + t)^alpha'
-CUSTOM_PARAMS  = ''             # ['alpha', ...]
-# ALPHA_MIN    = -2             # define these for each custom parameter
-# ALPHA_MAX    = 2              # define these for each custom parameter
-# ALPHA_STEP   = 0.1            # define these for each custom parameter
+LIBRARY_DIR         = '../share/libraries/'
+LIBRARY             = 'bc03'         # 'bc03' / 'ma05' / 'co11'
+RESOLUTION          = 'hr'           # 'pr' / 'lr' / 'hr'
+IMF                 = 'ch'           # 'ch' / 'sa' / 'kr'
+SFH                 = 'del'          # 'exp' / 'del' / 'tru'
+DUST_LAW            = 'calzetti'     # 'calzetti' / 'mw' / 'kc' / 'noll'
+# E_B               = 1              # only define for 'noll' dust law
+# delta             = -0.2           # only define for 'noll' dust law
+MY_SFH              = ''
+CUSTOM_SFH          = ''             # '(1 + t)^alpha'
+CUSTOM_PARAMS       = ''             # ['alpha', ...]
+CUSTOM_SFH_LOOKBACK = 0              # 0 / 1
+# ALPHA_MIN         = -2             # define these for each parameter
+# ALPHA_MAX         = 2              # define these for each parameter
+# ALPHA_STEP        = 0.1            # define these for each parameter
 
 
 #--- DEFINE GRID -------------------------------------------------------

@@ -152,6 +152,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(output_columns)
         PARSE_OPTION(custom_sfh)
         PARSE_OPTION(custom_sfh_step)
+        PARSE_OPTION(custom_sfh_lookback)
         PARSE_OPTION(custom_params)
         PARSE_OPTION(grid_exclude)
         PARSE_OPTION(make_seds)

@@ -382,6 +382,9 @@ Depending on which SFH expression you choose, there may be some parts of the par
 GRID_EXCLUDE = 'log_tburst < log_tau'
 ```
 
+Lastly, by default the variable ```t``` in the SFH expression is the "cosmic" time, with ```t=0``` being the instant when the galaxy was born, and where larger values of ```t``` correspond to later times, in the future. An alternative parametrization is to work with the "lookback" time, where ```t=0``` is the instant when the galaxy is observed, and larger values of ```t``` correspond to earlier times, back towards the Big Bang. The relation between the two is simply ```t_lookback = 10^lage - t_cosmic```, so this is a simple transformation you can perform in the SFH expression. But to make it more convenient, you can enable the option ```CUSTOM_SFH_LOOKBACK=1```, in which case ```t``` will be defined as the lookback time.
+
+
 ## Using priors on the infrared luminosity
 One of the main degeneracy that arises when fitting UV-to-NIR data is that of dust versus age. When a galaxy has a red SED, unless the signal to noise and the wavelength sampling are high, it is very difficult to say if this is caused by a large amount of dust, or by an older stellar population, or a combination of both. It is for this reason that SFRs obtained from such fits are very uncertain, and that SFRs determined from the far-IR are preferred.
 
