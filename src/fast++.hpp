@@ -242,6 +242,26 @@ struct fitter_t;
 struct te_expr;
 struct te_variable;
 
+// SED libraries
+struct ssp_bc03 {
+    vec1d age;
+    vec1d mass;
+    vec1d lambda;
+    vec2d sed;
+
+    bool read_ascii(std::string filename);
+    bool read_fits(std::string filename, bool noflux);
+    bool read(std::string filename, bool noflux = false);
+};
+
+struct galaxev_ised {
+    vec1f age, sfr, mass, mform;
+    vec1f lambda;
+    vec2f fluxes;
+
+    bool read(std::string filename, bool noflux = false);
+};
+
 // Build the grid of models and sends models to the fitter
 struct gridder_t {
     const options_t& opts;
@@ -277,10 +297,16 @@ struct gridder_t {
     vec1d auniv;                     // [nz]
     uint_t nparam = 0, nprop = 0, nfreeparam = 0, nmodel = 0, ncustom = 0;
 
+    // Caches
+    mutable std::unique_ptr<ssp_bc03>     cached_ssp_bc03;
+    mutable std::unique_ptr<galaxev_ised> cached_galaxev_ised;
+    mutable std::string                   cached_library;
+
     // For thread safety
     std::mutex progress_mutex;
     std::mutex sfh_mutex;
     std::mutex exclude_mutex;
+    mutable std::mutex sed_mutex;
 
     explicit gridder_t(const options_t& opts, const input_state_t& input, output_state_t& output);
 

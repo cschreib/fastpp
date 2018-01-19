@@ -668,11 +668,6 @@ bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
         return false;
     }
 
-    // Apply velocity dispersion
-    if (is_finite(opts.apply_vdisp)) {
-        flux = flatten(convolve_vdisp(lam, reform(flux, 1, flux.size()), opts.apply_vdisp));
-    }
-
     // Apply dust reddening
     if (av > 0 && !nodust) {
         vec2d dust_law = build_dust_law({av}, lam);
@@ -754,6 +749,12 @@ vec2d gridder_t::convolve_vdisp(const vec1d& lam, const vec2d& osed, double vdis
     return sed;
 }
 
+struct sed_id_pair {
+    std::string id;
+    uint_t igrid;
+    double scale;
+};
+
 bool gridder_t::write_seds() const {
     if (opts.make_seds.empty()) return true;
 
@@ -764,10 +765,51 @@ bool gridder_t::write_seds() const {
     std::string odir = opts.output_dir+"seds/";
     file::mkdir(odir);
 
+    uint_t nseds = 0; {
+        std::ifstream in(opts.make_seds);
+        std::string line;
+        while (std::getline(in, line)) {
+            line = trim(line);
+            if (line.empty() || line[0] == '#') continue;
+            ++nseds;
+        }
+    }
+
+    auto write_sed = [&](sed_id_pair p) {
+        vec1f lam, sed, flx;
+        if (!build_template(p.igrid, lam, sed, flx)) {
+            return;
+        }
+
+        sed *= p.scale;
+        flx *= p.scale;
+
+        // Save model
+        std::ofstream fout(odir+p.id+".fit");
+        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+        for (uint_t il : range(lam)) {
+            fout << std::setw(13) << lam.safe[il] << std::setw(13) << sed.safe[il] << "\n";
+        }
+
+        // Save fluxes
+        fout.close();
+        fout.open(odir+p.id+".input_res.fit");
+        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+        for (uint_t il : range(input.lambda)) {
+            fout << std::setw(13) << float(input.lambda.safe[il]) << std::setw(13) << flx.safe[il] << "\n";
+        }
+    };
+
+    thread::worker_pool<sed_id_pair> pool;
+    if (opts.n_thread > 1) {
+        pool.start(opts.n_thread, write_sed);
+    }
+
     std::ifstream in(opts.make_seds);
     std::string line;
     uint_t l = 0;
     uint_t written = 0;
+    auto pg = progress_start(nseds);
     while (std::getline(in, line)) {
         ++l;
         line = trim(line);
@@ -791,31 +833,29 @@ bool gridder_t::write_seds() const {
             return false;
         }
 
-        vec1f lam, sed, flx;
-        if (!build_template(igrid, lam, sed, flx)) {
-            return false;
-        }
+        if (opts.n_thread > 1) {
+            // Parallel
+            while (opts.max_queued_fits > 0 &&
+                pool.remaining() > opts.max_queued_fits) {
+                thread::sleep_for(1e-6);
+            }
 
-        sed *= scale;
-        flx *= scale;
-
-        // Save model
-        std::ofstream fout(odir+id+".fit");
-        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
-        for (uint_t il : range(lam)) {
-            fout << std::setw(13) << lam.safe[il] << std::setw(13) << sed.safe[il] << "\n";
+            pool.process({id, igrid, scale});
+        } else {
+            // Single threaded
+            write_sed({id, igrid, scale});
         }
-        fout.close();
-
-        // Save fluxes
-        fout.open(odir+id+".input_res.fit");
-        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
-        for (uint_t il : range(input.lambda)) {
-            fout << std::setw(13) << float(input.lambda[il]) << std::setw(13) << flx[il] << "\n";
-        }
-        fout.close();
 
         ++written;
+        progress(pg);
+    }
+
+    if (opts.n_thread > 1) {
+        while (pool.remaining() != 0) {
+            thread::sleep_for(1e-6);
+        }
+
+        pool.join();
     }
 
     if (opts.verbose) {

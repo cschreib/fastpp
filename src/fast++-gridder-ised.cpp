@@ -78,166 +78,158 @@ struct file_wrapper {
     }
 };
 
-struct galaxev_ised {
-    vec1f age, sfr, mass, mform;
-    vec1f lambda;
-    vec2f fluxes;
-
-private :
+bool galaxev_ised::read(std::string filename, bool noflux) {
+    std::string state;
     vec2f extras;
 
-public :
-    bool read(std::string filename, bool noflux = false) {
-        std::string state;
-        try {
-            state = "open file";
-            file_wrapper lib(filename);
+    try {
+        state = "open file";
+        file_wrapper lib(filename);
 
-            // The file might have been written with a different endianess...
-            // As in FAST, we try to read the number of time steps and see if
-            // it makes sense, if not we switch endianess.
+        // The file might have been written with a different endianess...
+        // As in FAST, we try to read the number of time steps and see if
+        // it makes sense, if not we switch endianess.
 
-            {
-                // Ignore the first four bytes (FORTRAN convention)
-                state = "read first bytes";
+        {
+            // Ignore the first four bytes (FORTRAN convention)
+            state = "read first bytes";
+            lib.seekg(4);
+
+            state = "determine endianess";
+            std::int32_t ntime = 0;
+            lib.read(ntime);
+
+            // Check if the number of steps makes sense
+            lib.doswap = ntime < 0 || ntime > 10000;
+            if (lib.doswap) {
+                // It doesn't, try again swapping the bytes
                 lib.seekg(4);
-
-                state = "determine endianess";
-                std::int32_t ntime = 0;
                 lib.read(ntime);
-
-                // Check if the number of steps makes sense
-                lib.doswap = ntime < 0 || ntime > 10000;
-                if (lib.doswap) {
-                    // It doesn't, try again swapping the bytes
-                    lib.seekg(4);
-                    lib.read(ntime);
-                }
-
-                // Read time steps
-                state = "read time steps";
-                age.resize(ntime);
-                lib.read(age);
-
-                // Make sure input is correct
-                phypp_check(is_sorted(age), "galaxev age array is not sorted: ", age);
             }
 
-            // Read through info section (variable total size)
-            // Get the number of extras data, in passing
-            {
-                // Skip IMF boundaries
-                state = "read IMF";
-                lib.seekg(2*4, std::ios::cur);
-                // Skip IMF segments
-                std::int32_t imf_seg = 0;
-                lib.read(imf_seg);
-                lib.seekg(6*imf_seg*4, std::ios::cur);
-                // Skip some more stuff
-                state = "read header";
-                lib.seekg(3*4, std::ios::cur);
-                float info;
-                lib.read(info);
-                extras.resize(info == 0 ? 12 : 10, age.size());
-                // Skip the end of the info section (fixed size)
-                lib.seekg(1*4 + 80 + 4*4 + 80 + 80 + 2 + 2 + 3*4, std::ios::cur);
+            // Read time steps
+            state = "read time steps";
+            age.resize(ntime);
+            lib.read(age);
+
+            // Make sure input is correct
+            phypp_check(is_sorted(age), "galaxev age array is not sorted: ", age);
+        }
+
+        // Read through info section (variable total size)
+        // Get the number of extras data, in passing
+        {
+            // Skip IMF boundaries
+            state = "read IMF";
+            lib.seekg(2*4, std::ios::cur);
+            // Skip IMF segments
+            std::int32_t imf_seg = 0;
+            lib.read(imf_seg);
+            lib.seekg(6*imf_seg*4, std::ios::cur);
+            // Skip some more stuff
+            state = "read header";
+            lib.seekg(3*4, std::ios::cur);
+            float info;
+            lib.read(info);
+            extras.resize(info == 0 ? 12 : 10, age.size());
+            // Skip the end of the info section (fixed size)
+            lib.seekg(1*4 + 80 + 4*4 + 80 + 80 + 2 + 2 + 3*4, std::ios::cur);
+        }
+
+        // Read wavelength grid
+        std::int32_t nwave = 0; {
+            state = "read wavelength grid";
+            if (nwave < 0) {
+                error("invalid library file: number of wavelength values is negative");
+                return false;
+            }
+            lib.read(nwave);
+            if (noflux) {
+                lib.seekg(nwave*4, std::ios::cur);
+            } else {
+                lambda.resize(nwave);
+                lib.read(lambda);
+            }
+        }
+
+        // Read fluxes
+        {
+            state = "read model fluxes";
+
+            if (!noflux) {
+                fluxes.resize(age.size(), lambda.size());
             }
 
-            // Read wavelength grid
-            std::int32_t nwave = 0; {
-                state = "read wavelength grid";
-                if (nwave < 0) {
-                    error("invalid library file: number of wavelength values is negative");
-                    return false;
-                }
-                lib.read(nwave);
-                if (noflux) {
-                    lib.seekg(nwave*4, std::ios::cur);
-                } else {
-                    lambda.resize(nwave);
-                    lib.read(lambda);
-                }
-            }
-
-            // Read fluxes
-            {
-                state = "read model fluxes";
-
-                if (!noflux) {
-                    fluxes.resize(age.size(), lambda.size());
-                }
-
-                for (uint_t i : range(age)) {
-                    // Discard extra data
-                    lib.seekg(2*4, std::ios::cur);
-
-                    // Read data
-                    std::int32_t nlam = 0;
-                    lib.read(nlam);
-                    if (nlam < 0) {
-                        error("invalid library file: number of wavelength values "
-                            "is negative for time step id=", i);
-                        return false;
-                    }
-                    if (nlam > nwave) {
-                        error("invalid library file: too many wavelength values "
-                            "at time step id=", i);
-                        return false;
-                    }
-
-                    if (noflux) {
-                        lib.seekg(nlam*4, std::ios::cur);
-                    } else {
-                        lib.read(&fluxes(i,0), nlam);
-                    }
-
-                    // Discard extra data
-                    std::int32_t nspec = 0;
-                    lib.read(nspec);
-                    lib.seekg(nspec*4, std::ios::cur);
-                }
-            }
-
-            // Read extras
-            state = "read extra data (mass, sfr)";
-            for (uint_t i : range(extras.dims[0])) {
+            for (uint_t i : range(age)) {
                 // Discard extra data
                 lib.seekg(2*4, std::ios::cur);
 
                 // Read data
-                std::int32_t ntime = 0;
-                lib.read(ntime);
-                if (ntime < 0) {
-                    error("invalid library file: number of time steps is negative "
-                        "for extra data id=", i);
+                std::int32_t nlam = 0;
+                lib.read(nlam);
+                if (nlam < 0) {
+                    error("invalid library file: number of wavelength values "
+                        "is negative for time step id=", i);
                     return false;
                 }
-                if (uint_t(ntime) > extras.dims[1]) {
-                    error("invalid library file: too many time steps for extra data id=", i);
+                if (nlam > nwave) {
+                    error("invalid library file: too many wavelength values "
+                        "at time step id=", i);
                     return false;
                 }
 
-                lib.read(&extras(i,0), ntime);
+                if (noflux) {
+                    lib.seekg(nlam*4, std::ios::cur);
+                } else {
+                    lib.read(&fluxes(i,0), nlam);
+                }
+
+                // Discard extra data
+                std::int32_t nspec = 0;
+                lib.read(nspec);
+                lib.seekg(nspec*4, std::ios::cur);
             }
-        } catch (...) {
-            print("");
-            error("could not read data in library file '", filename, "'");
-            error("could not ", state);
-            error("the file is probably corrupted, try re-downloading it");
-            print("");
-            return false;
         }
 
-        mass = extras(1,_);
-        sfr = extras(2,_);
-        mform.resize(mass.size());
-        for (uint_t i : range(1, mform.size())) {
-            mform[i] = mform[i-1] + sfr[i]*(age[i]-age[i-1]);
-        }
+        // Read extras
+        state = "read extra data (mass, sfr)";
+        for (uint_t i : range(extras.dims[0])) {
+            // Discard extra data
+            lib.seekg(2*4, std::ios::cur);
 
-        return true;
+            // Read data
+            std::int32_t ntime = 0;
+            lib.read(ntime);
+            if (ntime < 0) {
+                error("invalid library file: number of time steps is negative "
+                    "for extra data id=", i);
+                return false;
+            }
+            if (uint_t(ntime) > extras.dims[1]) {
+                error("invalid library file: too many time steps for extra data id=", i);
+                return false;
+            }
+
+            lib.read(&extras(i,0), ntime);
+        }
+    } catch (...) {
+        print("");
+        error("could not read data in library file '", filename, "'");
+        error("could not ", state);
+        error("the file is probably corrupted, try re-downloading it");
+        print("");
+        return false;
     }
-};
+
+    mass = extras(1,_);
+    sfr = extras(2,_);
+    mform.resize(mass.size());
+    for (uint_t i : range(1, mform.size())) {
+        mform[i] = mform[i-1] + sfr[i]*(age[i]-age[i-1]);
+    }
+
+    return true;
+}
 
 std::string gridder_t::get_library_file_ised(uint_t im, uint_t it) const {
     std::string stau = strn(output.grid[grid_id::custom+0][it]);
@@ -402,24 +394,43 @@ bool gridder_t::build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux) const
     uint_t it = idm[grid_id::custom+0];
     uint_t im = idm[grid_id::metal];
 
-    galaxev_ised ised;
+    galaxev_ised* ised = cached_galaxev_ised.get();
 
-    // Load CSP
-    std::string filename = get_library_file_ised(im, it);
-    if (!ised.read(filename)) {
-        return false;
+    {
+        auto lock = (opts.n_thread > 1 ?
+            std::unique_lock<std::mutex>(sed_mutex) : std::unique_lock<std::mutex>());
+
+        if (!cached_galaxev_ised) {
+            cached_galaxev_ised = std::unique_ptr<galaxev_ised>(new galaxev_ised());
+            ised = cached_galaxev_ised.get();
+        }
+
+        // Load CSP
+        std::string filename = get_library_file_ised(im, it);
+        if (filename != cached_library) {
+            if (!ised->read(filename)) {
+                return false;
+            }
+
+            cached_library = filename;
+
+            // Apply velocity dispersion
+            if (is_finite(opts.apply_vdisp)) {
+                ised->fluxes = convolve_vdisp(ised->lambda, ised->fluxes, opts.apply_vdisp);
+            }
+        }
     }
 
     // Interpolate the galaxev grid at the requested age
     std::array<uint_t,2> p;
     double x;
     double nage = e10(output.grid[grid_id::age][ia]);
-    if (!get_age_bounds(ised.age, nage, p, x)) {
+    if (!get_age_bounds(ised->age, nage, p, x)) {
         return false;
     }
 
-    lam = ised.lambda;
-    flux = ised.fluxes(p[0],_)*(1.0 - x) + ised.fluxes(p[1],_)*x;
+    lam = ised->lambda;
+    flux = ised->fluxes(p[0],_)*(1.0 - x) + ised->fluxes(p[1],_)*x;
 
     return true;
 }
