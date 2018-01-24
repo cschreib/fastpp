@@ -444,11 +444,15 @@ When the type is ```ratio```, the parameters must be, in order: ```low1, up1, lo
     #               <-------->  <-------->
     #                  blue        red
 
-When the type is ```abs```, the parameters must be, in order: ```line_low, line_up, cont1_low, cont1_up, ...```. The first two values specify the lower and upper wavelengths (in Angstrom) over which the line will be integrated. The next two values specify the lower and upper wavelengths of the first continuum window. The line equivalent width (in Angstrom) will be computed as the integral of the spectrum between ```line_low``` and ```line_up```, divided by the average flux between ```cont1_low``` and ```cont1_up```, minus ```line_up - line_low```. The values are always *positive* for absorption, and *negative* for emission. You may specify two continuum windows by adding one more pair of values at the end of the line. In this case, the continuum flux at the location of the line will be modeled as a straight line passing through the flux of the two continuum windows. For example, the Hdelta equivalent width defined in [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B) would be defined in FAST++ as:
+When the type is ```abs```, the parameters must be, in order: ```line_low, line_up, cont1_low, cont1_up, ...```. The first two values specify the lower and upper wavelengths (in Angstrom) over which the line will be integrated. The next two values specify the lower and upper wavelengths of the first continuum window. The line equivalent width (in Angstrom) will be computed as the integral of the spectrum between ```line_low``` and ```line_up```, divided by the average flux between ```cont1_low``` and ```cont1_up```, minus ```line_up - line_low```. Following the decades-old convention, these values are always *positive* for absorption, and *negative* for emission.
 
-    hdelta = ratio, 4082, 4122, 4030, 4082, 4122, 4170
-    #               <-------->  <-------->  <-------->
-    #                  line        blue        red
+Optionally, you may specify *two* continuum windows by adding one more pair of values at the end of the line. In this case, the continuum flux at the location of the line will be modeled as a straight line passing through the flux of the two continuum windows. For example, the Hdelta equivalent width defined in [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B) would be defined in FAST++ as:
+
+    hdelta = abs, 4082, 4122, 4030, 4082, 4122, 4170
+    #             <-------->  <-------->  <-------->
+    #                line        blue        red
+
+Pre-defined sets of continuum indices are provided in the ```share``` directory, including that of [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B) and the [Lick indices](http://astro.wsu.edu/worthey/html/system.html); feel free to create a new file and copy from these lists the indices you need.
 
 
 # Additional documentation
