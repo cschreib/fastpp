@@ -36,6 +36,7 @@
     - [Using priors on the infrared luminosity](#using-priors-on-the-infrared-luminosity)
     - [Better treatment of spectra](#better-treatment-of-spectra)
     - [Velocity broadening](#velocity-broadening)
+    - [Continuum indices](#continuum-indices)
 - [Additional documentation](#additional-documentation)
     - [Adding new filters](#adding-new-filters)
 
@@ -426,7 +427,28 @@ Even when using the old format, the treatment of these spectrum files is also mo
 ## Velocity broadening
 By default, the template spectra produced by FAST++ assume no velocity dispersion of the stars inside the galaxy. This is a good approximation when only fitting broadband photometry, but it becomes incorrect when fitting high spectral resolution data, such as narrow band photometry or spectra, which can sample the spectral profile of the various absorption lines that compose the spectrum (i.e., mostly the Balmer series).
 
-The solution implemented in FAST++ is to broaden all the spectral templates with a fixed velocity dispersion, specified in ```APPLY_VDISP``` (in km/s). Note that this is the value of the velocity *dispersion* (i.e., the "sigma" of the Guassian velocity profile), not the FWHM. Unfortunately, because of the architecture of the code, it is not possible to specify different velocity dispersions for each galaxy of the input catalog. If you need to do this, you will have to fit each galaxy separately, in different FAST++ runs.
+The solution implemented in FAST++ is to broaden all the spectral templates with a fixed velocity dispersion, specified in ```APPLY_VDISP``` (in km/s). Note that this is the value of the velocity *dispersion* (i.e., the "sigma" of the Gaussian velocity profile), not the FWHM. Unfortunately, because of the architecture of the code, it is not possible to specify different velocity dispersions for each galaxy of the input catalog. If you need to do this, you will have to fit each galaxy separately, in different FAST++ runs.
+
+## Continuum indices
+Traditionally, absorption line strengths are measured as "equivalent widths" (in wavelength unit). These are part of a large set of continuum features call "spectral indices", see for example [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B), which includes other commonly used quantities such as the Dn4000 index. These features have been used extensively in the past to characterize the SEDs of galaxies and infer their star formation histories and/or metal abundances.
+
+When FAST++ is given a spectrum to fit, it implicitly uses these various continuum features to constrain the models. This does not require any additional input on your part. Yet, one may wish to inspect how well each of these features is reproduced by the models, as this may signal a shortcoming in the set of allowed models (e.g., requiring models of different metallicity), limitations of the adopted stellar library, or inconsistencies in the data. Otherwise, one may wish to make predictions for features that are not observed, to see how well they are constrained by the presently available data (e.g., if you only have photometry, or only UV spectroscopy), or even to subtract the absorption component from emission line measurements.
+
+For this reason, FAST++ allows you to define a set of continuum indices that will be computed for each model SED, the values of which you can output either in the final catalog, or in the various binary grid files. These indices must be listed in a file, and you must specify the path to this file in the variable ```CONTINUUM_INDICES```.
+
+The format of the file is the following. Each feature is placed on a separate line, formatted as ```name = type, params...```. The line must start with the name of the feature, which cannot contain blank spaces (e.g., ```hdelta```), and must be followed by an equal sign. Then, you must specify the "type" of the feature, which must be either ```abs``` for absorption lines, or ```ratio``` for a flux ratio (such as Dn4000). Following the type, you must specify the parameters required to define a feature of this type.
+
+When the type is ```ratio```, the parameters must be, in order: ```low1, up1, low2, up2```, where ```low```/```up``` is the lower/upper wavelength (in Angstrom) of each continuum window. The flux ratio is then computed as the average flux between ```low2``` and ```up2```, divided by the average flux between ```low1``` and ```up1```. For example, the Dn4000 defined in [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B) would be defined in FAST++ as:
+
+    dn4000 = ratio, 3850, 3950, 4000, 4100
+    #               <-------->  <-------->
+    #                  blue        red
+
+When the type is ```abs```, the parameters must be, in order: ```line_low, line_up, cont1_low, cont1_up, ...```. The first two values specify the lower and upper wavelengths (in Angstrom) over which the line will be integrated. The next two values specify the lower and upper wavelengths of the first continuum window. The line equivalent width (in Angstrom) will be computed as the integral of the spectrum between ```line_low``` and ```line_up```, divided by the average flux between ```cont1_low``` and ```cont1_up```, minus ```line_up - line_low```. The values are always *positive* for absorption, and *negative* for emission. You may specify two continuum windows by adding one more pair of values at the end of the line. In this case, the continuum flux at the location of the line will be modeled as a straight line passing through the flux of the two continuum windows. For example, the Hdelta equivalent width defined in [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B) would be defined in FAST++ as:
+
+    hdelta = ratio, 4082, 4122, 4030, 4082, 4122, 4170
+    #               <-------->  <-------->  <-------->
+    #                  line        blue        red
 
 
 # Additional documentation

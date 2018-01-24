@@ -115,6 +115,7 @@ struct options_t {
     float lambda_ion = 912.0;
     float save_bestchi = 0.0;
     vec1u rest_mag;
+    std::string continuum_indices;
 
     // Custom SFH
     std::string custom_sfh;
@@ -150,6 +151,20 @@ struct fast_filter_t {
     vec1f wl, tr;
 };
 
+// Absorption line
+struct absorption_line_t {
+    std::string name;
+    vec1f cont_low, cont_up;
+    float line_low, line_up;
+};
+
+// Continuum flux ratio
+struct continuum_ratio_t {
+    std::string name;
+    float cont1_low, cont1_up;
+    float cont2_low, cont2_up;
+};
+
 // Holds the input state of the program
 struct input_state_t {
     // List of filter ID used in the photometric catalog
@@ -178,6 +193,10 @@ struct input_state_t {
 
     // Template error function
     vec1f tplerr_lam, tplerr_err;
+
+    // Continuum indices definitions
+    vec<1,absorption_line_t> abs_lines;
+    vec<1,continuum_ratio_t> cont_ratios;
 
     // Baked grid cache name
     std::string name;
@@ -219,7 +238,9 @@ struct output_state_t {
     vec2u mc_best_model;             // [ngal,nsim]
 
     // Indices
-    uint_t ifirst_rlum = npos;
+    uint_t ifirst_rlum  = npos;
+    uint_t ifirst_abs   = npos;
+    uint_t ifirst_ratio = npos;
 
     // For thread safety
     std::mutex fit_result_mutex;

@@ -1,0 +1,6 @@
+# Balogh et al. (1999)
+# Differential Galaxy Evolution in Cluster and Field Galaxies at z~0.3
+# http://adsabs.harvard.edu/abs/1999ApJ...527...54B
+oii    = abs,   3713, 3741, 3653, 3713, 3741, 3801
+hdelta = abs,   4082, 4122, 4030, 4082, 4122, 4170
+dn4000 = ratio, 3850, 3950, 4000, 4100

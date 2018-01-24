@@ -53,8 +53,12 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         break;
     }
 
-    output.ifirst_rlum = nprop;
-    nprop += opt.rest_mag.size();
+    output.ifirst_rlum  = nprop;
+    nprop += opts.rest_mag.size();
+    output.ifirst_abs   = nprop;
+    nprop += input.abs_lines.size();
+    output.ifirst_ratio = nprop;
+    nprop += input.cont_ratios.size();
 
     output.grid.resize(nparam);
     output.param_names.resize(nparam+nprop);
@@ -118,9 +122,19 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     set_prop(prop_id::mform,  "lmform", "log[mass/Msol]",     true,  log_style::decimal, 1e-2);
 
     // Rest luminosities
-    for (uint_t i : range(opt.rest_mag)) {
-        set_prop(output.ifirst_rlum+i, "M"+strn(opt.rest_mag[i]),
+    for (uint_t i : range(opts.rest_mag)) {
+        set_prop(output.ifirst_rlum+i, "M"+strn(opts.rest_mag[i]),
             "[ABmag]", true, log_style::abmag, 1e-2);
+    }
+
+    // Continuum indices
+    for (uint_t i : range(input.abs_lines)) {
+        auto& l = input.abs_lines[i];
+        set_prop(output.ifirst_abs+i, l.name, "[A]", false, log_style::none, 1e-2);
+    }
+    for (uint_t i : range(input.cont_ratios)) {
+        auto& r = input.cont_ratios[i];
+        set_prop(output.ifirst_ratio+i, r.name, "", false, log_style::none, 1e-2);
     }
 
     // Redshift grid
@@ -254,6 +268,16 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
             grid_hash = hash(grid_hash, opts.custom_sfh,
                 output.grid[grid_id::custom+uindgen(nparam-grid_id::custom)]);
             break;
+        }
+
+        // Continuum indices
+        for (uint_t i : range(input.abs_lines)) {
+            auto& l = input.abs_lines[i];
+            grid_hash = hash(grid_hash, l.name, l.line_low, l.line_up, l.cont_low, l.cont_up);
+        }
+        for (uint_t i : range(input.cont_ratios)) {
+            auto& r = input.cont_ratios[i];
+            grid_hash = hash(grid_hash, r.name, r.cont1_low, r.cont1_up, r.cont2_low, r.cont2_up);
         }
 
         cache.cache_filename += grid_hash+".grid";
@@ -517,6 +541,54 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
             }
         }
 
+        // Compute absorption lines EW
+        for (uint_t i : range(input.abs_lines)) {
+            auto& l = input.abs_lines[i];
+
+            double fl = integrate(lam, tpl_att_flux, l.line_low, l.line_up);
+
+            double fc = 0.0;
+            if (l.cont_low.size() == 1) {
+                // Single window, assume continuum is constant
+                fc = integrate(lam, tpl_att_flux, l.cont_low[0], l.cont_up[0])/
+                    (l.cont_up[0] - l.cont_low[0]);
+
+                // Subtract continuum
+                fl -= fc*(l.line_up - l.line_low);
+            } else {
+                // Two windows, assume continuum is linear
+                double l1 = 0.5*(l.cont_low[0] + l.cont_up[0]);
+                double l2 = 0.5*(l.cont_low[1] + l.cont_up[1]);
+
+                double f1 = integrate(lam, tpl_att_flux, l.cont_low[0], l.cont_up[0])/
+                    (l.cont_up[0] - l.cont_low[0]);
+                double f2 = integrate(lam, tpl_att_flux, l.cont_low[1], l.cont_up[1])/
+                    (l.cont_up[1] - l.cont_low[1]);
+
+                fc = interpolate(f1, f2, l1, l2, 0.5*(l.line_low + l.line_up));
+
+                // Subtract continuum
+                double a = (f1*l2 - f2*l1)/(l2 - l1);
+                double b = (f2 - f1)/(l2 - l1)/2.0;
+                fl -= a*(l.line_up - l.line_low) + b*(sqr(l.line_up) - sqr(l.line_low));
+            }
+
+            model.props[output.ifirst_abs+i] = -fl/fc;
+        }
+
+        // Compute continuum indices
+        for (uint_t i : range(input.cont_ratios)) {
+            auto& r = input.cont_ratios[i];
+
+            double fc1 = integrate(lam, tpl_att_flux, r.cont1_low, r.cont1_up)/
+                (r.cont1_up - r.cont1_low);
+            double fc2 = integrate(lam, tpl_att_flux, r.cont2_low, r.cont2_up)/
+                (r.cont2_up - r.cont2_low);
+
+            model.props[output.ifirst_ratio+i] = fc2/fc1;
+        }
+
+        // Redshift, integrate, and send to fitter
         for (uint_t iz : range(output_z)) {
             idm[grid_id::z] = iz;
             model.igrid = model_id(idm);

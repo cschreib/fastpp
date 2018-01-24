@@ -160,6 +160,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(save_bestchi)
         PARSE_OPTION(apply_vdisp)
         PARSE_OPTION(rest_mag)
+        PARSE_OPTION(continuum_indices)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
@@ -1489,6 +1490,116 @@ bool check_input(options_t& opts, input_state_t& state) {
     return true;
 }
 
+bool read_continuum_indices(const options_t& opts, input_state_t& state) {
+    if (opts.continuum_indices.empty()) {
+        return true;
+    }
+
+    if (opts.verbose) {
+        print("using continuum indices defined in '", opts.continuum_indices, "'");
+    }
+
+    std::ifstream in(opts.continuum_indices);
+    if (!in.is_open()) {
+        error("could not open continuum indices file '", opts.continuum_indices, "'");
+        return false;
+    }
+
+    std::string line;
+    uint_t l = 0;
+    while (std::getline(in, line)) {
+        ++l;
+        line = trim(line);
+        if (line.empty() || line[0] == '#') continue;
+
+        vec1s spl = split(line, "=");
+        std::string name = trim(spl[0]);
+
+        spl = trim(split(spl[1], ","));
+        std::string type = spl[0];
+
+        if (type == "abs") {
+            if ((spl.size()-1) < 4) {
+                error("too few parameters for 'abs' continuum index (need at least 4, got ",
+                    spl.size()-1, ")");
+                return false;
+            }
+            if ((spl.size()-1) % 2 == 1) {
+                error("need an even number of parameters for 'abs' continuum index (got ",
+                    spl.size()-1, ")");
+                return false;
+            }
+
+            state.abs_lines.push_back(absorption_line_t{});
+            auto& line = state.abs_lines.back();
+            line.name = name;
+
+            if (!from_string(spl[1], line.line_low)) {
+                error("could not read lower wavelength of absorption line from '", spl[1], "' in",
+                    opts.continuum_indices, ":", l);
+                return false;
+            }
+            if (!from_string(spl[2], line.line_up)) {
+                error("could not read upper wavelength of absorption line from '", spl[2], "' in",
+                    opts.continuum_indices, ":", l);
+                return false;
+            }
+
+            uint_t ncont = (spl.size()-3)/2;
+            line.cont_low.resize(ncont);
+            line.cont_up.resize(ncont);
+            for (uint_t c : range(ncont)) {
+                if (!from_string(spl[c*2+3], line.cont_low[c])) {
+                    error("could not read lower wavelength of continuum from '", spl[c*2+3], "' in",
+                        opts.continuum_indices, ":", l);
+                    return false;
+                }
+                if (!from_string(spl[c*2+4], line.cont_up[c])) {
+                    error("could not read upper wavelength of continuum from '", spl[c*2+4], "' in",
+                        opts.continuum_indices, ":", l);
+                    return false;
+                }
+            }
+        } else if (type == "ratio") {
+            if ((spl.size()-1) != 4) {
+                error("incorrect number of parameters for 'ratio' continuum index (need 4, got ",
+                    spl.size()-1, ")");
+                return false;
+            }
+
+            state.cont_ratios.push_back(continuum_ratio_t{});
+            auto& ratio = state.cont_ratios.back();
+            ratio.name = name;
+
+            if (!from_string(spl[1], ratio.cont1_low)) {
+                error("could not read lower wavelength of continuum ratio from '", spl[1], "' in",
+                    opts.continuum_indices, ":", l);
+                return false;
+            }
+            if (!from_string(spl[2], ratio.cont1_up)) {
+                error("could not read upper wavelength of continuum ratio from '", spl[2], "' in",
+                    opts.continuum_indices, ":", l);
+                return false;
+            }
+            if (!from_string(spl[3], ratio.cont2_low)) {
+                error("could not read lower wavelength of continuum ratio from '", spl[3], "' in",
+                    opts.continuum_indices, ":", l);
+                return false;
+            }
+            if (!from_string(spl[4], ratio.cont2_up)) {
+                error("could not read upper wavelength of continuum ratio from '", spl[4], "' in",
+                    opts.continuum_indices, ":", l);
+                return false;
+            }
+        } else {
+            error("unknown continuum index type '", type, "' in ", opts.continuum_indices, ":", l);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool read_input(options_t& opts, input_state_t& state, const std::string& filename) {
     // First read options from the parameter file
     if (!read_params(opts, state, filename)) {
@@ -1517,6 +1628,11 @@ bool read_input(options_t& opts, input_state_t& state, const std::string& filena
 
     // Read the template error function, if any
     if (!read_template_error(opts, state)) {
+        return false;
+    }
+
+    // Read the continuum indices definitions, if any
+    if (!read_continuum_indices(opts, state)) {
         return false;
     }
 
