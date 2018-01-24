@@ -1496,7 +1496,7 @@ bool read_continuum_indices(const options_t& opts, input_state_t& state) {
     }
 
     if (opts.verbose) {
-        print("using continuum indices defined in '", opts.continuum_indices, "'");
+        note("using continuum indices defined in '", opts.continuum_indices, "'");
     }
 
     std::ifstream in(opts.continuum_indices);
@@ -1519,13 +1519,8 @@ bool read_continuum_indices(const options_t& opts, input_state_t& state) {
         std::string type = spl[0];
 
         if (type == "abs") {
-            if ((spl.size()-1) < 4) {
-                error("too few parameters for 'abs' continuum index (need at least 4, got ",
-                    spl.size()-1, ")");
-                return false;
-            }
-            if ((spl.size()-1) % 2 == 1) {
-                error("need an even number of parameters for 'abs' continuum index (got ",
+            if ((spl.size()-1) != 4 && (spl.size()-1) != 6) {
+                error("too few parameters for 'abs' continuum index (need at 4 or 6, got ",
                     spl.size()-1, ")");
                 return false;
             }
