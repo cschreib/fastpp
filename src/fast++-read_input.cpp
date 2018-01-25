@@ -1526,30 +1526,30 @@ bool read_continuum_indices(const options_t& opts, input_state_t& state) {
             }
 
             state.abs_lines.push_back(absorption_line_t{});
-            auto& line = state.abs_lines.back();
-            line.name = name;
+            auto& tline = state.abs_lines.back();
+            tline.name = name;
 
-            if (!from_string(spl[1], line.line_low)) {
+            if (!from_string(spl[1], tline.line_low)) {
                 error("could not read lower wavelength of absorption line from '", spl[1], "' in",
                     opts.continuum_indices, ":", l);
                 return false;
             }
-            if (!from_string(spl[2], line.line_up)) {
+            if (!from_string(spl[2], tline.line_up)) {
                 error("could not read upper wavelength of absorption line from '", spl[2], "' in",
                     opts.continuum_indices, ":", l);
                 return false;
             }
 
             uint_t ncont = (spl.size()-3)/2;
-            line.cont_low.resize(ncont);
-            line.cont_up.resize(ncont);
+            tline.cont_low.resize(ncont);
+            tline.cont_up.resize(ncont);
             for (uint_t c : range(ncont)) {
-                if (!from_string(spl[c*2+3], line.cont_low[c])) {
+                if (!from_string(spl[c*2+3], tline.cont_low[c])) {
                     error("could not read lower wavelength of continuum from '", spl[c*2+3], "' in",
                         opts.continuum_indices, ":", l);
                     return false;
                 }
-                if (!from_string(spl[c*2+4], line.cont_up[c])) {
+                if (!from_string(spl[c*2+4], tline.cont_up[c])) {
                     error("could not read upper wavelength of continuum from '", spl[c*2+4], "' in",
                         opts.continuum_indices, ":", l);
                     return false;
