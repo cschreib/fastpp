@@ -220,11 +220,14 @@ While the implementation of FAST++ was designed to resemble FAST-IDL as much as 
  * The way FAST++ computes uncertainties using the Monte Carlo simulations is different from FAST-IDL, and this can lead to small differences in the resulting confidence intervals. In particular, the Monte Carlo simulations always use the same constraints on the redshift as the best-fit solution (unless ```BEST_AT_ZPHOT``` is set). Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid. This should not be significant, and the accuracy of the uncertainties computed by FAST++ was verified using mock catalogs with known physical parameters.
 
 ## Chi2 grid
- * FAST-IDL uses the IDL "save" format to write the chi2 grid on the disk. This format is proprietary and can only be opened by IDL itself. Instead, FAST++ uses a custom binary format. The format is the following. The file starts with a header, and then lists the chi2 data for each model of the grid. In addition to the chi2, the model's best-fitting properties are also saved.
+ * FAST-IDL uses the IDL "save" format to write the chi2 grid on the disk. This format is proprietary and can only be opened by IDL itself. Instead, FAST++ uses a custom, open binary format, described below. In addition, a convenience tool called ``fast++-grid2fits`` is provided to convert the grid file into a FITS table.
+
+The binary grid format is the following. The file starts with a header, and then lists the chi2 data for each model of the grid. In addition to the chi2, the model's best-fitting properties are also saved.
 ```
 # Begin header
 # ------------
 [uint32]: number of bytes in header
+[uchar]:  'C' (identifies the file type)
 [uint32]: number of galaxies
 [uint32]: number of properties (mass, sfr, etc)
   # For each property:
@@ -315,11 +318,12 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
  * ```BEST_SFHS```: possible values are ```0``` or ```1```. The default is ```0```. If set to ```1```, the program will output the best fit star formation history (SFH) to a file, in the ```best_fits``` directory (as for the best fit SEDs). If Monte Carlo simulations are enabled, the program will also output confidence intervals on the SFH for each time step, as well as the median SFH among all Monte Carlo simulations. This median may not correspond to any analytical form allowed by your chosen SFH model.
  * ```SFH_OUTPUT_STEP```: possible values are any strictly positive number, which defines the size of a time step in the output SFH (in Myr). The default is ```10``` Myr.
  * ```SFH_OUTPUT```: possible values are ```'sfr'``` or ```'mass'```. The default is ```'sfr'```, and the program outputs as "SFH" the evolution of the instantaneous SFR of each galaxy with time. If set to ```'mass'```, the program will output instead the evolution of the stellar mass with time (which is usually better behaved, see Glazebrook et al. 2017). Note that the evolution of the mass accounts for mass loss, so the mass slowly _decreases_ with time after a galaxy has quenched.
- * ```SAVE_BESTCHI```: FAST++ can save the entire chi2 grid on the disk with the ```SAVE_CHI_GRID``` option. However, if you have *huge* grids, this can require too much disk space (I have been in situations where the chi2 grid would be as large as several TB!). Usually, one is not interested in the chi2 of *all* models, but only those that match the data within some tolerance threshold. This option allows you to only save on the disk the models that are worst than the best chi2 by some amount ```chi2 - best_chi2 < SAVE_BESTCHI``` (where ```SAVE_BESTCHI=1``` if you are interested in standard 68% confidence intervals, or ```2.71``` for 90% confidence, etc., see Avni 1976). These "good" models are saved in a separate ".grid" file for each galaxy of the input catalog, inside the ```best_chi2``` folder. The format is similar to the ".grid" file for the full chi2 grid (which is described above), but not identical:
+ * ```SAVE_BESTCHI```: FAST++ can save the entire chi2 grid on the disk with the ```SAVE_CHI_GRID``` option. However, if you have *huge* grids, this can require too much disk space (I have been in situations where the chi2 grid would be as large as several TB!). Usually, one is not interested in the chi2 of *all* models, but only those that match the data within some tolerance threshold. This option allows you to only save on the disk the models that are worst than the best chi2 by some amount ```chi2 - best_chi2 < SAVE_BESTCHI``` (where ```SAVE_BESTCHI=1``` if you are interested in standard 68% confidence intervals, or ```2.71``` for 90% confidence, etc., see Avni 1976). These "good" models are saved in a separate ".grid" file for each galaxy of the input catalog, inside the ```best_chi2``` folder. The format is similar to the ".grid" file for the full chi2 grid (which is described above), but not identical. The ``fast++-grid2fits`` tool can also convert these files into FITS tables. The binary format is the following:
 ```
 # Begin header
 # ------------
 [uint32]: number of bytes in header
+[uchar]:  'B' (identifies the file type)
 [uint32]: number of properties (mass, sfr, etc)
   # For each property:
   [char*]: name of the property ("lmass", "lsfr", etc)

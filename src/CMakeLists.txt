@@ -34,3 +34,8 @@ add_executable(fast++
 target_link_libraries(fast++ ${PHYPP_LIBRARIES})
 target_link_libraries(fast++ ${TINYEXPR_LIBRARY})
 install(TARGETS fast++ DESTINATION bin)
+
+# Build FAST++ helper tools
+add_executable(fast++-grid2fits fast++-grid2fits.cpp)
+target_link_libraries(fast++-grid2fits ${PHYPP_LIBRARIES})
+install(TARGETS fast++-grid2fits DESTINATION bin)

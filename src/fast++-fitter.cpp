@@ -140,6 +140,7 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
 
         // Write header
         // Format:
+        // char:   file type ('C' = chi2 grid)
         // uint32: size of header in bytes (to skip it)
         // uint32: number of galaxies
         // uint32: number of properties
@@ -150,7 +151,9 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
         //     char[*]: name
         //     uint32: number of values
         //     float[*]: grid values
+        const unsigned char ftype_chi2grid = 'C';
         file::write_as<std::uint32_t>(ochi2.out_file, 0);
+        file::write(ochi2.out_file, ftype_chi2grid);
         file::write_as<std::uint32_t>(ochi2.out_file, input.id.size());
 
         file::write_as<std::uint32_t>(ochi2.out_file, gridder.nprop);
@@ -206,6 +209,7 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
 
                 if (is == 0) {
                     // Format:
+                    // char:   file type ('B' = best chi2)
                     // uint32: size of header in bytes (to skip it)
                     // uint32: number of properties
                     // for each property:
@@ -215,7 +219,9 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
                     //     char[*]: name
                     //     uint32: number of values
                     //     float[*]: grid values
+                    const unsigned char ftype_bestchi2 = 'B';
                     file::write_as<std::uint32_t>(out, 0);
+                    file::write(out, ftype_bestchi2);
                     file::write_as<std::uint32_t>(out, gridder.nprop);
                     for (uint_t i : range(gridder.nprop)) {
                         file::write(out, output.param_names[gridder.nparam+i]);
