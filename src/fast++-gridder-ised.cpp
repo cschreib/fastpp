@@ -243,7 +243,7 @@ std::string gridder_t::get_library_file_ised(uint_t im, uint_t it) const {
 bool gridder_t::get_age_bounds(const vec1f& ised_age, float nage,
     std::array<uint_t,2>& p, double& x) const {
 
-    p = bounds(nage, ised_age);
+    p = bounds(ised_age, nage);
 
     if (p[0] == npos) {
         print("");
