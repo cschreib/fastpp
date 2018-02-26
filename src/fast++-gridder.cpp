@@ -662,7 +662,7 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
         model.props.resize(nprop);
 
         auto pg = progress_start(nmodel);
-        for (uint_t i = 0; i < nmodel; ++i) {
+        for (uint_t m = 0; m < nmodel; ++m) {
             if (cache.read_model(model)) {
                 bool nofit = false;
                 if (!opts.no_max_age) {
@@ -697,18 +697,21 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
             }
         }
     } else {
+        bool ret = false;
+
         switch (opts.sfh) {
         case sfh_type::gridded:
-            return build_and_send_ised(fitter);
+            ret = build_and_send_ised(fitter);
         case sfh_type::custom:
-            return build_and_send_custom(fitter);
+            ret = build_and_send_custom(fitter);
         default:
             error("this SFH is not implemented yet");
-            return false;
         }
 
         // Make sure we flush all the cache out
         cache.cache_file.close();
+
+        return ret;
     }
 
     return true;
