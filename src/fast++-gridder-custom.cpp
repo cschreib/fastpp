@@ -448,8 +448,8 @@ bool gridder_t::get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh,
     double age_born = age_obs - nage;
 
     // Evaluate SFH
-    uint_t i0 = upper_bound(age_born, t);
-    uint_t i1 = upper_bound(age_obs, t);
+    uint_t i0 = upper_bound(t, age_born);
+    uint_t i1 = upper_bound(t, age_obs);
 
     if (i1 == npos) {
         i1 = t.size()-1;
