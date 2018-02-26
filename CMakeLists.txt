@@ -87,4 +87,5 @@ endif()
 
 install(PROGRAMS
     ${CMAKE_BINARY_DIR}/bin/fast++
+    ${CMAKE_BINARY_DIR}/bin/fast++-grid2fits
     DESTINATION bin COMPONENT runtime)

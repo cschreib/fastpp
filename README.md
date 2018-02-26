@@ -36,6 +36,7 @@
     - [Using priors on the infrared luminosity](#using-priors-on-the-infrared-luminosity)
     - [Better treatment of spectra](#better-treatment-of-spectra)
     - [Velocity broadening](#velocity-broadening)
+    - [Continuum indices](#continuum-indices)
 - [Additional documentation](#additional-documentation)
     - [Adding new filters](#adding-new-filters)
 
@@ -219,11 +220,14 @@ While the implementation of FAST++ was designed to resemble FAST-IDL as much as 
  * The way FAST++ computes uncertainties using the Monte Carlo simulations is different from FAST-IDL, and this can lead to small differences in the resulting confidence intervals. In particular, the Monte Carlo simulations always use the same constraints on the redshift as the best-fit solution (unless ```BEST_AT_ZPHOT``` is set). Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid. This should not be significant, and the accuracy of the uncertainties computed by FAST++ was verified using mock catalogs with known physical parameters.
 
 ## Chi2 grid
- * FAST-IDL uses the IDL "save" format to write the chi2 grid on the disk. This format is proprietary and can only be opened by IDL itself. Instead, FAST++ uses a custom binary format. The format is the following. The file starts with a header, and then lists the chi2 data for each model of the grid. In addition to the chi2, the model's best-fitting properties are also saved.
+ * FAST-IDL uses the IDL "save" format to write the chi2 grid on the disk. This format is proprietary and can only be opened by IDL itself. Instead, FAST++ uses a custom, open binary format, described below. In addition, a convenience tool called ``fast++-grid2fits`` is provided to convert the grid file into a FITS table.
+
+The binary grid format is the following. The file starts with a header, and then lists the chi2 data for each model of the grid. In addition to the chi2, the model's best-fitting properties are also saved.
 ```
 # Begin header
 # ------------
 [uint32]: number of bytes in header
+[uchar]:  'C' (identifies the file type)
 [uint32]: number of galaxies
 [uint32]: number of properties (mass, sfr, etc)
   # For each property:
@@ -314,11 +318,12 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
  * ```BEST_SFHS```: possible values are ```0``` or ```1```. The default is ```0```. If set to ```1```, the program will output the best fit star formation history (SFH) to a file, in the ```best_fits``` directory (as for the best fit SEDs). If Monte Carlo simulations are enabled, the program will also output confidence intervals on the SFH for each time step, as well as the median SFH among all Monte Carlo simulations. This median may not correspond to any analytical form allowed by your chosen SFH model.
  * ```SFH_OUTPUT_STEP```: possible values are any strictly positive number, which defines the size of a time step in the output SFH (in Myr). The default is ```10``` Myr.
  * ```SFH_OUTPUT```: possible values are ```'sfr'``` or ```'mass'```. The default is ```'sfr'```, and the program outputs as "SFH" the evolution of the instantaneous SFR of each galaxy with time. If set to ```'mass'```, the program will output instead the evolution of the stellar mass with time (which is usually better behaved, see Glazebrook et al. 2017). Note that the evolution of the mass accounts for mass loss, so the mass slowly _decreases_ with time after a galaxy has quenched.
- * ```SAVE_BESTCHI```: FAST++ can save the entire chi2 grid on the disk with the ```SAVE_CHI_GRID``` option. However, if you have *huge* grids, this can require too much disk space (I have been in situations where the chi2 grid would be as large as several TB!). Usually, one is not interested in the chi2 of *all* models, but only those that match the data within some tolerance threshold. This option allows you to only save on the disk the models that are worst than the best chi2 by some amount ```chi2 - best_chi2 < SAVE_BESTCHI``` (where ```SAVE_BESTCHI=1``` if you are interested in standard 68% confidence intervals, or ```2.71``` for 90% confidence, etc., see Avni 1976). These "good" models are saved in a separate ".grid" file for each galaxy of the input catalog, inside the ```best_chi2``` folder. The format is similar to the ".grid" file for the full chi2 grid (which is described above), but not identical:
+ * ```SAVE_BESTCHI```: FAST++ can save the entire chi2 grid on the disk with the ```SAVE_CHI_GRID``` option. However, if you have *huge* grids, this can require too much disk space (I have been in situations where the chi2 grid would be as large as several TB!). Usually, one is not interested in the chi2 of *all* models, but only those that match the data within some tolerance threshold. This option allows you to only save on the disk the models that are worst than the best chi2 by some amount ```chi2 - best_chi2 < SAVE_BESTCHI``` (where ```SAVE_BESTCHI=1``` if you are interested in standard 68% confidence intervals, or ```2.71``` for 90% confidence, etc., see Avni 1976). These "good" models are saved in a separate ".grid" file for each galaxy of the input catalog, inside the ```best_chi2``` folder. The format is similar to the ".grid" file for the full chi2 grid (which is described above), but not identical. The ``fast++-grid2fits`` tool can also convert these files into FITS tables. The binary format is the following:
 ```
 # Begin header
 # ------------
 [uint32]: number of bytes in header
+[uchar]:  'B' (identifies the file type)
 [uint32]: number of properties (mass, sfr, etc)
   # For each property:
   [char*]: name of the property ("lmass", "lsfr", etc)
@@ -426,7 +431,32 @@ Even when using the old format, the treatment of these spectrum files is also mo
 ## Velocity broadening
 By default, the template spectra produced by FAST++ assume no velocity dispersion of the stars inside the galaxy. This is a good approximation when only fitting broadband photometry, but it becomes incorrect when fitting high spectral resolution data, such as narrow band photometry or spectra, which can sample the spectral profile of the various absorption lines that compose the spectrum (i.e., mostly the Balmer series).
 
-The solution implemented in FAST++ is to broaden all the spectral templates with a fixed velocity dispersion, specified in ```APPLY_VDISP``` (in km/s). Note that this is the value of the velocity *dispersion* (i.e., the "sigma" of the Guassian velocity profile), not the FWHM. Unfortunately, because of the architecture of the code, it is not possible to specify different velocity dispersions for each galaxy of the input catalog. If you need to do this, you will have to fit each galaxy separately, in different FAST++ runs.
+The solution implemented in FAST++ is to broaden all the spectral templates with a fixed velocity dispersion, specified in ```APPLY_VDISP``` (in km/s). Note that this is the value of the velocity *dispersion* (i.e., the "sigma" of the Gaussian velocity profile), not the FWHM. Unfortunately, because of the architecture of the code, it is not possible to specify different velocity dispersions for each galaxy of the input catalog. If you need to do this, you will have to fit each galaxy separately, in different FAST++ runs.
+
+## Continuum indices
+Traditionally, absorption line strengths are measured as "equivalent widths" (in wavelength unit). These are part of a large set of continuum features call "spectral indices", see for example [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B), which includes other commonly used quantities such as the Dn4000 index. These features have been used extensively in the past to characterize the SEDs of galaxies and infer their star formation histories and/or metal abundances.
+
+When FAST++ is given a spectrum to fit, it implicitly uses these various continuum features to constrain the models. This does not require any additional input on your part. Yet, one may wish to inspect how well each of these features is reproduced by the models, as this may signal a shortcoming in the set of allowed models (e.g., requiring models of different metallicity), limitations of the adopted stellar library, or inconsistencies in the data. Otherwise, one may wish to make predictions for features that are not observed, to see how well they are constrained by the presently available data (e.g., if you only have photometry, or only UV spectroscopy), or even to subtract the absorption component from emission line measurements.
+
+For this reason, FAST++ allows you to define a set of continuum indices that will be computed for each model SED, the values of which you can output either in the final catalog, or in the various binary grid files. These indices must be listed in a file, and you must specify the path to this file in the variable ```CONTINUUM_INDICES```.
+
+The format of the file is the following. Each feature is placed on a separate line, formatted as ```name = type, params...```. The line must start with the name of the feature, which cannot contain blank spaces (e.g., ```hdelta```), and must be followed by an equal sign. Then, you must specify the "type" of the feature, which must be either ```abs``` for absorption lines, or ```ratio``` for a flux ratio (such as Dn4000). Following the type, you must specify the parameters required to define a feature of this type.
+
+When the type is ```ratio```, the parameters must be, in order: ```low1, up1, low2, up2```, where ```low```/```up``` is the lower/upper wavelength (in Angstrom) of each continuum window. The flux ratio is then computed as the average flux between ```low2``` and ```up2```, divided by the average flux between ```low1``` and ```up1```. For example, the Dn4000 defined in [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B) would be defined in FAST++ as:
+
+    dn4000 = ratio, 3850, 3950, 4000, 4100
+    #               <-------->  <-------->
+    #                  blue        red
+
+When the type is ```abs```, the parameters must be, in order: ```line_low, line_up, cont1_low, cont1_up, ...```. The first two values specify the lower and upper wavelengths (in Angstrom) over which the line will be integrated. The next two values specify the lower and upper wavelengths of the first continuum window. The line equivalent width (in Angstrom) will be computed as the integral of the spectrum between ```line_low``` and ```line_up```, divided by the average flux between ```cont1_low``` and ```cont1_up```, minus ```line_up - line_low```. Following the decades-old convention, these values are always *positive* for absorption, and *negative* for emission.
+
+Optionally, you may specify *two* continuum windows by adding one more pair of values at the end of the line. In this case, the continuum flux at the location of the line will be modeled as a straight line passing through the flux of the two continuum windows. For example, the Hdelta equivalent width defined in [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B) would be defined in FAST++ as:
+
+    hdelta = abs, 4082, 4122, 4030, 4082, 4122, 4170
+    #             <-------->  <-------->  <-------->
+    #                line        blue        red
+
+Pre-defined sets of continuum indices are provided in the ```share``` directory, including that of [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B) and the [Lick indices](http://astro.wsu.edu/worthey/html/system.html); feel free to create a new file and copy from these lists the indices you need.
 
 
 # Additional documentation

@@ -216,7 +216,7 @@ APPLY_VDISP    = 0          # km/s
 #   simulations are enabled, the confidence intervals of the SFH will
 #   also be written.
 #
-# o SFH_OUTPUT_STEP: if BEST_SFHS=1, sets the time step of the output SFH 
+# o SFH_OUTPUT_STEP: if BEST_SFHS=1, sets the time step of the output SFH
 #   in million years. The default is 10 Myr.
 #
 # o SFH_OUTPUT: 'sfr' will output the evolution of the star formation rate
@@ -226,6 +226,10 @@ APPLY_VDISP    = 0          # km/s
 # o REST_MAG: list of filter ID to use to compute rest-frame magnitudes.
 #   These absolute magnitudes are then given at 10pc in the AB system,
 #   using AB_ZEROPOINT, and are not corrected for attenuation.
+#
+# o CONTINUUM_INDICES: file listing the continuum indices (absorption
+#   line equivalent-width, Dn4000, ...) to compute from each model
+#   spectrum. See examples in the "share/continuum_indices" directory.
 #
 # o OUTPUT_COLUMNS: define here what columns to write in [CATALOG].fout
 #   Available columns: id, metal, lage, Av, lmass, lsfr, lssfr, lldust,
@@ -251,6 +255,7 @@ BEST_SFHS          = 0             # 0 / 1
 SFH_OUTPUT_STEP    = 10            # 10 Myr, 100 Myr etc
 SFH_OUTPUT         = 'sfr'         # 'sfr' or 'mass'
 REST_MAG           = []            # [140,142,161] for UVJ colors
+CONTINUUM_INDICES  = ''
 OUTPUT_COLUMNS     = []            # ['id','Av','lmass','lsfr', ...]
 
 

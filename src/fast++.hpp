@@ -115,6 +115,7 @@ struct options_t {
     float lambda_ion = 912.0;
     float save_bestchi = 0.0;
     vec1u rest_mag;
+    std::string continuum_indices;
 
     // Custom SFH
     std::string custom_sfh;
@@ -150,6 +151,20 @@ struct fast_filter_t {
     vec1f wl, tr;
 };
 
+// Absorption line
+struct absorption_line_t {
+    std::string name;
+    vec1f cont_low, cont_up;
+    float line_low, line_up;
+};
+
+// Continuum flux ratio
+struct continuum_ratio_t {
+    std::string name;
+    float cont1_low, cont1_up;
+    float cont2_low, cont2_up;
+};
+
 // Holds the input state of the program
 struct input_state_t {
     // List of filter ID used in the photometric catalog
@@ -178,6 +193,10 @@ struct input_state_t {
 
     // Template error function
     vec1f tplerr_lam, tplerr_err;
+
+    // Continuum indices definitions
+    vec<1,absorption_line_t> abs_lines;
+    vec<1,continuum_ratio_t> cont_ratios;
 
     // Baked grid cache name
     std::string name;
@@ -219,7 +238,9 @@ struct output_state_t {
     vec2u mc_best_model;             // [ngal,nsim]
 
     // Indices
-    uint_t ifirst_rlum = npos;
+    uint_t ifirst_rlum  = npos;
+    uint_t ifirst_abs   = npos;
+    uint_t ifirst_ratio = npos;
 
     // For thread safety
     std::mutex fit_result_mutex;
@@ -241,6 +262,26 @@ struct model_id_pair {
 struct fitter_t;
 struct te_expr;
 struct te_variable;
+
+// SED libraries
+struct ssp_bc03 {
+    vec1d age;
+    vec1d mass;
+    vec1d lambda;
+    vec2d sed;
+
+    bool read_ascii(std::string filename);
+    bool read_fits(std::string filename, bool noflux);
+    bool read(std::string filename, bool noflux = false);
+};
+
+struct galaxev_ised {
+    vec1f age, sfr, mass, mform;
+    vec1f lambda;
+    vec2f fluxes;
+
+    bool read(std::string filename, bool noflux = false);
+};
 
 // Build the grid of models and sends models to the fitter
 struct gridder_t {
@@ -277,10 +318,16 @@ struct gridder_t {
     vec1d auniv;                     // [nz]
     uint_t nparam = 0, nprop = 0, nfreeparam = 0, nmodel = 0, ncustom = 0;
 
+    // Caches
+    mutable std::unique_ptr<ssp_bc03>     cached_ssp_bc03;
+    mutable std::unique_ptr<galaxev_ised> cached_galaxev_ised;
+    mutable std::string                   cached_library;
+
     // For thread safety
     std::mutex progress_mutex;
     std::mutex sfh_mutex;
     std::mutex exclude_mutex;
+    mutable std::mutex sed_mutex;
 
     explicit gridder_t(const options_t& opts, const input_state_t& input, output_state_t& output);
 

@@ -53,8 +53,12 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         break;
     }
 
-    output.ifirst_rlum = nprop;
-    nprop += opt.rest_mag.size();
+    output.ifirst_rlum  = nprop;
+    nprop += opts.rest_mag.size();
+    output.ifirst_abs   = nprop;
+    nprop += input.abs_lines.size();
+    output.ifirst_ratio = nprop;
+    nprop += input.cont_ratios.size();
 
     output.grid.resize(nparam);
     output.param_names.resize(nparam+nprop);
@@ -118,9 +122,19 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     set_prop(prop_id::mform,  "lmform", "log[mass/Msol]",     true,  log_style::decimal, 1e-2);
 
     // Rest luminosities
-    for (uint_t i : range(opt.rest_mag)) {
-        set_prop(output.ifirst_rlum+i, "M"+strn(opt.rest_mag[i]),
+    for (uint_t i : range(opts.rest_mag)) {
+        set_prop(output.ifirst_rlum+i, "M"+strn(opts.rest_mag[i]),
             "[ABmag]", true, log_style::abmag, 1e-2);
+    }
+
+    // Continuum indices
+    for (uint_t i : range(input.abs_lines)) {
+        auto& l = input.abs_lines[i];
+        set_prop(output.ifirst_abs+i, l.name, "[A]", false, log_style::none, 1e-2);
+    }
+    for (uint_t i : range(input.cont_ratios)) {
+        auto& r = input.cont_ratios[i];
+        set_prop(output.ifirst_ratio+i, r.name, "", false, log_style::none, 1e-2);
     }
 
     // Redshift grid
@@ -254,6 +268,16 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
             grid_hash = hash(grid_hash, opts.custom_sfh,
                 output.grid[grid_id::custom+uindgen(nparam-grid_id::custom)]);
             break;
+        }
+
+        // Continuum indices
+        for (uint_t i : range(input.abs_lines)) {
+            auto& l = input.abs_lines[i];
+            grid_hash = hash(grid_hash, l.name, l.line_low, l.line_up, l.cont_low, l.cont_up);
+        }
+        for (uint_t i : range(input.cont_ratios)) {
+            auto& r = input.cont_ratios[i];
+            grid_hash = hash(grid_hash, r.name, r.cont1_low, r.cont1_up, r.cont2_low, r.cont2_up);
         }
 
         cache.cache_filename += grid_hash+".grid";
@@ -517,6 +541,54 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
             }
         }
 
+        // Compute absorption lines EW
+        for (uint_t i : range(input.abs_lines)) {
+            auto& l = input.abs_lines[i];
+
+            double fl = integrate(lam, tpl_att_flux, l.line_low, l.line_up);
+
+            double fc = 0.0;
+            if (l.cont_low.size() == 1) {
+                // Single window, assume continuum is constant
+                fc = integrate(lam, tpl_att_flux, l.cont_low[0], l.cont_up[0])/
+                    (l.cont_up[0] - l.cont_low[0]);
+
+                // Subtract continuum
+                fl -= fc*(l.line_up - l.line_low);
+            } else {
+                // Two windows, assume continuum is linear
+                double l1 = 0.5*(l.cont_low[0] + l.cont_up[0]);
+                double l2 = 0.5*(l.cont_low[1] + l.cont_up[1]);
+
+                double f1 = integrate(lam, tpl_att_flux, l.cont_low[0], l.cont_up[0])/
+                    (l.cont_up[0] - l.cont_low[0]);
+                double f2 = integrate(lam, tpl_att_flux, l.cont_low[1], l.cont_up[1])/
+                    (l.cont_up[1] - l.cont_low[1]);
+
+                fc = interpolate(f1, f2, l1, l2, 0.5*(l.line_low + l.line_up));
+
+                // Subtract continuum
+                double a = (f1*l2 - f2*l1)/(l2 - l1);
+                double b = (f2 - f1)/(l2 - l1)/2.0;
+                fl -= a*(l.line_up - l.line_low) + b*(sqr(l.line_up) - sqr(l.line_low));
+            }
+
+            model.props[output.ifirst_abs+i] = -fl/fc;
+        }
+
+        // Compute continuum indices
+        for (uint_t i : range(input.cont_ratios)) {
+            auto& r = input.cont_ratios[i];
+
+            double fc1 = integrate(lam, tpl_att_flux, r.cont1_low, r.cont1_up)/
+                (r.cont1_up - r.cont1_low);
+            double fc2 = integrate(lam, tpl_att_flux, r.cont2_low, r.cont2_up)/
+                (r.cont2_up - r.cont2_low);
+
+            model.props[output.ifirst_ratio+i] = fc2/fc1;
+        }
+
+        // Redshift, integrate, and send to fitter
         for (uint_t iz : range(output_z)) {
             idm[grid_id::z] = iz;
             model.igrid = model_id(idm);
@@ -668,11 +740,6 @@ bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
         return false;
     }
 
-    // Apply velocity dispersion
-    if (is_finite(opts.apply_vdisp)) {
-        flux = flatten(convolve_vdisp(lam, reform(flux, 1, flux.size()), opts.apply_vdisp));
-    }
-
     // Apply dust reddening
     if (av > 0 && !nodust) {
         vec2d dust_law = build_dust_law({av}, lam);
@@ -754,6 +821,12 @@ vec2d gridder_t::convolve_vdisp(const vec1d& lam, const vec2d& osed, double vdis
     return sed;
 }
 
+struct sed_id_pair {
+    std::string id;
+    uint_t igrid;
+    double scale;
+};
+
 bool gridder_t::write_seds() const {
     if (opts.make_seds.empty()) return true;
 
@@ -764,10 +837,51 @@ bool gridder_t::write_seds() const {
     std::string odir = opts.output_dir+"seds/";
     file::mkdir(odir);
 
+    uint_t nseds = 0; {
+        std::ifstream in(opts.make_seds);
+        std::string line;
+        while (std::getline(in, line)) {
+            line = trim(line);
+            if (line.empty() || line[0] == '#') continue;
+            ++nseds;
+        }
+    }
+
+    auto write_sed = [&](sed_id_pair p) {
+        vec1f lam, sed, flx;
+        if (!build_template(p.igrid, lam, sed, flx)) {
+            return;
+        }
+
+        sed *= p.scale;
+        flx *= p.scale;
+
+        // Save model
+        std::ofstream fout(odir+p.id+".fit");
+        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+        for (uint_t il : range(lam)) {
+            fout << std::setw(13) << lam.safe[il] << std::setw(13) << sed.safe[il] << "\n";
+        }
+
+        // Save fluxes
+        fout.close();
+        fout.open(odir+p.id+".input_res.fit");
+        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+        for (uint_t il : range(input.lambda)) {
+            fout << std::setw(13) << float(input.lambda.safe[il]) << std::setw(13) << flx.safe[il] << "\n";
+        }
+    };
+
+    thread::worker_pool<sed_id_pair> pool;
+    if (opts.n_thread > 1) {
+        pool.start(opts.n_thread, write_sed);
+    }
+
     std::ifstream in(opts.make_seds);
     std::string line;
     uint_t l = 0;
     uint_t written = 0;
+    auto pg = progress_start(nseds);
     while (std::getline(in, line)) {
         ++l;
         line = trim(line);
@@ -791,31 +905,29 @@ bool gridder_t::write_seds() const {
             return false;
         }
 
-        vec1f lam, sed, flx;
-        if (!build_template(igrid, lam, sed, flx)) {
-            return false;
-        }
+        if (opts.n_thread > 1) {
+            // Parallel
+            while (opts.max_queued_fits > 0 &&
+                pool.remaining() > opts.max_queued_fits) {
+                thread::sleep_for(1e-6);
+            }
 
-        sed *= scale;
-        flx *= scale;
-
-        // Save model
-        std::ofstream fout(odir+id+".fit");
-        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
-        for (uint_t il : range(lam)) {
-            fout << std::setw(13) << lam.safe[il] << std::setw(13) << sed.safe[il] << "\n";
+            pool.process({id, igrid, scale});
+        } else {
+            // Single threaded
+            write_sed({id, igrid, scale});
         }
-        fout.close();
-
-        // Save fluxes
-        fout.open(odir+id+".input_res.fit");
-        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
-        for (uint_t il : range(input.lambda)) {
-            fout << std::setw(13) << float(input.lambda[il]) << std::setw(13) << flx[il] << "\n";
-        }
-        fout.close();
 
         ++written;
+        progress(pg);
+    }
+
+    if (opts.n_thread > 1) {
+        while (pool.remaining() != 0) {
+            thread::sleep_for(1e-6);
+        }
+
+        pool.join();
     }
 
     if (opts.verbose) {
