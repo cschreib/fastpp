@@ -702,10 +702,13 @@ bool gridder_t::build_and_send(fitter_t& fitter) {
         switch (opts.sfh) {
         case sfh_type::gridded:
             ret = build_and_send_ised(fitter);
+            break;
         case sfh_type::custom:
             ret = build_and_send_custom(fitter);
+            break;
         default:
             error("this SFH is not implemented yet");
+            break;
         }
 
         // Make sure we flush all the cache out
