@@ -232,12 +232,12 @@ bool galaxev_ised::read(std::string filename, bool noflux) {
 }
 
 std::string gridder_t::get_library_file_ised(uint_t im, uint_t it) const {
-    std::string stau = strn(output.grid[grid_id::custom+0][it]);
+    std::string stau = to_string(output.grid[grid_id::custom+0][it]);
     if (stau.find(".") == stau.npos) stau += ".0";
 
     return opts.library_dir+"ised_"+opts.name_sfh+"."+opts.resolution+"/"+
         opts.library+"_"+opts.resolution+"_"+opts.name_imf+
-        "_z"+replace(strn(output.grid[grid_id::metal][im]), "0.", "")+"_ltau"+stau+".ised";
+        "_z"+replace(to_string(output.grid[grid_id::metal][im]), "0.", "")+"_ltau"+stau+".ised";
 }
 
 bool gridder_t::get_age_bounds(const vec1f& ised_age, float nage,

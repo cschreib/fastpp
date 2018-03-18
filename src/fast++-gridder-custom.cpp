@@ -227,7 +227,7 @@ bool ssp_bc03::read(std::string filename, bool noflux) {
 std::string gridder_t::get_library_file_ssp(uint_t im) const {
     return opts.library_dir+"ssp"+"."+opts.resolution+"/"+
         opts.library+"_"+opts.resolution+"_"+opts.name_imf+
-        "_z"+replace(strn(output.grid[grid_id::metal][im]), "0.", "");
+        "_z"+replace(to_string(output.grid[grid_id::metal][im]), "0.", "");
 }
 
 void gridder_t::evaluate_sfh_custom(const vec1u& idm, const vec1d& t, vec1d& sfh) const {

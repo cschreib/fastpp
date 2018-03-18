@@ -396,7 +396,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         }
 
         if (!opts.rest_mag.empty()) {
-            append(opts.output_columns, "M"+strna(opts.rest_mag));
+            append(opts.output_columns, "M"+to_string_vector(opts.rest_mag));
         }
 
         opts.output_columns.push_back("chi2");
@@ -711,7 +711,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     // Check that we have all the columns we need
     uint_t col_id = where_first(header_trans == "ID");
     uint_t col_zspec = where_first(header_trans == "Z_SPEC");
-    uint_t col_tot = where_first(is_any_of(header_trans, "TOT"+strna(state.no_filt)));
+    uint_t col_tot = where_first(is_any_of(header_trans, "TOT"+to_string_vector(state.no_filt)));
 
     if (col_id == npos) {
         error("missing ID column in photometric catalog");
@@ -1206,13 +1206,13 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
     vec1u col_up, col_low;
     if (is_finite(opts.zphot_conf)) {
         for (float c : {0.68, 0.95, 0.99}) {
-            uint_t cl = where_first(header == "L"+strn(round(100.0*c)));
-            uint_t cu = where_first(header == "U"+strn(round(100.0*c)));
+            uint_t cl = where_first(header == "L"+to_string(round(100.0*c)));
+            uint_t cu = where_first(header == "U"+to_string(round(100.0*c)));
             if (cl == npos) {
-                error("could not find redshift confidence interval column L"+strn(round(100.0*c)));
+                error("could not find redshift confidence interval column L"+to_string(round(100.0*c)));
                 continue;
             } else if (cu == npos) {
-                error("could not find redshift confidence interval column U"+strn(round(100.0*c)));
+                error("could not find redshift confidence interval column U"+to_string(round(100.0*c)));
                 continue;
             }
 

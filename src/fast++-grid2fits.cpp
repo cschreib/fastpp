@@ -108,7 +108,7 @@ int phypp_main(int argc, char* argv[]) {
             grid_dims.resize(ngrid);
             grid_names.resize(ngrid);
             for (uint_t i : range(grid)) {
-                state = "reading grid for parameter "+strn(i);
+                state = "reading grid for parameter "+to_string(i);
                 in.read(grid_names[i]);
 
                 std::uint32_t gsize;
@@ -183,7 +183,7 @@ int phypp_main(int argc, char* argv[]) {
             grid_dims.resize(ngrid);
             grid_names.resize(ngrid);
             for (uint_t i : range(grid)) {
-                state = "reading grid for parameter "+strn(i);
+                state = "reading grid for parameter "+to_string(i);
                 in.read(grid_names[i]);
                 std::uint32_t gsize; in.read(gsize);
                 grid_dims[i] = gsize;

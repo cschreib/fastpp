@@ -27,7 +27,7 @@ std::string pretty_dust_law(const std::string& law, float eb, float delta) {
     if (law == "mw")       return "Milky Way dust attenuation law                    ";
     if (law == "calzetti") return "Calzetti (2000) dust attenuation law              ";
     if (law == "kc")       return "Kriek & Conroy (2013) average dust attenuation law";
-    if (law == "noll")     return "Noll et al. dust law, E_B="+strn(eb)+", delta="+strn(delta);
+    if (law == "noll")     return "Noll et al. dust law, E_B="+to_string(eb)+", delta="+to_string(delta);
     return law;
 }
 
@@ -35,9 +35,9 @@ template<typename T>
 std::string pretty_grid(T x0, T x1, T step, uint_t ndecimal) {
     double dd = e10(ndecimal);
     uint_t cwidth = 7;
-    return align_left(strn(round(dd*x0)/dd), cwidth)+" - "+
-           align_left(strn(round(dd*x1)/dd), cwidth)+" in steps of "+
-           strn(round(dd*step)/dd);
+    return align_left(to_string(round(dd*x0)/dd), cwidth)+" - "+
+           align_left(to_string(round(dd*x1)/dd), cwidth)+" in steps of "+
+           to_string(round(dd*step)/dd);
 }
 
 void write_catalog(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
@@ -77,7 +77,7 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     fout << "# Stellar IMF: " << pretty_imf(opts.name_imf) << std::endl;
     fout << "# Dust law:    " <<
         pretty_dust_law(opts.dust_law, opts.dust_noll_eb, opts.dust_noll_delta) << std::endl;
-    fout << "# metallicity: " << collapse(strna(opts.metal), "  ") << std::endl;
+    fout << "# metallicity: " << collapse(to_string_vector(opts.metal), "  ") << std::endl;
     if (opts.sfh == sfh_type::gridded) {
         fout << "# log(tau/yr): " <<
             pretty_grid(opts.log_tau_min, opts.log_tau_max, opts.log_tau_step, 2) << std::endl;
@@ -96,7 +96,7 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     fout << "# z:           " <<
         pretty_grid(opts.z_min, opts.z_max, opts.z_step, 4) <<
         " (" << (opts.z_step_type == 0 ? "linear" : "logarithmic") << ")" << std::endl;
-    fout << "# Filters:     " << collapse(strna(input.no_filt), "  ") << std::endl;
+    fout << "# Filters:     " << collapse(to_string_vector(input.no_filt), "  ") << std::endl;
 
     vec1u idp(opts.output_columns.size());
     for (uint_t ic : range(opts.output_columns)) {
@@ -142,7 +142,7 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
             if (!opts.c_interval.empty()) {
                 for (uint_t ip : range(input.conf_interval)) {
                     float cc = 100*(1-2*input.conf_interval[ip]);
-                    std::string is = (cc < 0.0 ? "u" : "l")+strn(round(abs(cc)));
+                    std::string is = (cc < 0.0 ? "u" : "l")+to_string(round(abs(cc)));
                     param.push_back(is+"_"+cname);
                     cwidth.push_back(max(ocwidth, param.back().size()+1));
                     iparam.push_back(idp[ic]);
@@ -293,7 +293,7 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
         header += " med_"+quantity;
         for (float c : input.conf_interval) {
             float cc = 100*(1-2*c);
-            std::string is = (cc < 0.0 ? "u" : "l")+strn(round(abs(cc)));
+            std::string is = (cc < 0.0 ? "u" : "l")+to_string(round(abs(cc)));
             header += " "+is+"_"+quantity;
         }
     }

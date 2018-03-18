@@ -123,7 +123,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
 
     // Rest luminosities
     for (uint_t i : range(opts.rest_mag)) {
-        set_prop(output.ifirst_rlum+i, "M"+strn(opts.rest_mag[i]),
+        set_prop(output.ifirst_rlum+i, "M"+to_string(opts.rest_mag[i]),
             "[ABmag]", true, log_style::abmag, 1e-2);
     }
 
@@ -215,9 +215,9 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     }
 
     if (opts.verbose) {
-        std::string grid_common = "nmetal="+strn(output.grid[grid_id::metal].size())+
-            ",nage="+strn(output.grid[grid_id::age].size())+
-            ",nav="+strn(output.grid[grid_id::av].size())+",nz="+strn(output_z.size());
+        std::string grid_common = "nmetal="+to_string(output.grid[grid_id::metal].size())+
+            ",nage="+to_string(output.grid[grid_id::age].size())+
+            ",nav="+to_string(output.grid[grid_id::av].size())+",nz="+to_string(output_z.size());
 
         switch (opts.sfh) {
         case sfh_type::gridded:
@@ -231,7 +231,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
             std::string grid_custom;
             for (uint_t ig : range(opts.custom_params)) {
                 grid_custom += "n"+opts.custom_params[ig]+"="+
-                    strn(output.grid[grid_id::custom+ig].size())+",";
+                    to_string(output.grid[grid_id::custom+ig].size())+",";
             }
             note("fitting a grid of ", nmodel, " templates (", grid_custom, grid_common, ")");
             break;
