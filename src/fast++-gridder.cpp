@@ -380,6 +380,8 @@ namespace dust {
             l = (2.659*iRv)*(-1.857 + 1.040/l) + 1.0;
         }
 
+        if (l < 0) l = 0;
+
         return l;
     });
 
@@ -407,6 +409,8 @@ namespace dust {
             l = -1.073 + 13.67*iRv - (0.628 - 4.257*iRv)*(l - 8.0) +
                 (0.137 - 0.42*iRv)*pow(l - 8.0, 2) + 0.374*iRv*pow(l - 8.0, 3);
         }
+
+        if (l < 0) l = 0;
 
         return l;
     });
