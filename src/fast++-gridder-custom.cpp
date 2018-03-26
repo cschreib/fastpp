@@ -434,8 +434,12 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
     double dt = opts.custom_sfh_step;
     vec1d ctime = reverse(dt*dindgen(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
     // NB: age array is sorted from largest to smallest
-    vec1d sfh;
-    evaluate_sfh_custom(idm, ctime, sfh);
+    vec1d sfh; {
+        auto lock = (opts.n_thread > 1 ?
+            std::unique_lock<std::mutex>(sfh_mutex) : std::unique_lock<std::mutex>());
+
+        evaluate_sfh_custom(idm, ctime, sfh);
+    }
 
     // Integrate SFH on local time grid
     vec1d tpl_flux(ssp->lambda.size());
