@@ -929,7 +929,7 @@ bool gridder_t::write_seds() const {
         }
 
         ++written;
-        progress(pg);
+        if (opts.verbose) progress(pg);
     }
 
     if (opts.n_thread > 1) {
