@@ -100,7 +100,7 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
 
     vec1u idp(opts.output_columns.size());
     for (uint_t ic : range(opts.output_columns)) {
-        idp[ic] = where_first(tolower(output.param_names) == tolower(opts.output_columns[ic]));
+        idp[ic] = where_first(to_lower(output.param_names) == to_lower(opts.output_columns[ic]));
     }
 
     std::string abbrev = "# ";
