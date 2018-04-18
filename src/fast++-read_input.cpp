@@ -26,7 +26,7 @@ bool parse_value_impl(const std::string& val, std::string& out) {
 }
 
 bool parse_value_impl(std::string val, parallel_choice& out) {
-    val = trim(tolower(remove_first_last(val, "\'\"")));
+    val = trim(to_lower(remove_first_last(val, "\'\"")));
     if (val == "none" || val.empty()) {
         out = parallel_choice::none;
     } else if (val == "sources") {
@@ -192,7 +192,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
             return false;
         }
 
-        std::string key = tolower(trim(line.substr(0, eqp)));
+        std::string key = to_lower(trim(line.substr(0, eqp)));
         std::string val = trim(line.substr(eqp+1));
 
         if (!do_parse(key, val)) {
@@ -212,17 +212,17 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
         // Read custom grid parameters
         for (uint_t c : range(opts.custom_params)) {
-            if (key == tolower(opts.custom_params[c])+"_min") {
+            if (key == to_lower(opts.custom_params[c])+"_min") {
                 read = true;
                 if (!parse_value(key, val, opts.custom_params_min[c])) {
                     return false;
                 }
-            } else if (key == tolower(opts.custom_params[c])+"_max") {
+            } else if (key == to_lower(opts.custom_params[c])+"_max") {
                 read = true;
                 if (!parse_value(key, val, opts.custom_params_max[c])) {
                     return false;
                 }
-            } else if (key == tolower(opts.custom_params[c])+"_step") {
+            } else if (key == to_lower(opts.custom_params[c])+"_step") {
                 read = true;
                 if (!parse_value(key, val, opts.custom_params_step[c])) {
                     return false;
@@ -231,7 +231,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         }
 
         if (!read) {
-            warning("unknown parameter '", toupper(key), "'");
+            warning("unknown parameter '", to_upper(key), "'");
         }
     }
 
@@ -283,7 +283,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         }
     }
 
-    opts.sfh_output = tolower(opts.sfh_output);
+    opts.sfh_output = to_lower(opts.sfh_output);
 
     if (!(opts.sfh_output == "sfr" || opts.sfh_output == "mass")) {
         error("'SFH_OUTPUT' must be either 'sfr' or 'mass'");
@@ -404,7 +404,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
     if (!opts.custom_params.empty()) {
         // Add tau to the custom parameter grid if the user used it
-        uint_t idp = where_first(tolower(opts.custom_params) == "log_tau");
+        uint_t idp = where_first(to_lower(opts.custom_params) == "log_tau");
         if (idp != npos) {
             opts.custom_params_min[idp] = opts.log_tau_min;
             opts.custom_params_max[idp] = opts.log_tau_max;
@@ -417,15 +417,15 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         bool bad = false;
         for (uint_t c : range(opts.custom_params)) {
             if (!is_finite(opts.custom_params_min[c])) {
-                error("missing ", toupper(opts.custom_params[c])+"_MIN value");
+                error("missing ", to_upper(opts.custom_params[c])+"_MIN value");
                 bad = true;
             }
             if (!is_finite(opts.custom_params_max[c])) {
-                error("missing ", toupper(opts.custom_params[c])+"_MAX value");
+                error("missing ", to_upper(opts.custom_params[c])+"_MAX value");
                 bad = true;
             }
             if (!is_finite(opts.custom_params_step[c])) {
-                error("missing ", toupper(opts.custom_params[c])+"_STEP value");
+                error("missing ", to_upper(opts.custom_params[c])+"_STEP value");
                 bad = true;
             }
         }
@@ -686,7 +686,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
         header_trans[idh] = tr_to[idt];
     }
 
-    header_trans = toupper(header_trans);
+    header_trans = to_upper(header_trans);
 
     // Parse the filter IDs from the (translated) header
     vec1u col_flux, col_eflux;
@@ -865,7 +865,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
         return false;
     }
 
-    spec_header = toupper(spec_header);
+    spec_header = to_upper(spec_header);
 
     // Check we have the right columns there
     uint_t col_wl0 = where_first(spec_header == "WL_LOW");
@@ -898,7 +898,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
         if (spec_header[b][0] != 'F') continue;
 
         std::string id = erase_begin(spec_header[b], "F");
-        uint_t cid = where_first(toupper(state.id) == id);
+        uint_t cid = where_first(to_upper(state.id) == id);
         if (cid == npos) {
             warning("spectrum for source ", id, " has no corresponding photometry "
                 "and will be ignored");
@@ -1196,10 +1196,10 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
         return false;
     }
 
-    header = toupper(header);
+    header = to_upper(header);
 
     // Check we have all the columns we need
-    uint_t col_zphot = where_first(header == toupper(opts.name_zphot));
+    uint_t col_zphot = where_first(header == to_upper(opts.name_zphot));
     uint_t col_zspec = where_first(header == "Z_SPEC");
     uint_t col_id    = where_first(header == "ID");
 
@@ -1236,7 +1236,7 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
     }
 
     if (col_zphot == npos) {
-        error("missing zphot (", toupper(opts.name_zphot), ") column in photometric redshift file");
+        error("missing zphot (", to_upper(opts.name_zphot), ") column in photometric redshift file");
         return false;
     }
     if (col_id == npos) {
@@ -1338,7 +1338,7 @@ bool read_lir(const options_t& opts, input_state_t& state) {
         return false;
     }
 
-    header = toupper(header);
+    header = to_upper(header);
 
     // Check we have all the columns we need
     uint_t col_lir = where_first(header == "LIR");
