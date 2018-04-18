@@ -329,8 +329,8 @@ bool gridder_t::check_options() const {
     bool bad = false;
     vec1s base_names = {"id", "chi2"};
     for (auto c : opts.output_columns) {
-        c = tolower(c);
-        if (!is_any_of(c, tolower(output.param_names)) && !is_any_of(c, tolower(output.param_names))
+        c = to_lower(c);
+        if (!is_any_of(c, to_lower(output.param_names)) && !is_any_of(c, to_lower(output.param_names))
             && !is_any_of(c, base_names)) {
             error("unknown column '", c, "'");
             bad = true;
