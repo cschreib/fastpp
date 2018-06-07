@@ -13,6 +13,7 @@
 #include <phypp/io/ascii.hpp>
 #include <iomanip>
 #include "thread_worker_pool.hpp"
+#include "fast++-ssp.hpp"
 
 using namespace phypp;
 
@@ -262,18 +263,6 @@ struct model_id_pair {
 struct fitter_t;
 struct te_expr;
 struct te_variable;
-
-// SED libraries
-struct ssp_bc03 {
-    vec1d age;
-    vec1d mass;
-    vec1d lambda;
-    vec2d sed;
-
-    bool read_ascii(std::string filename);
-    bool read_fits(std::string filename, bool noflux);
-    bool read(std::string filename, bool noflux = false);
-};
 
 struct galaxev_ised {
     vec1f age, sfr, mass, mform;

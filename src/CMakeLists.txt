@@ -25,6 +25,7 @@ include_directories(${TINYEXPR_INCLUDE_DIR})
 # Build FAST++
 add_executable(fast++
     fast++-read_input.cpp
+    fast++-ssp.cpp
     fast++-gridder.cpp
     fast++-gridder-ised.cpp
     fast++-gridder-custom.cpp
@@ -39,3 +40,7 @@ install(TARGETS fast++ DESTINATION bin)
 add_executable(fast++-grid2fits fast++-grid2fits.cpp)
 target_link_libraries(fast++-grid2fits ${PHYPP_LIBRARIES})
 install(TARGETS fast++-grid2fits DESTINATION bin)
+
+add_executable(fast++-sfh2sed fast++-sfh2sed.cpp fast++-ssp.cpp)
+target_link_libraries(fast++-sfh2sed ${PHYPP_LIBRARIES})
+install(TARGETS fast++-sfh2sed DESTINATION bin)

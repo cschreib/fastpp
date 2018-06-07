@@ -74,156 +74,6 @@ gridder_t::tinyexpr_wrapper::~tinyexpr_wrapper() {
     }
 }
 
-bool ssp_bc03::read_ascii(std::string filename) {
-    std::string state = "";
-
-    try {
-        std::ifstream in(filename);
-        in.exceptions(in.failbit);
-
-        state = "read number of time steps";
-        uint_t ntime = 0;
-        in >> ntime;
-
-        state = "read time steps";
-        age.resize(ntime);
-        for (uint_t i : range(age)) {
-            in >> age[i];
-        }
-
-        state = "read IMF and other parameters";
-        double ml, mu;
-        uint_t iseg;
-        in >> ml >> mu >> iseg;
-        for (uint_t i = 0; i < iseg; ++i) {
-            double xx, lm, um, baux, cn, cc;
-            in >> xx >> lm >> um >> baux >> cn >> cc;
-        }
-
-        state = "read additional parameters";
-        double totm, totn, avs, jo, tau, id, tau1, tau2, tau3, tau4;
-        in >> totm >> totn >> avs >> jo >> tau >> id >> tau1 >> tau2 >> tau3 >> tau4;
-
-        char id2;
-        in >> id2;
-        in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-        std::string id3, iop, stelib;
-        std::getline(in, id3);
-        std::getline(in, iop);
-        std::getline(in, stelib);
-
-        state = "read number of wavelength elements";
-        uint_t nlam;
-        in >> nlam;
-
-        state = "read wavelength elements";
-        lambda.resize(nlam);
-        for (uint_t i : range(lambda)) {
-            in >> lambda[i];
-        }
-
-        state = "read SEDs";
-        sed.resize(ntime, nlam);
-        for (uint_t it : range(ntime)) {
-            uint_t nstep = 0;
-            in >> nstep;
-
-            if (nstep != nlam) {
-                error("corrupted file, wavelength step mismatch: ", nstep, " vs. ", nlam);
-                error("reading time step ", it, " of ", ntime);
-                return 1;
-            }
-
-            for (uint_t il : range(lambda)) {
-                in >> sed.safe(it,il);
-            }
-
-            // Read extra information
-            uint_t nfunc = 0;
-            in >> nfunc;
-
-            for (uint_t i = 0; i < nfunc; ++i) {
-                double f;
-                in >> f;
-            }
-        }
-
-        state = "read extras";
-        uint_t nextra = 12;
-        for (uint_t ie : range(nextra)) {
-            uint_t nstep = 0;
-            in >> nstep;
-
-            vec1d extra(nstep);
-            for (uint_t i : range(nstep)) {
-                in >> extra[i];
-            }
-
-            if (ie == 1) {
-                mass = extra/totm;
-            }
-        }
-    } catch (...) {
-        print("");
-        error("could not read data in library file '", filename, "'");
-        error("could not ", state);
-        error("the file is probably corrupted, try re-downloading it");
-        print("");
-        return false;
-    }
-
-    // Write FITS file for faster reading next time
-    fits::write_table(filename+".fits", ftable(age, mass, lambda, sed));
-
-    return true;
-}
-
-bool ssp_bc03::read_fits(std::string filename, bool noflux) {
-    fits::input_table itbl(filename);
-    if (!itbl.read_column("age", age)) {
-        print("");
-        error("could not read column 'AGE' (time) from FITS file '", filename, "'");
-        print("");
-        return false;
-    }
-    if (!itbl.read_column("mass", mass)) {
-        print("");
-        error("could not read column 'MASS' from FITS file '", filename, "'");
-        print("");
-        return false;
-    }
-    if (!noflux) {
-        if (!itbl.read_column("lambda", lambda)) {
-            print("");
-            error("could not read column 'LAMBDA' from FITS file '", filename, "'");
-            print("");
-            return false;
-        }
-        if (!itbl.read_column("sed", sed)) {
-            print("");
-            error("could not read column 'SED' from FITS file '", filename, "'");
-            print("");
-            return false;
-        }
-    }
-    return true;
-}
-
-bool ssp_bc03::read(std::string filename, bool noflux) {
-    if (file::exists(filename+".ised_ASCII.fits")) {
-        return read_fits(filename+".ised_ASCII.fits", noflux);
-    } else if (file::exists(filename+".ised_ASCII")) {
-        return read_ascii(filename+".ised_ASCII");
-    } else {
-        print("");
-        error("could not find library: '", filename, "'");
-        error("expected extensions *.fits or *.ised_ASCII");
-        print("");
-        return false;
-    }
-}
-
 std::string gridder_t::get_library_file_ssp(uint_t im) const {
     return opts.library_dir+"ssp"+"."+opts.resolution+"/"+
         opts.library+"_"+opts.resolution+"_"+opts.name_imf+
@@ -241,33 +91,6 @@ void gridder_t::evaluate_sfh_custom(const vec1u& idm, const vec1d& t, vec1d& sfh
     for (uint_t i : range(t)) {
         sfh_expr.vars[0] = (opts.custom_sfh_lookback ? nage - t.safe[i] : t.safe[i]);
         sfh.safe[i] = sfh_expr.eval();
-    }
-}
-
-template<typename F>
-void integrate_ssp(const vec1d& age, const vec1d& sfr, const vec1d& ssp_age, F&& func) {
-    double t2 = 0.0;
-    uint_t ihint = npos;
-    for (uint_t it : range(ssp_age)) {
-        double t1 = t2;
-        if (it < ssp_age.size()-1) {
-            t2 = 0.5*(ssp_age.safe[it] + ssp_age.safe[it+1]);
-        } else {
-            t2 = ssp_age.back();
-        }
-
-        if (t2 <= age.front()) {
-            continue;
-        }
-
-        t1 = max(t1, age.front());
-        t2 = min(t2, age.back());
-
-        func(it, integrate_hinted(age, sfr, ihint, t1, t2));
-
-        if (t2 >= age.back()) {
-            break;
-        }
     }
 }
 
@@ -332,7 +155,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
             vec1d tpl_flux(ssp.lambda.size());
             double tmodel_mass  = 0.0;
             double tformed_mass = 0.0;
-            integrate_ssp(ltime, sfh, ssp.age, [&](uint_t it, double formed) {
+            ssp.integrate(ltime, sfh, [&](uint_t it, double formed) {
                 tmodel_mass  += formed*ssp.mass.safe[it];
                 tformed_mass += formed*ssp.mass.safe[0];
                 tpl_flux     += formed*ssp.sed.safe(it,_);
@@ -443,7 +266,7 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
 
     // Integrate SFH on local time grid
     vec1d tpl_flux(ssp->lambda.size());
-    integrate_ssp(e10(output_age[ia]) - ctime, sfh, ssp->age,
+    ssp->integrate(e10(output_age[ia]) - ctime, sfh,
         [&](uint_t it, double formed) {
             tpl_flux += formed*ssp->sed.safe(it,_);
         }
@@ -491,7 +314,7 @@ bool gridder_t::get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh,
     if (type == "sfr") {
         // Compute total mass at epoch of observation and normalize
         double mass = 0.0;
-        integrate_ssp(nage + age_born - reverse(t), reverse(sfh), ssp.age,
+        ssp.integrate(nage + age_born - reverse(t), reverse(sfh),
             [&](uint_t it, double formed) {
                 mass += formed*ssp.mass.safe[it];
             }
@@ -504,7 +327,7 @@ bool gridder_t::get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh,
         vec1d lsfh = reverse(sfh);
 
         for (uint_t i : range(t)) {
-            integrate_ssp(t.safe[i] - reverse(t), lsfh, ssp.age,
+            ssp.integrate(t.safe[i] - reverse(t), lsfh,
                 [&](uint_t it, double formed) {
                     mass.safe[i] += formed*ssp.mass.safe[it];
                 }
