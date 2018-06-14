@@ -55,7 +55,7 @@ int phypp_main(int argc, char* argv[]) {
 
     // Read SFH
     vec1d input_t, input_sfr;
-    if (end_with(sfh_file, ".fits")) {
+    if (ends_with(sfh_file, ".fits")) {
         fits::read_table(sfh_file, "t", input_t, "sfr", input_sfr);
     } else {
         ascii::read_table(sfh_file, ascii::find_skip(sfh_file), input_t, input_sfr);
