@@ -535,6 +535,7 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
         if (opts.parallel == parallel_choice::none) {
             // Compare to best
             // WARNING: read/modify shared resource
+            ++output.num_models[is];
             if (output.best_chi2.safe[is]  > wsp.chi2.safe[i]) {
                 output.best_chi2.safe[is]  = wsp.chi2.safe[i];
                 output.best_model.safe[is] = model.igrid;
@@ -643,6 +644,7 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
         for (uint_t i : range(i1-i0)) {
             uint_t is = i + i0;
+            ++output.num_models[is];
             if (output.best_chi2.safe[is]  > wsp.chi2[i]) {
                 output.best_chi2.safe[is]  = wsp.chi2[i];
                 output.best_model.safe[is] = model.igrid;
