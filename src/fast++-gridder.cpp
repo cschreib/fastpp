@@ -242,6 +242,8 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     output.best_model = replicate(npos, input.id.size());
     output.best_params = replicate(fnan, input.id.size(), nparam+nprop, 1+input.conf_interval.size());
 
+    output.num_models = replicate(0, input.id.size());
+
     if (opts.n_sim > 0) {
         out.mc_best_chi2 = replicate(finf, input.id.size(), opts.n_sim);
         out.mc_best_model = replicate(npos, input.id.size(), opts.n_sim);
@@ -327,7 +329,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
 bool gridder_t::check_options() const {
     // Check that the requested column names make sense
     bool bad = false;
-    vec1s base_names = {"id", "chi2"};
+    vec1s base_names = {"id", "chi2", "nmodel"};
     for (auto c : opts.output_columns) {
         c = to_lower(c);
         if (!is_any_of(c, to_lower(output.param_names)) && !is_any_of(c, to_lower(output.param_names))

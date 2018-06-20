@@ -233,6 +233,9 @@ struct output_state_t {
     vec1f best_chi2;                 // [ngal]
     vec1u best_model;                // [ngal]
 
+    // Misc
+    vec1u num_models;                // [ngal]
+
     // Monte Carlo simulations
     vec3f mc_best_props;             // [ngal,nprop,nsim]
     vec2f mc_best_chi2;              // [ngal,nsim]

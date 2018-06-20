@@ -132,6 +132,8 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
             cwidth.push_back(maxid);
         } else if (cname == "chi2") {
             cwidth.push_back(15);
+        } else if (cname == "nmodel") {
+            cwidth.push_back(15);
         } else {
             uint_t ocwidth = 10;
             // Make sure we use the right format
@@ -174,6 +176,8 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
                     uint_t ndof = (nobs > gridder.nfreeparam ? nobs - gridder.nfreeparam : 1u);
                     float chi2 = output.best_chi2[is]/ndof;
                     fout << std::setw(cwidth[ic]) << std::scientific << chi2;
+                } else if (cname == "nmodel") {
+                    fout << std::setw(cwidth[ic]) << output.num_models[is];
                 }
             } else {
                 float value = output.best_params.safe(is,iparam[ic],iconf[ic]);
