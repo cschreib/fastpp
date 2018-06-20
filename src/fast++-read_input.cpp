@@ -400,6 +400,13 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         }
 
         opts.output_columns.push_back("chi2");
+    } else {
+        // Check that column names are OK
+        if (count(opts.output_columns == "") != 0) {
+            error("OUTPUT_COLUMNS contains empty column names, please fix and re-run");
+            error("if you want to use the default columns, set this option to an empty array: []");
+            return false;
+        }
     }
 
     if (!opts.custom_params.empty()) {
