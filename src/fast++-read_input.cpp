@@ -488,18 +488,24 @@ bool read_header(const std::string& filename, vec1s& header) {
 }
 
 bool adjust_filter(const options_t& opts, fast_filter_t& f) {
+    // Convert filter to the right definition
     if (opts.filters_format == 1) {
         f.tr *= f.wl;
     } else {
         f.tr *= sqr(f.wl);
     }
 
+    // Compute filter integral
     double ttot = integrate(f.wl, f.tr);
     if (!is_finite(ttot) || ttot == 0) {
         error("filter ", f.id, " has zero or invalid througput");
         return false;
     }
 
+    // Normalize filter to unit integral
+    f.tr /= ttot;
+
+    // Check the units are OK
     double wl0 = integrate(f.wl, f.wl*f.tr);
     if (wl0 < 100.0) {
         error("the cental wavelength of filter ", f.id, " is unexpectedly low (", wl0, ")");
@@ -507,7 +513,6 @@ bool adjust_filter(const options_t& opts, fast_filter_t& f) {
         return false;
     }
 
-    f.tr /= ttot;
     return true;
 }
 
