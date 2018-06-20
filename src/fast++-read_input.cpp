@@ -500,6 +500,13 @@ bool adjust_filter(const options_t& opts, fast_filter_t& f) {
         return false;
     }
 
+    double wl0 = integrate(f.wl, f.wl*f.tr);
+    if (wl0 < 100.0) {
+        error("the cental wavelength of filter ", f.id, " is unexpectedly low (", wl0, ")");
+        error("please check the wavelenth axis is in Angstroms");
+        return false;
+    }
+
     f.tr /= ttot;
     return true;
 }
