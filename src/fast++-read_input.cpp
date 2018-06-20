@@ -143,6 +143,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(n_thread)
         PARSE_OPTION(max_queued_fits)
         PARSE_OPTION(verbose)
+        PARSE_OPTION(debug)
         PARSE_OPTION(sfr_avg)
         PARSE_OPTION(intrinsic_best_fit)
         PARSE_OPTION(best_sfhs)

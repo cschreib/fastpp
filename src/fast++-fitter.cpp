@@ -423,6 +423,21 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
     uint_t iz = gridder.grid_ids(model.igrid)[grid_id::z];
 
+    if (opts.debug) {
+        // DEBUG: check that model has all finite values
+        if (count(!is_finite(model.flux)) > 0) {
+            fits::write_table("debug.fits",
+                "flux", model.flux, "grid_id", gridder.grid_ids(model.igrid));
+            phypp_check(false, "model has invalid values, saved in debug.fits for inspection");
+        }
+        // DEBUG: check that model is not only zero values
+        if (count(model.flux > 0.0) == 0) {
+            fits::write_table("debug.fits",
+                "flux", model.flux, "grid_id", gridder.grid_ids(model.igrid));
+            phypp_check(false, "model has all zero values, saved in debug.fits for inspection");
+        }
+    }
+
     for (uint_t i : range(i1-i0)) {
         uint_t is = i + i0;
 
@@ -704,8 +719,17 @@ void fitter_t::find_best_fits() {
         workers_multi_source->workers.join();
     }
 
+    bool silence_invalid_chi2 = false;
+
     if (opts.verbose) note("finding best fits...");
     for (uint_t is : range(input.id)) {
+        if (!silence_invalid_chi2 && !is_finite(output.best_chi2[is])) {
+            warning("galaxy ", input.id[is], " has no best fit solution");
+            warning("there is probably a problem with the models, please re-run FAST++ with DEBUG=1");
+            warning("(further occurences of this warning for other galaxies will be suppressed)");
+            silence_invalid_chi2 = true;
+        }
+
         if (!opts.best_from_sim) {
             vec1u ids = gridder.grid_ids(output.best_model[is]);
             for (uint_t ip : range(gridder.nparam)) {

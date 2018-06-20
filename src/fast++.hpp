@@ -107,6 +107,7 @@ struct options_t {
 
     // Miscelaneous
     bool verbose = true;
+    bool debug = false;
 
     // Outputs
     vec1s output_columns;
