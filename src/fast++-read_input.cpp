@@ -571,8 +571,9 @@ bool read_filters(const options_t& opts, input_state_t& state) {
                 // Reading the filter response line by line
                 spl = split_any_of(line, " \t\n\r");
                 float wl, tr;
-                if (!from_string(spl[1], wl) || !from_string(spl[2], tr)) {
+                if (spl.size() != 3 || !from_string(spl[1], wl) || !from_string(spl[2], tr)) {
                     error("could not parse values from line ", l);
+                    error("expected '[id] [wavelength] [throughput]', got '", line, "'");
                     note("reading '", opts.filters_res, "'");
                     return false;
                 }
