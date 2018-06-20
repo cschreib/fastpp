@@ -829,6 +829,10 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
         vec1u idb = where(err < 0 || !is_finite(flx) || !is_finite(err));
         err.safe[idb] = finf; flx.safe[idb] = 0;
 
+        if (idb.size() == flx.size()) {
+            warning("object ", state.id.safe[gid], " (l.", l, ") has no valid photometry");
+        }
+
         // Save flux and uncertainties in the input state
         state.flux.safe(gid,_) = flx;
         state.eflux.safe(gid,_) = err;
