@@ -312,7 +312,10 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
 
         // Pre-compute dust law & IGM absorption (they don't change with SFH)
         vec2d dust_law = build_dust_law(output_av, ised.lambda);
-        vec2d igm_abs = build_igm_absorption(output_z, ised.lambda);
+        vec2d igm_abs;
+        if (!opts.no_igm) {
+            igm_abs = build_igm_absorption(output_z, ised.lambda);
+        }
 
         // Function to build a model
         auto do_model = [&](model_id_pair& tm) {

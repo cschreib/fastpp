@@ -105,6 +105,9 @@ struct options_t {
     // Grid control
     std::string grid_exclude;
 
+    // Model control
+    bool no_igm = false;
+
     // Miscelaneous
     bool verbose = true;
     bool debug = false;

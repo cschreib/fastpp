@@ -398,6 +398,7 @@ NO_CACHE       = 0              # 0 / 1
 H0             = 70.0               # Hubble constant
 OMEGA_M        = 0.3                # Omega matter
 OMEGA_L        = 0.7                # Omega lambda
+NO_IGM         = 0                  # 0 / 1
 
 
 #--- SAVE INTERMEDIATE PRODUCTS ----------------------------------------

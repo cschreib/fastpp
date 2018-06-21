@@ -604,7 +604,11 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
 
             for (uint_t il : range(tpl_att_z_flux)) {
                 // Apply IGM absorption & redshift
-                tpl_att_z_flux.safe[il] *= lum2fl.safe[iz]*igm_abs.safe(iz,il);
+                if (opts.no_igm) {
+                    tpl_att_z_flux.safe[il] *= lum2fl.safe[iz];
+                } else {
+                    tpl_att_z_flux.safe[il] *= lum2fl.safe[iz]*igm_abs.safe(iz,il);
+                }
                 tpl_att_z_lam.safe[il] *= (1.0 + output_z.safe[iz]);
             }
 
@@ -762,11 +766,18 @@ bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
     }
 
     // Compute IGM absorption
-    vec2d igm_abs = build_igm_absorption({z}, lam);
+    vec2d igm_abs;
+    if (!opts.no_igm) {
+        igm_abs = build_igm_absorption({z}, lam);
+    }
 
     for (uint_t il : range(flux)) {
         // Apply IGM absorption & redshift
-        flux.safe[il] *= lum2fl[iz]*igm_abs.safe(0,il);
+        if (opts.no_igm) {
+            flux.safe[il] *= lum2fl[iz];
+        } else {
+            flux.safe[il] *= lum2fl[iz]*igm_abs.safe(0,il);
+        }
         lam.safe[il] *= (1.0 + z);
     }
 

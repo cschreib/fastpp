@@ -156,6 +156,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(custom_sfh_lookback)
         PARSE_OPTION(custom_params)
         PARSE_OPTION(grid_exclude)
+        PARSE_OPTION(no_igm)
         PARSE_OPTION(make_seds)
         PARSE_OPTION(lambda_ion)
         PARSE_OPTION(save_bestchi)
@@ -281,6 +282,12 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
             note("using instantaneous SFRs");
         } else {
             note("averaging SFRs over ", opts.sfr_avg, " Myr");
+        }
+
+        if (opts.no_igm) {
+            note("not applying IGM absorption");
+        } else {
+            note("applying Madau+1995 IGM absorption");
         }
     }
 
