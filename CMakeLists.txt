@@ -67,52 +67,19 @@ ExternalProject_Add(tinyexpr
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
         -DCMAKE_BUILD_TYPE=Release)
 
-# Point to external dependencies
-set(CFITSIO_ROOT_DIR ${PROJECT_SOURCE_DIR}/external)
-set(PHYPP_ROOT_DIR ${PROJECT_SOURCE_DIR}/external)
-set(TINYEXPR_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/external/include)
-set(TINYEXPR_LIBRARY ${PROJECT_SOURCE_DIR}/external/lib/libtinyexpr.a)
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/external/phypp/cmake)
-
-# Setup phy++ options
-set(NO_REFLECTION ON)
-set(NO_FFTW ON)
-set(NO_LAPACK ON)
-set(NO_GSL ON)
-set(NO_WCSLIB ON)
-
-find_package(phypp REQUIRED)
-
-# Setup share directory
-add_definitions(-DFASTPP_SHARE_DIR="${FASTPP_SHARE_DIR}")
-
-# Include dependencies
-message(STATUS ${PHYPP_INCLUDE_DIRS})
-include_directories(${PHYPP_INCLUDE_DIRS})
-include_directories(${TINYEXPR_INCLUDE_DIR})
-
-# Build FAST++
-add_executable(fast++
-    src/fast++-read_input.cpp
-    src/fast++-ssp.cpp
-    src/fast++-gridder.cpp
-    src/fast++-gridder-ised.cpp
-    src/fast++-gridder-custom.cpp
-    src/fast++-fitter.cpp
-    src/fast++-write_output.cpp
-    src/fast++.cpp)
-target_link_libraries(fast++ ${PHYPP_LIBRARIES})
-target_link_libraries(fast++ ${TINYEXPR_LIBRARY})
-install(TARGETS fast++ DESTINATION bin)
-
-# Build FAST++ helper tools
-add_executable(fast++-grid2fits src/fast++-grid2fits.cpp)
-target_link_libraries(fast++-grid2fits ${PHYPP_LIBRARIES})
-install(TARGETS fast++-grid2fits DESTINATION bin)
-
-add_executable(fast++-sfh2sed src/fast++-sfh2sed.cpp src/fast++-ssp.cpp)
-target_link_libraries(fast++-sfh2sed ${PHYPP_LIBRARIES})
-install(TARGETS fast++-sfh2sed DESTINATION bin)
+# Configure and build FAST++
+ExternalProject_Add(fast++
+    DEPENDS phy++ tinyexpr
+    SOURCE_DIR ${PROJECT_SOURCE_DIR}/src
+    CMAKE_ARGS
+        -DCFITSIO_ROOT_DIR=${PROJECT_SOURCE_DIR}/external
+        -DPHYPP_ROOT_DIR=${PROJECT_SOURCE_DIR}/external
+        -DTINYEXPR_INCLUDE_DIR=${PROJECT_SOURCE_DIR}/external/include
+        -DTINYEXPR_LIBRARY=${PROJECT_SOURCE_DIR}/external/lib/libtinyexpr.a
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}
+        -DCMAKE_MODULE_PATH=${PROJECT_SOURCE_DIR}/external/phypp/cmake
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DFASTPP_SHARE_DIR=${FASTPP_SHARE_DIR})
 
 if (INSTALL_SHARED_DATA)
     install(FILES
@@ -120,3 +87,9 @@ if (INSTALL_SHARED_DATA)
         share/TEMPLATE_ERROR.fast.v0.2
         DESTINATION ${FASTPP_SHARE_DIR} COMPONENT data)
 endif()
+
+install(PROGRAMS
+    ${CMAKE_BINARY_DIR}/bin/fast++
+    ${CMAKE_BINARY_DIR}/bin/fast++-grid2fits
+    ${CMAKE_BINARY_DIR}/bin/fast++-sfh2sed
+    DESTINATION bin COMPONENT runtime)
