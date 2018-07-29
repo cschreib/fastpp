@@ -707,7 +707,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
         }
 
         vec1s tr_from, tr_to;
-        ascii::read_table(translate_file, ascii::find_skip(translate_file), tr_from, tr_to);
+        ascii::read_table(translate_file, tr_from, tr_to);
 
         vec1u idh, idt;
         match(header, tr_from, idh, idt);
@@ -1458,9 +1458,7 @@ bool read_template_error(const options_t& opts, input_state_t& state) {
         return false;
     }
 
-    ascii::read_table(opts.temp_err_file, ascii::find_skip(opts.temp_err_file),
-        state.tplerr_lam, state.tplerr_err
-    );
+    ascii::read_table(opts.temp_err_file, state.tplerr_lam, state.tplerr_err);
 
     if (state.tplerr_lam.empty()) {
         error("template error function is empty, something must be wrong in the file");

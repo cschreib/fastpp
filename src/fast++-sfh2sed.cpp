@@ -58,7 +58,7 @@ int phypp_main(int argc, char* argv[]) {
     if (ends_with(sfh_file, ".fits")) {
         fits::read_table(sfh_file, "t", input_t, "sfr", input_sfr);
     } else {
-        ascii::read_table(sfh_file, ascii::find_skip(sfh_file), input_t, input_sfr);
+        ascii::read_table(sfh_file, input_t, input_sfr);
     }
 
     // Check input
