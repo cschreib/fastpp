@@ -44,7 +44,7 @@ ExternalProject_Add(phy++
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/phypp
     DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/phypp
     GIT_REPOSITORY https://github.com/cschreib/phypp.git
-    GIT_TAG a54618a8dd3e5964452a200430b780ed334d29d9
+    GIT_TAG ff50fced070b4476af2abbb4f8a6adab6745c4eb
     CMAKE_ARGS
         -DNO_REFLECTION=ON
         -DNO_FFTW=ON
