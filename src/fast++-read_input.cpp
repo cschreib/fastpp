@@ -253,7 +253,14 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
     if (opts.output_file.empty()) opts.output_file = opts.catalog;
 
-    // Now check for the consistency of the output and make corrections when necessary
+    // Now check for the consistency of the input and make corrections when necessary
+
+    vec1s possible_dust_laws = {"calzetti", "mz", "noll", "kc"};
+    if (!is_any_of(opts.dust_law, possible_dust_laws)) {
+        error("unknown dust law '", opts.dust_law, "'");
+        error("possible values: ", possible_dust_laws);
+        return false;
+    }
 
     if (opts.sfr_avg < 0 || !is_finite(opts.sfr_avg)) {
         opts.sfr_avg = 0;
