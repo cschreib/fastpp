@@ -257,7 +257,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
 
         std::string grid_hash = hash(output.grid[_-(grid_id::custom-1)], output.param_names,
             input.lambda, opts.dust_noll_eb, opts.dust_noll_delta, opts.sfr_avg, opts.lambda_ion,
-            opts.cosmo.H0, opts.cosmo.wm, opts.cosmo.wL, opts.apply_vdisp);
+            opts.cosmo.H0, opts.cosmo.wm, opts.cosmo.wL, opts.apply_vdisp, opts.no_igm);
 
         // Additional grid parameter
         switch (opts.sfh) {
