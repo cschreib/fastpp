@@ -1489,9 +1489,9 @@ bool check_input(options_t& opts, input_state_t& state) {
 
         idb = where(state.zspec > opts.z_max);
         if (!idb.empty()) {
-            warning("found ", idb.size(), " galaxies with z_spec lower than "
-                "the minimum value of the grid (z < ", opts.z_min, ")");
-            warning("will put them at z=", opts.z_min);
+            warning("found ", idb.size(), " galaxies with z_spec larger than "
+                "the maximum value of the grid (z > ", opts.z_max, ")");
+            warning("will put them at z=", opts.z_max);
 
             state.zspec[idb] = opts.z_max;
         }
@@ -1514,9 +1514,9 @@ bool check_input(options_t& opts, input_state_t& state) {
             idb = where(state.zphot(_,c) > opts.z_max);
             if (!idb.empty()) {
                 if (c == 0) {
-                    warning("found ", idb.size(), " galaxies with z_phot lower than "
-                        "the minimum value of the grid (z < ", opts.z_min, ")");
-                    warning("will put them at z=", opts.z_min);
+                    warning("found ", idb.size(), " galaxies with z_phot larger than "
+                        "the maximum value of the grid (z > ", opts.z_max, ")");
+                    warning("will put them at z=", opts.z_max);
                 }
 
                 state.zphot(idb,c) = opts.z_max;
