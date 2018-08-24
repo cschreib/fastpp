@@ -213,12 +213,12 @@ int phypp_main(int argc, char* argv[]) {
             return lam;
         };
 
-        ssp.lambda *= (1.0 + z);
-        tpl_flux *= lum2fl;
-
         if (!no_igm) {
             tpl_flux *= madau1995(z, ssp.lambda);
         }
+
+        ssp.lambda *= (1.0 + z);
+        tpl_flux *= lum2fl;
     }
 
     // Save SED
