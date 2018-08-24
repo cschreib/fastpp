@@ -210,6 +210,7 @@ int phypp_main(int argc, char* argv[]) {
     }
 
     // Save SED
+    file::mkdir(file::get_directory(out_file));
     std::ofstream fout(out_file);
     if (is_finite(z)) {
         fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
