@@ -19,9 +19,12 @@ int phypp_main(int argc, char* argv[]) {
     double omega_L = 0.7;
     double omega_m = 0.3;
     bool lookback = false;
+    bool no_igm = false;
+    bool unit_mass = false;
 
     read_args(argc, argv, arg_list(name(sfh_file, "sfh"), name(library_file, "ssp"),
-        name(out_file, "out"), tobs, z, Av, sfh_step, H0, omega_m, omega_L, lookback));
+        name(out_file, "out"), tobs, z, Av, sfh_step, H0, omega_m, omega_L,
+        lookback, no_igm, unit_mass));
 
     // Check arguments
     if (!is_finite(tobs) && !lookback) {
@@ -104,7 +107,7 @@ int phypp_main(int argc, char* argv[]) {
     vec1d t = rgen_step(tt0, tt1, sfh_step);
     vec1d sfr;
 
-    input_sfr *= 1e6;
+    input_sfr *= 1e6; // [Msun/Myr]
 
     double orig_step = median(input_t[1-_] - input_t[_-(input_t.size()-2)]);
     if (orig_step < sfh_step) {
@@ -127,13 +130,18 @@ int phypp_main(int argc, char* argv[]) {
         sfr = reverse(sfr);
     }
 
-    fits::write_table("tmp.fits", ftable(t, sfr));
-
     // Sum SSPs
     vec1d tpl_flux(ssp.lambda.size());
+    double mstar = 0.0;
     ssp.integrate(t, sfr, [&](uint_t it, double formed) {
         tpl_flux += formed*ssp.sed.safe(it,_);
+        mstar += formed*ssp.mass.safe[it];
     });
+
+    // Normalize, if asked
+    if (unit_mass) {
+        tpl_flux /= mstar;
+    }
 
     if (Av > 0) {
         // Apply dust attenuation
@@ -206,7 +214,11 @@ int phypp_main(int argc, char* argv[]) {
         };
 
         ssp.lambda *= (1.0 + z);
-        tpl_flux *= lum2fl*madau1995(z, ssp.lambda);
+        tpl_flux *= lum2fl;
+
+        if (!no_igm) {
+            tpl_flux *= madau1995(z, ssp.lambda);
+        }
     }
 
     // Save SED
