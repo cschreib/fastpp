@@ -45,7 +45,9 @@
 # o N_THREAD: sets the maximum number of threads the program can use at
 #   once. This should be close to (or equal to) the number of available
 #   cores on your CPU, or one less than the number of nodes available on a
-#   cluster. Setting this to zero will disable parallelization.
+#   cluster. Setting this to zero will disable parallelization. Note that,
+#   to enable parallel execution, you also need to change PARALLEL to
+#   something other than 'none'.
 #
 # o MAX_QUEUED_FITS: sets the maximum number of fits that are queued and
 #   waiting to be executed by the worker threads. Increasing this value
