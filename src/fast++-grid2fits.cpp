@@ -1,5 +1,7 @@
 #include <phypp.hpp>
 
+const bool debug = false;
+
 struct file_wrapper {
     std::ifstream in;
 
@@ -62,6 +64,7 @@ int phypp_main(int argc, char* argv[]) {
 
     std::string main_state = "";
     std::string state = "";
+    std::string reason = "";
 
     file_wrapper in(filename);
 
@@ -87,19 +90,47 @@ int phypp_main(int argc, char* argv[]) {
         try {
             // Read header
             main_state = "read header from file";
+            if (debug) note(main_state);
 
             // Format:
             // uint32: number of galaxies
-            state = "reading number of galaxies"; in.read(ngal);
+            state = "reading number of galaxies";
+            if (debug) note(state);
+            in.read(ngal);
+
+            // Check number
+            if (ngal > 1e8) {
+                reason = "number of galaxies is > 1e8 ("+to_string(ngrid)+")";
+                throw std::exception();
+            }
+
             // uint32: number of properties
-            state = "reading number of properties"; in.read(nprop);
+            state = "reading number of properties";
+            if (debug) note(state);
+            in.read(nprop);
+
+            // Check number
+            if (nprop > 1000) {
+                reason = "number of properties is > 1000 ("+to_string(nprop)+")";
+                throw std::exception();
+            }
+
             prop_names.resize(nprop);
             for (uint_t i : range(nprop)) {
                 in.read(prop_names[i]);
             }
 
             // uint32: number of grid axis
-            state = "reading number of grid parameters"; in.read(ngrid);
+            state = "reading number of grid parameters";
+            if (debug) note(state);
+            in.read(ngrid);
+
+            // Check number
+            if (nprop > 1000) {
+                reason = "number of grid parameter is > 1000 ("+to_string(ngrid)+")";
+                throw std::exception();
+            }
+
             // for each grid axis:
             //     uint32: number of values
             //     float[*]: grid values
@@ -109,6 +140,7 @@ int phypp_main(int argc, char* argv[]) {
             grid_names.resize(ngrid);
             for (uint_t i : range(grid)) {
                 state = "reading grid for parameter "+to_string(i);
+                if (debug) note(state);
                 in.read(grid_names[i]);
 
                 std::uint32_t gsize;
@@ -121,7 +153,7 @@ int phypp_main(int argc, char* argv[]) {
             }
 
             print("found ", ngal, " galaxies, with ", nprop, " properties, ", ngrid,
-                " parameters and ", nmodel, " models");
+                " grid parameters and ", nmodel, " models");
             print("grid names: ", collapse(grid_names, ", "));
             print("prop names: ", collapse(prop_names, ", "));
 
@@ -134,6 +166,7 @@ int phypp_main(int argc, char* argv[]) {
             prepend(prop_names, vec1s{"chi2"});
         } catch (...) {
             error("\n\ncould not ", main_state, " (", state, ")");
+            return 1;
         }
 
         vec3f vgrid(nmodel, ngal, ngrid);
@@ -168,14 +201,32 @@ int phypp_main(int argc, char* argv[]) {
 
             // Format:
             // uint32: number of properties
-            state = "reading number of properties"; in.read(nprop);
+            state = "reading number of properties";
+            if (debug) note(state);
+            in.read(nprop);
+
+            // Check number
+            if (nprop > 1000) {
+                reason = "number of properties is > 1000 ("+to_string(nprop)+")";
+                throw std::exception();
+            }
+
             prop_names.resize(nprop);
             for (uint_t i : range(nprop)) {
                 in.read(prop_names[i]);
             }
 
             // uint32: number of grid axis
-            state = "reading number of grid parameters"; in.read(ngrid);
+            state = "reading number of grid parameters";
+            if (debug) note(state);
+            in.read(ngrid);
+
+            // Check number
+            if (nprop > 1000) {
+                reason = "number of grid parameter is > 1000 ("+to_string(ngrid)+")";
+                throw std::exception();
+            }
+
             // for each grid axis:
             //     uint32: number of values
             //     float[*]: grid values
@@ -184,17 +235,38 @@ int phypp_main(int argc, char* argv[]) {
             grid_names.resize(ngrid);
             for (uint_t i : range(grid)) {
                 state = "reading grid for parameter "+to_string(i);
+                if (debug) note(state);
                 in.read(grid_names[i]);
                 std::uint32_t gsize; in.read(gsize);
+
+                // Check number
+                if (gsize > 100000) {
+                    reason = "size of grid for "+grid_names[i]+" is > 100000 ("+to_string(gsize)+")";
+                    throw std::exception();
+                }
+
                 grid_dims[i] = gsize;
                 grid[i].resize(gsize);
                 in.read(grid[i]);
             }
 
             main_state = "read data";
+            state = "";
 
-            // Try to read as much as we can, writing may have been interrupted
-            while (true) {
+            // As a failsafe, compute maximum possible iterations
+            uint_t max_iter; {
+                int_t opos = in.in.tellg();
+                in.in.seekg(0, std::ios::end);
+                uint_t flen = in.in.tellg() - opos;
+                in.in.seekg(opos);
+                uint_t data_size = sizeof(uint32_t) + sizeof(float) + sizeof(float)*nprop;
+                max_iter = flen/data_size + 2;
+            }
+
+            // Try to read as much as we can, writing may have been interrupted in the middle
+            // of the computations, and we want to salvage whatever is available
+            uint_t iter = 0;
+            while (iter < max_iter) {
                 uint32_t id;
                 float tchi2;
                 vec1f p(nprop);
@@ -210,15 +282,27 @@ int phypp_main(int argc, char* argv[]) {
                 } catch (...) {
                     break;
                 }
+
+                ++iter;
+            }
+
+            if (iter == max_iter) {
+                reason = "maximum number of iteration reached, that's a bug...";
+                throw std::exception();
             }
 
             nmodel = id_model.size();
 
-            print("found ", nprop, " properties, ", ngrid, " parameters and ", nmodel, " models");
+            print("found ", nprop, " properties, ", ngrid, " grid parameters and ", nmodel, " models");
             print("grid names: ", collapse(grid_names, ", "));
             print("prop names: ", collapse(prop_names, ", "));
         } catch (...) {
-            error("\n\ncould not ", main_state, " (", state, ")");
+            print("\n\n");
+            error("could not ", main_state, " (", state, ")");
+            if (!reason.empty()) {
+                error(reason);
+            }
+            return 1;
         }
 
         vec2f vgrid(nmodel, ngrid);
