@@ -24,12 +24,18 @@ struct file_wrapper {
             for (uint_t i : range(nchunk)) {
                 uint_t tsize = (i == nchunk-1 ? val.size() - i*chunk_size : chunk_size);
                 in.read(reinterpret_cast<char*>(val.data.data()+i*chunk_size), sizeof(T)*tsize);
+                if (!in) {
+                    throw std::exception();
+                }
 
                 nread += tsize;
                 print_progress(pg, nread);
             }
         } else {
             in.read(reinterpret_cast<char*>(val.data.data()), sizeof(T)*val.size());
+            if (!in) {
+                throw std::exception();
+            }
         }
     }
 
@@ -255,7 +261,7 @@ int phypp_main(int argc, char* argv[]) {
 
             // As a failsafe, compute maximum possible iterations
             uint_t max_iter; {
-                int_t opos = in.in.tellg();
+                auto opos = in.in.tellg();
                 in.in.seekg(0, std::ios::end);
                 uint_t flen = in.in.tellg() - opos;
                 in.in.seekg(opos);
