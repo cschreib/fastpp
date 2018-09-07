@@ -433,6 +433,9 @@ By default, the template spectra produced by FAST++ assume no velocity dispersio
 
 The solution implemented in FAST++ is to broaden all the spectral templates with a fixed velocity dispersion, specified in ```APPLY_VDISP``` (in km/s). Note that this is the value of the velocity *dispersion* (i.e., the "sigma" of the Gaussian velocity profile), not the FWHM. Unfortunately, because of the architecture of the code, it is not possible to specify different velocity dispersions for each galaxy of the input catalog. If you need to do this, you will have to fit each galaxy separately, in different FAST++ runs.
 
+NB: applying the velocity dispersion needs to be done for each SED library that is used in the fit. This incurs a small performance penalty at the beginning of the fit (and whenever the library is changed, e.g., when switching to a new metallicity). If your grid is small, this step can actually dominate the total computation time.
+
+
 ## Continuum indices
 Traditionally, absorption line strengths are measured as "equivalent widths" (in wavelength unit). These are part of a large set of continuum features call "spectral indices", see for example [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B), which includes other commonly used quantities such as the Dn4000 index. These features have been used extensively in the past to characterize the SEDs of galaxies and infer their star formation histories and/or metal abundances.
 
