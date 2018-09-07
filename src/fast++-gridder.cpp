@@ -818,26 +818,52 @@ vec2d gridder_t::convolve_vdisp(const vec1d& lam, const vec2d& osed, double vdis
 
     const uint_t nlam = lam.size();
     const double max_sigma = 5.0;
-    for (uint_t l : range(lam)) {
-        // Get sigma in wavelength units
-        double sigma = lam.safe[l]*(vdisp/2.99792e5);
 
-        // Find bounds
-        uint_t i0 = l, i1 = l;
-        double l0 = lam.safe[l] - max_sigma*sigma;
-        while (i0 > 1 && lam.safe[i0] > l0) --i0;
-        double l1 = lam.safe[l] + max_sigma*sigma;
-        while (i1 < nlam-2 && lam.safe[i1] < l1) ++i1;
+    auto do_convolve = [&](uint_t lbegin, uint_t lend) {
+        for (uint_t l : range(lbegin, lend)) {
+            // Get sigma in wavelength units
+            double sigma = lam.safe[l]*(vdisp/2.99792e5);
 
-        // Integrate
-        for (uint_t tl = i0; tl <= i1; ++tl) {
-            l0 = 0.5*(lam.safe[tl] + lam.safe[tl-1]);
-            l1 = 0.5*(lam.safe[tl] + lam.safe[tl+1]);
+            // Find bounds
+            uint_t i0 = l, i1 = l;
+            double l0 = lam.safe[l] - max_sigma*sigma;
+            while (i0 > 1 && lam.safe[i0] > l0) --i0;
+            double l1 = lam.safe[l] + max_sigma*sigma;
+            while (i1 < nlam-2 && lam.safe[i1] < l1) ++i1;
 
-            double k = (l1 - l0)*integrate_gauss(l0, l1, lam.safe[l], sigma);
-            for (uint_t s : range(osed.dims[0])) {
-                sed.safe(s,l) += osed.safe(s,tl)*k;
+            // Integrate
+            for (uint_t tl = i0; tl <= i1; ++tl) {
+                l0 = 0.5*(lam.safe[tl] + lam.safe[tl-1]);
+                l1 = 0.5*(lam.safe[tl] + lam.safe[tl+1]);
+
+                double k = (l1 - l0)*integrate_gauss(l0, l1, lam.safe[l], sigma);
+                for (uint_t s : range(osed.dims[0])) {
+                    sed.safe(s,l) += osed.safe(s,tl)*k;
+                }
             }
+        }
+    };
+
+    if (opts.n_thread <= 1) {
+        // Single-threaded
+        do_convolve(0, lam.size());
+    } else {
+        // Multi-threaded
+        auto tp = thread::pool(opts.n_thread);
+        uint_t dl = lam.size()/opts.n_thread + 1;
+        uint_t l0 = 0;
+        uint_t l1 = dl;
+        for (uint_t it : range(opts.n_thread)) {
+            tp[it].start(do_convolve, l0, l1);
+            l0 += dl;
+            l1 += dl;
+            if (l1 > lam.size()) {
+                l1 = lam.size();
+            }
+        }
+
+        for (uint_t it : range(opts.n_thread)) {
+            tp[it].join();
         }
     }
 
