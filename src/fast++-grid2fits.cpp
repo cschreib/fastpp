@@ -61,6 +61,12 @@ int phypp_main(int argc, char* argv[]) {
     std::string filename = argv[1];
     std::string outfile = file::get_directory(filename)+file::get_basename(filename)+".fits";
 
+    if (debug) {
+        note("fast++-grid2fits debug mode");
+        note("reading ", filename);
+        note("writing ", outfile);
+    }
+
     std::uint32_t ngal = 0, ngrid = 0, nprop = 0;
     vec<1,vec1f> grid;
     vec1u grid_dims;
@@ -72,15 +78,25 @@ int phypp_main(int argc, char* argv[]) {
     std::string state = "";
     std::string reason = "";
 
+    if (!file::exists(filename)) {
+        error("file ", filename, " doest no exist");
+        return 1;
+    }
+
     file_wrapper in(filename);
 
     if (!in.in.is_open()) {
         error("could not open ", filename);
         return 1;
     }
+
     if (in.in.eof()) {
         error("file ", filename, " is empty");
         return 1;
+    }
+
+    if (debug) {
+        note("input file successfully open");
     }
 
     // uint32: size of header in bytes (unused here)
@@ -90,6 +106,10 @@ int phypp_main(int argc, char* argv[]) {
     in.read(ftype);
 
     if (ftype == 'C') {
+        if (debug) {
+            note("this is a chi2 grid binary file");
+        }
+
         vec2f chi2;
         vec3f props;
 
@@ -197,6 +217,10 @@ int phypp_main(int argc, char* argv[]) {
             otbl.write_column(grid_names[i], vgrid(_,_,i));
         }
     } else if (ftype == 'B') {
+        if (debug) {
+            note("this is a best chi2 binary file");
+        }
+
         vec1u id_model;
         vec1f chi2;
         vec2f props;
