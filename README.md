@@ -75,7 +75,7 @@ cmake ../
 make install
 ```
 
-This will create an executable called ```fast++``` in the ```fastpp/bin``` directory, which you can use immediately to replace FAST. If you have not installed FAST, you will have to download some template libraries from [the FAST website](http://w.astro.berkeley.edu/~mariska/FAST_Download.html) before you can start fitting galaxies. The latest FAST template error function and EAzY filter response database are provided with FAST++ in the ```fastpp/share``` directory.
+This will create an executable called ```fast++``` in the ```fastpp/bin``` directory, which you can use immediately to replace FAST. If you have not installed FAST, you will have to download some template libraries from [the FAST website](http://w.astro.berkeley.edu/~mariska/FAST_Download.html) before you can start fitting galaxies (note that some libraries can only be obtained by downloading FAST itself, such as ```ised_exp.pr```). The latest FAST template error function and EAzY filter response database are provided with FAST++ in the ```fastpp/share``` directory.
 
 If you want to use arbitrary star formation histories beyond what the original FAST supports, you will have to download the single stellar populations libraries from Bruzual & Charlot (2003). To simplify this task for you, a script is provided in the ```fastpp/share/libraries``` folder. This script will download the libraries and rename the files to FAST++ convention for you, all you have to do is run this script and it will take care of the rest. You will need about 400 MB of free disk space.
 
