@@ -387,6 +387,23 @@ GRID_EXCLUDE = 'log_tburst < log_tau'
 Lastly, by default the variable ```t``` in the SFH expression is the "cosmic" time, with ```t=0``` being the instant when the galaxy was born, and where larger values of ```t``` correspond to later times, in the future. An alternative parametrization is to work with the "lookback" time, where ```t=0``` is the instant when the galaxy is observed, and larger values of ```t``` correspond to earlier times, back towards the Big Bang. The relation between the two is simply ```t_lookback = 10^lage - t_cosmic```, so this is a simple transformation you can perform in the SFH expression. But to make it more convenient, you can enable the option ```CUSTOM_SFH_LOOKBACK=1```, in which case ```t``` will be defined as the lookback time.
 
 
+## Non-parametric SFH quantities
+Generally, the grid parameters which are used to define the SFH are not particularly meaningful. For example, the 'age' parameter is the elapsed time since the birth of the very first star. This quantity is, in theory, impossible to measure; the only reason it looks like a well constrained quantity with standard fit setups is because most SFH parametrizations are quite rigid and will not explore a large enough variety of SFHs. Likewise, the 'tau' parameter in exponentially-declining SFHs is only meaningful in the case where the galaxy's true SFH is indeed an exponential. If not, interpreting this value becomes difficult.
+
+For this reason, it is often advocated to not give any credit to these grid parameters, but instead compute non-parametric quantities. The simplest example would be to compute the elapsed time since half of the stars were born (which is essentially the mass-weighted age). FAST++ provides a number of such non-parametric quantities for each SFH, which you can ask the program to compute.
+
+List of available quantities:
+
+ - ```tsf```: shortest time interval over which 68% of SFR took place (= duration of star formation).
+ - ```past_sfr```: average SFR during the above time interval (= mean past SFR).
+ - ```sfr```X : average SFR over the last ```X``` Myr.
+ - ```brate```X : ```sfr```X / ```past_sfr``` (= birth-rate parameter).
+ - ```tquench```X : elapsed time since the SFR dropped below a factor ```X``` of the ```past_sfr``` (= time since quenching).
+ - ```tform```X : elapsed time since the galaxy had formed ```X```% of its current mass (= time since formation).
+
+Some of these parameters are defined and used in [Schreiber et al. (2018)](http://adsabs.harvard.edu/cgi-bin/nph-data_query?bibcode=2018arXiv180702523S&db_key=PRE&link_type=ABSTRACT&high=5b4379bf1108433). Look at this paper for more information.
+
+
 ## Using priors on the infrared luminosity
 One of the main degeneracy that arises when fitting UV-to-NIR data is that of dust versus age. When a galaxy has a red SED, unless the signal to noise and the wavelength sampling are high, it is very difficult to say if this is caused by a large amount of dust, or by an older stellar population, or a combination of both. It is for this reason that SFRs obtained from such fits are very uncertain, and that SFRs determined from the far-IR are preferred.
 

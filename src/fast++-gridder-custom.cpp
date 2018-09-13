@@ -157,12 +157,17 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
             double tformed_mass = 0.0;
             ssp.integrate(ltime, sfh, [&](uint_t it, double formed) {
                 tmodel_mass  += formed*ssp.mass.safe[it];
-                tformed_mass += formed*ssp.mass.safe[0];
+                tformed_mass += formed;
                 tpl_flux     += formed*ssp.sed.safe(it,_);
             });
 
             model_mass = tmodel_mass;
-            model_mform = tformed_mass;
+            model_mform = tformed_mass*ssp.mass.safe[0];
+
+            // Compute SFH quantities
+            if (!input.sfh_quant.empty()) {
+                compute_sfh_quantities_impl(ltime, sfh, tm.model);
+            }
 
             if (opts.sfr_avg > 0) {
                 // Average SFR over the past X yr

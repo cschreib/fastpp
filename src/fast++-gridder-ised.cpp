@@ -338,6 +338,20 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
             model_mass = (1.0 - x)*ised.mass.safe[p[0]] + x*ised.mass.safe[p[1]];
             model_mform = (1.0 - x)*ised.mform.safe[p[0]] + x*ised.mform.safe[p[1]];
 
+            // Compute SFH quantities
+            if (!input.sfh_quant.empty()) {
+                // Get tabulated SFH from .ised file
+                vec1d ltime = nage - ised.age[_-p[0]];
+                ltime.push_back(0.0);
+                ltime = reverse(ltime);
+
+                vec1d sfh = ised.sfr[_-p[0]];
+                sfh.push_back((1.0 - x)*ised.sfr.safe[p[0]] + x*ised.sfr.safe[p[1]]);
+                sfh = reverse(sfh);
+
+                compute_sfh_quantities_impl(ltime, sfh, tm.model);
+            }
+
             if (opts.sfr_avg > 0) {
                 // Average SFR over the past X yr
                 double t1 = nage;

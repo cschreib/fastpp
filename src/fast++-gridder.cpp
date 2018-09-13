@@ -59,6 +59,8 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     nprop += input.abs_lines.size();
     output.ifirst_ratio = nprop;
     nprop += input.cont_ratios.size();
+    output.ifirst_sfhq = nprop;
+    nprop += input.sfh_quant.size();
 
     output.grid.resize(nparam);
     output.param_names.resize(nparam+nprop);
@@ -135,6 +137,12 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     for (uint_t i : range(input.cont_ratios)) {
         auto& r = input.cont_ratios[i];
         set_prop(output.ifirst_ratio+i, r.name, "", false, log_style::none, 1e-2);
+    }
+
+    // SFH parameters
+    for (uint_t i : range(input.sfh_quant)) {
+        auto& q = input.sfh_quant[i];
+        set_prop(output.ifirst_sfhq+i, q.name, q.unit, q.scale, log_style::decimal, 1e-2);
     }
 
     // Redshift grid
@@ -657,6 +665,116 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
                 cache.write_model(model);
                 if (opts.verbose) progress_tick(pg, 0.5);
             }
+        }
+    }
+}
+
+void gridder_t::compute_sfh_quantities_impl(const vec1d& ltime, const vec1d& sfh, model_t& model) {
+    // Pre-compute some useful things
+    vec1d csfh = cumul(ltime, sfh);         // Cumulative SFH
+    csfh /= csfh.back();
+    uint_t imax = max_id(sfh);              // Index of peak SFR
+    double tot_sfr = integrate(ltime, sfh); // Total sum of SFR
+
+    for (uint_t i : range(input.sfh_quant)) {
+        auto& q = input.sfh_quant[i];
+        auto& o = model.props[output.ifirst_sfhq+i];
+
+        switch (q.type) {
+        case sfh_quantity_type::sfr : {
+            // Average SFR over the past X yr in [Msun/yr]
+            double t1 = min(q.param, ltime.back());
+            o = integrate(ltime, sfh, 0.0, t1)/q.param;
+            break;
+        }
+        case sfh_quantity_type::tform : {
+            // Time of formation in [yr]
+            o = interpolate(ltime, csfh, q.param);
+            break;
+        }
+        case sfh_quantity_type::tsf : {
+            // Duration of star formation in [yr]
+
+            // Start from peak SFR and expand in the direction of max SFR until
+            // summed SFR equals 68% of the total summed SFR.
+            uint_t im0 = imax;
+            uint_t im1 = imax;
+            double sum = 0.0;
+            double prev_length = 0.0;
+            double prev_sum = 0.0;
+            bool set = false;
+
+            for (uint_t i = 1; i < sfh.size(); ++i) {
+                bool left = true;
+                if (im0 == 0) {
+                    left = false;
+                } else if (im1 == sfh.size()-1) {
+                    left = true;
+                } else {
+                    if (sfh.safe[im1+1] > sfh.safe[im0-1]) {
+                        left = false;
+                    } else {
+                        left = true;
+                    }
+                }
+
+                if (left) {
+                    sum += 0.5*(sfh.safe[im0] + sfh.safe[im0-1])/
+                                (ltime.safe[im0] - ltime.safe[im0-1]);
+                    --im0;
+                } else {
+                    sum += 0.5*(sfh.safe[im1+1] + sfh.safe[im1])/
+                                (ltime.safe[im1+1] - ltime.safe[im1]);
+                    ++im1;
+                }
+
+                double length = ltime.safe[im1] - ltime.safe[im0];
+                if (sum > 0.68*tot_sfr) {
+                    o = interpolate(prev_length, length, prev_sum, sum, 0.68*tot_sfr);
+                    set = true;
+                    break;
+                }
+
+                prev_length = length;
+                prev_sum = sum;
+            }
+
+            if (!set) {
+                o = 0.68*ltime.back();
+            }
+
+            break;
+        }
+        case sfh_quantity_type::past_sfr : {
+            // Mean SFR during main star formation episode in [Msun/yr]
+            double tsf = model.props[output.ifirst_sfhq+q.depends[0]];
+            o = 0.68*tot_sfr/tsf;
+            break;
+        }
+        case sfh_quantity_type::tquench : {
+            // Time spent since quenching in [yr]
+            // Quenching defined as time when SFR is X times lower than the mean past SFR
+            double msfr = model.props[output.ifirst_sfhq+q.depends[0]];
+            for (uint_t i : range(sfh)) {
+                if (sfh.safe[i] > msfr/q.param) {
+                    if (i == 0) {
+                        o = 0;
+                    } else {
+                        o = interpolate(ltime.safe[i-1], ltime.safe[i],
+                            sfh.safe[i-1], sfh.safe[i], msfr/q.param);
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+        case sfh_quantity_type::brate : {
+            // Birth rate parameter: SFR_now/SFR_past
+            double msfr = model.props[output.ifirst_sfhq+q.depends[0]];
+            double sfr = model.props[output.ifirst_sfhq+q.depends[1]];
+            o = sfr/msfr;
+            break;
+        }
         }
     }
 }

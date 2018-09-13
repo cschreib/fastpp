@@ -163,11 +163,11 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(apply_vdisp)
         PARSE_OPTION(rest_mag)
         PARSE_OPTION(continuum_indices)
+        PARSE_OPTION(sfh_quantities)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
 
-        // warning("unknown parameter '", key, "'");
         unparsed_key.push_back(key);
         unparsed_val.push_back(val);
 
@@ -389,6 +389,134 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         }
     }
 
+    // SFH parameters
+    if (!opts.sfh_quantities.empty()) {
+        opts.sfh_quantities = to_lower(opts.sfh_quantities);
+
+        // Scan the list and add dependencies
+
+        // tquench and brate need past_sfr
+        if (count(opts.sfh_quantities == "tquench") > 0 ||
+            count(begins_with(opts.sfh_quantities, "brate")) > 0) {
+            opts.sfh_quantities.push_back("past_sfr");
+        }
+
+        // brateX needs sfrX
+        for (auto c : opts.sfh_quantities[where(begins_with(opts.sfh_quantities, "brate"))]) {
+            opts.sfh_quantities.push_back("sfr"+erase_begin(c, "brate"));
+        }
+
+        // past_sfr needs tsf
+        if (count(opts.sfh_quantities == "past_sfr") > 0) {
+            opts.sfh_quantities.push_back("tsf");
+        }
+
+        // Remove duplicates
+        opts.sfh_quantities = unique_values(opts.sfh_quantities);
+
+        // Sort by dependency
+        vec1u dependency = vectorize_lambda([](const std::string& q) {
+            if (begins_with(q, "brate"))   return 5;
+            if (begins_with(q, "sfr"))     return 4;
+            if (begins_with(q, "tquench")) return 3;
+            if (q == "past_sfr")           return 2;
+            if (q == "tsf")                return 1;
+            return 0;
+        })(opts.sfh_quantities);
+
+        opts.sfh_quantities = opts.sfh_quantities[sort(dependency)];
+
+        // Now add the parameters
+        for (auto c : opts.sfh_quantities) {
+            sfh_quantity_t q;
+            q.name = c;
+
+            if (c == "tsf") {
+                q.type = sfh_quantity_type::tsf;
+                q.unit = "log[yr]";
+            } else if (begins_with(c, "past_sfr")) {
+                q.type = sfh_quantity_type::past_sfr;
+                q.unit = "log[Msol/yr]";
+                q.scale = true;
+                q.depends.push_back(where_first(opts.sfh_quantities == "tsf"));
+            } else if (begins_with(c, "tquench")) {
+                c = erase_begin(c, "tquench");
+                if (!from_string(c, q.param)) {
+                    error("could not read 'tquench' parameter from '", q.name, "'");
+                    return false;
+                }
+                if (q.param <= 0) {
+                    error("'tquench' parameter must be > 0 (got ", q.param,
+                        " from '", q.name, "')");
+                    return false;
+                }
+
+                q.type = sfh_quantity_type::tquench;
+                q.unit = "log[yr]";
+                q.depends.push_back(where_first(opts.sfh_quantities == "past_sfr"));
+            } else if (begins_with(c, "tform")) {
+                c = erase_begin(c, "tform");
+                if (!from_string(c, q.param)) {
+                    error("could not read 'tform' parameter from '", q.name, "'");
+                    return false;
+                }
+                if (q.param <= 0 || q.param > 100) {
+                    error("'tform' parameter must be > 0 and <= 100 (got ", q.param,
+                        " from '", q.name, "')");
+                    return false;
+                }
+
+                q.param = 1.0 - q.param*1e-2; // [%] to fraction
+
+                q.type = sfh_quantity_type::tform;
+                q.unit = "log[yr]";
+            } else if (begins_with(c, "sfr")) {
+                c = erase_begin(c, "sfr");
+                if (!from_string(c, q.param)) {
+                    error("could not read 'sfr' parameter from '", q.name, "'");
+                    return false;
+                }
+                if (q.param <= 0) {
+                    error("'sfr' parameter must be > 0 (got ", q.param, " from '", q.name, "')");
+                    return false;
+                }
+
+                q.param *= 1e6; // [Myr] to [yr]
+
+                q.type = sfh_quantity_type::sfr;
+                q.unit = "log[Msol/yr]";
+                q.scale = true;
+            } else if (begins_with(c, "brate")) {
+                c = erase_begin(c, "brate");
+                if (!from_string(c, q.param)) {
+                    error("could not read 'brate' parameter from '", q.name, "'");
+                    return false;
+                }
+                if (q.param <= 0) {
+                    error("'brate' parameter must be > 0 (got ", q.param, " from '", q.name, "')");
+                    return false;
+                }
+
+                q.param *= 1e6; // [Myr] to [yr]
+
+                q.type = sfh_quantity_type::brate;
+                q.depends.push_back(where_first(opts.sfh_quantities == "past_sfr"));
+                q.depends.push_back(where_first(opts.sfh_quantities == "sfr"+c));
+            } else {
+                error("unknown SFH quantity '", q.name, "'");
+                return false;
+            }
+
+            vif_check(count(q.depends >= state.sfh_quant.size()) == 0,
+                "dependent SFH quantity will be processed after, this is a bug "
+                "(quantities: ", opts.sfh_quantities,")");
+
+            state.sfh_quant.push_back(q);
+        }
+
+        if (opts.verbose) note("computing SFH quantities: ", opts.sfh_quantities);
+    }
+
     if (opts.output_columns.empty()) {
         // Default columns to display
         switch (opts.sfh) {
@@ -412,6 +540,10 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
         if (!opts.rest_mag.empty()) {
             append(opts.output_columns, "M"+to_string_vector(opts.rest_mag));
+        }
+
+        if (!opts.sfh_quantities.empty()) {
+            append(opts.output_columns, to_lower(opts.sfh_quantities));
         }
 
         opts.output_columns.push_back("chi2");

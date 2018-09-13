@@ -136,6 +136,7 @@ struct options_t {
     bool        best_sfhs = false;
     std::string sfh_output = "sfr";
     float       sfh_output_step = 10.0;
+    vec1s       sfh_quantities;
 
     // Simulations
     bool save_sim = false;
@@ -171,6 +172,20 @@ struct continuum_ratio_t {
     float cont2_low, cont2_up;
 };
 
+// SFH quantities
+enum class sfh_quantity_type {
+    tsf, tquench, tform, sfr, past_sfr, brate
+};
+
+struct sfh_quantity_t {
+    std::string name;
+    std::string unit;
+    bool scale = false;
+    sfh_quantity_type type;
+    double param = 0.0;
+    vec1u depends;
+};
+
 // Holds the input state of the program
 struct input_state_t {
     // List of filter ID used in the photometric catalog
@@ -203,6 +218,7 @@ struct input_state_t {
     // Continuum indices definitions
     vec<1,absorption_line_t> abs_lines;
     vec<1,continuum_ratio_t> cont_ratios;
+    vec<1,sfh_quantity_t>    sfh_quant;
 
     // Baked grid cache name
     std::string name;
@@ -250,6 +266,7 @@ struct output_state_t {
     uint_t ifirst_rlum  = npos;
     uint_t ifirst_abs   = npos;
     uint_t ifirst_ratio = npos;
+    uint_t ifirst_sfhq  = npos;
 
     // For thread safety
     std::mutex fit_result_mutex;
@@ -343,6 +360,8 @@ private :
     void build_and_send_impl(fitter_t& fitter, progress_t& pg,
         const vec1d& lam, const vec1d& tpl_flux, const vec2d& dust_law, const vec2d& igm_abs,
         float lage, vec1u& idm, model_t& model);
+
+    void compute_sfh_quantities_impl(const vec1d& ltime, const vec1d& sfh, model_t& model);
 
     bool build_and_send_ised(fitter_t& fitter);
     bool build_and_send_custom(fitter_t& fitter);

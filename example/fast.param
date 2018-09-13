@@ -233,14 +233,29 @@ APPLY_VDISP    = 0          # km/s
 #   line equivalent-width, Dn4000, ...) to compute from each model
 #   spectrum. See examples in the "share/continuum_indices" directory.
 #
+# o SFH_QUANTITIES: list of SFH quantities to compute for each model.
+#   These quantities are computed directly on the SFH functional form
+#   of each model, and are thus non-parametric. Available quantites:
+#    - 'tsf': shortest time interval over which 68% of SFR took place
+#             (= duration of star formation).
+#    - 'past_sfr': average SFR during the above time interval
+#                  (= mean past SFR).
+#    - 'sfr'X : average SFR over the last 'X' Myr.
+#    - 'brate'X : 'sfr'X / 'past_sfr' (= birth-rate parameter).
+#    - 'tquench'X : elapsed time since the SFR dropped below a factor
+#                   'X' of the 'past_sfr' (= time since quenching).
+#    - 'tform'X : elapsed time since the galaxy had formed 'X'% of its
+#                 current mass (= time since formation).
+#
 # o OUTPUT_COLUMNS: define here what columns to write in [CATALOG].fout
 #   Available columns: id, metal, lage, Av, lmass, lsfr, lssfr, lldust,
 #   llion, lmform and chi2. If using the "standard" FAST templates, two
 #   additional columns are available: ltau and la2t. If using custom SFH,
 #   you can also choose any of your custom SFH parameter. Rest-frame
 #   magnitudes specified in 'REST_MAG' are also available, the format is
-#   "M[...]" where "[...]" is the filter ID. By default all available
-#   parameters are written in the file (except lldust, llion, and lmform).
+#   "M[...]" where "[...]" is the filter ID. If this variable is set to
+#   an empty array (default), then all available parameters are written
+#   in the file (except lldust, llion, and lmform).
 #
 #-----------------------------------------------------------------------
 
@@ -258,6 +273,7 @@ SFH_OUTPUT_STEP    = 10            # 10 Myr, 100 Myr etc
 SFH_OUTPUT         = 'sfr'         # 'sfr' or 'mass'
 REST_MAG           = []            # [140,142,161] for UVJ colors
 CONTINUUM_INDICES  = ''
+SFH_QUANTITIES     = []            # ['tquench10','tform50','brate10', ...]
 OUTPUT_COLUMNS     = []            # ['id','Av','lmass','lsfr', ...]
 
 
