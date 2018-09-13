@@ -89,7 +89,7 @@ void gridder_t::evaluate_sfh_custom(const vec1u& idm, const vec1d& t, vec1d& sfh
     sfh.resize(t.size());
     double nage = e10(output.grid[grid_id::age][idm[grid_id::age]]);
     for (uint_t i : range(t)) {
-        sfh_expr.vars[0] = (opts.custom_sfh_lookback ? nage - t.safe[i] : t.safe[i]);
+        sfh_expr.vars[0] = (opts.custom_sfh_lookback ? t.safe[i] : nage - t.safe[i]);
         sfh.safe[i] = sfh_expr.eval();
     }
 }
@@ -106,11 +106,6 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
     const vec1f& output_age = output.grid[grid_id::age];
     const vec1f& output_z = output.grid[grid_id::z];
     const vec1f& output_av = output.grid[grid_id::av];
-
-    // Compute "cosmic" time (t=0 is when the galaxy is born)
-    const double dt = opts.custom_sfh_step;
-    const vec1d ctime = reverse(dt*indgen<double>(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
-    // NB: age array is sorted from largest to smallest
 
     auto pg = progress_start(nmodel);
     for (uint_t im : range(output_metal)) {
@@ -142,16 +137,18 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
             float& model_sfr   = tm.model.props[prop_id::sfr];
             float& model_ssfr  = tm.model.props[prop_id::ssfr];
 
-            // Compute lookback time (t=0 is when the galaxy is observed, t>0 is in the past)
             uint_t ia = tm.idm[grid_id::age];
-            vec1d ltime = e10(output_age[ia]) - ctime;
+
+            const double dt = opts.custom_sfh_step;
+            // Compute lookback time (t=0 is when the galaxy is observed, t>0 is in the past) in [yr]
+            vec1d ltime = dt*indgen<double>(uint_t(ceil(e10(output_age[ia])/dt)+1.0));
 
             // Build analytic SFH
             vec1d sfh; {
                 auto lock = (opts.parallel == parallel_choice::generators ?
                     std::unique_lock<std::mutex>(sfh_mutex) : std::unique_lock<std::mutex>());
 
-                evaluate_sfh_custom(tm.idm, ctime, sfh);
+                evaluate_sfh_custom(tm.idm, ltime, sfh);
             }
 
             // Integrate SFH on local time grid
@@ -258,22 +255,19 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
 
     // Build analytic SFH
     double dt = opts.custom_sfh_step;
-    vec1d ctime = reverse(dt*indgen<double>(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
-    // NB: age array is sorted from largest to smallest
+    vec1d ltime = dt*indgen<double>(uint_t(ceil(e10(output_age[ia])/dt)+1.0));
     vec1d sfh; {
         auto lock = (opts.n_thread > 1 ?
             std::unique_lock<std::mutex>(sfh_mutex) : std::unique_lock<std::mutex>());
 
-        evaluate_sfh_custom(idm, ctime, sfh);
+        evaluate_sfh_custom(idm, ltime, sfh);
     }
 
     // Integrate SFH on local time grid
     vec1d tpl_flux(ssp->lambda.size());
-    ssp->integrate(e10(output_age[ia]) - ctime, sfh,
-        [&](uint_t it, double formed) {
-            tpl_flux += formed*ssp->sed.safe(it,_);
-        }
-    );
+    ssp->integrate(ltime, sfh, [&](uint_t it, double formed) {
+        tpl_flux += formed*ssp->sed.safe(it,_);
+    });
 
     lam = ssp->lambda;
     flux = tpl_flux;
@@ -286,24 +280,20 @@ bool gridder_t::get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh,
 
     vec1u idm = grid_ids(iflat);
     double nage = e10(output.grid[grid_id::age][idm[grid_id::age]]);
-    double age_obs = e10(auniv[grid_id::z]);
-    double age_born = age_obs - nage;
+    double t_obs = e10(auniv[idm[grid_id::z]]);
+
+    vec1d tlb = reverse(t_obs - t);
 
     // Evaluate SFH
-    uint_t i0 = upper_bound(t, age_born);
-    uint_t i1 = upper_bound(t, age_obs);
-
+    uint_t i1 = upper_bound(t, nage);
     if (i1 == npos) {
         i1 = t.size()-1;
-    }
-    if (i0 == npos) {
-        i0 = 0;
     }
 
     sfh = replicate(0.0, t.size()); {
         vec1d tsfh;
-        evaluate_sfh_custom(idm, t[i0-_] - age_born, tsfh);
-        sfh[i0-_] = tsfh;
+        evaluate_sfh_custom(idm, t[_-i1], tsfh);
+        sfh[_-i1] = tsfh;
     }
 
     // Load SSP (only extras) to get mass
@@ -317,28 +307,23 @@ bool gridder_t::get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh,
     if (type == "sfr") {
         // Compute total mass at epoch of observation and normalize
         double mass = 0.0;
-        ssp.integrate(nage + age_born - reverse(t), reverse(sfh),
-            [&](uint_t it, double formed) {
-                mass += formed*ssp.mass.safe[it];
-            }
-        );
+        ssp.integrate(tlb, sfh, [&](uint_t it, double formed) {
+            mass += formed*ssp.mass.safe[it];
+        });
 
         sfh /= mass;
     } else if (type == "mass") {
         // Integrate mass, including mass loss
         vec1d mass(t.size());
-        vec1d lsfh = reverse(sfh);
 
         for (uint_t i : range(t)) {
-            ssp.integrate(t.safe[i] - reverse(t), lsfh,
-                [&](uint_t it, double formed) {
-                    mass.safe[i] += formed*ssp.mass.safe[it];
-                }
-            );
+            ssp.integrate(tlb[i-_] - tlb.safe[i], sfh[i-_], [&](uint_t it, double formed) {
+                mass.safe[i] += formed*ssp.mass.safe[it];
+            });
         }
 
         // Normalize to unit mass at observation
-        mass /= interpolate(mass, t, nage + age_born);
+        mass /= mass[0];
 
         // Return mass instead of SFR
         std::swap(mass, sfh);
@@ -346,6 +331,8 @@ bool gridder_t::get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh,
         error("unknown SFH type '", type, "'");
         return false;
     }
+
+    sfh = reverse(sfh);
 
     return true;
 }
