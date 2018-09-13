@@ -38,20 +38,20 @@ ExternalProject_Add(cfitsio
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
         -DCMAKE_BUILD_TYPE=Release)
 
-# Configure and build phy++
-ExternalProject_Add(phy++
+# Configure and build vif
+ExternalProject_Add(vif
     DEPENDS cfitsio
-    SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/phypp
-    DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/phypp
-    GIT_REPOSITORY https://github.com/cschreib/phypp.git
-    GIT_TAG ff50fced070b4476af2abbb4f8a6adab6745c4eb
+    SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/vif
+    DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/vif
+    GIT_REPOSITORY https://github.com/cschreib/vif.git
+    GIT_TAG a2aa06bdae7a8baab6ae65a5dee365c147bd6c62
     CMAKE_ARGS
         -DNO_REFLECTION=ON
         -DNO_FFTW=ON
         -DNO_LAPACK=ON
         -DNO_GSL=ON
         -DNO_WCSLIB=ON
-        -DPHYPP_INPLACE_BUILD=ON
+        -DVIF_INPLACE_BUILD=ON
         -DCFITSIO_ROOT_DIR=${PROJECT_SOURCE_DIR}/external
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
         -DCMAKE_BUILD_TYPE=Release)
@@ -69,15 +69,15 @@ ExternalProject_Add(tinyexpr
 
 # Configure and build FAST++
 ExternalProject_Add(fast++
-    DEPENDS phy++ tinyexpr
+    DEPENDS vif tinyexpr
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/src
     CMAKE_ARGS
         -DCFITSIO_ROOT_DIR=${PROJECT_SOURCE_DIR}/external
-        -DPHYPP_ROOT_DIR=${PROJECT_SOURCE_DIR}/external
+        -DVIF_ROOT_DIR=${PROJECT_SOURCE_DIR}/external
         -DTINYEXPR_INCLUDE_DIR=${PROJECT_SOURCE_DIR}/external/include
         -DTINYEXPR_LIBRARY=${PROJECT_SOURCE_DIR}/external/lib/libtinyexpr.a
         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}
-        -DCMAKE_MODULE_PATH=${PROJECT_SOURCE_DIR}/external/phypp/cmake
+        -DCMAKE_MODULE_PATH=${PROJECT_SOURCE_DIR}/external/vif/cmake
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DFASTPP_SHARE_DIR=${FASTPP_SHARE_DIR})
 

@@ -268,7 +268,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
             break;
         case sfh_type::custom:
             grid_hash = hash(grid_hash, opts.custom_sfh,
-                output.grid[grid_id::custom+uindgen(nparam-grid_id::custom)]);
+                output.grid[grid_id::custom+indgen(nparam-grid_id::custom)]);
             break;
         }
 
@@ -989,7 +989,7 @@ bool gridder_t::write_seds() const {
 uint_t gridder_t::model_id(const vec1u& ids) const {
     uint_t fid = 0;
 
-    phypp_check(ids.size() == grid_dims.size(), "mismatching IDs with grid");
+    vif_check(ids.size() == grid_dims.size(), "mismatching IDs with grid");
 
     for (uint_t i : range(ids)) {
         fid += grid_dims_pitch[i]*ids[i];

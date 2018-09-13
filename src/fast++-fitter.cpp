@@ -1,5 +1,5 @@
 #include "fast++.hpp"
-#include <phypp/utility/thread.hpp>
+#include <vif/utility/thread.hpp>
 
 fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder_t& gri,
     output_state_t& out) : opts(opt), input(inp), gridder(gri), output(out) {
@@ -399,7 +399,7 @@ struct fitter_workspace {
             rflux = reinterpret_cast<double*>(pool + off); off += nflux*sizeof(double);
         }
 
-        phypp_check(uint_t(off) == buffer_size, "mismatch in buffer and arrays, please report!");
+        vif_check(uint_t(off) == buffer_size, "mismatch in buffer and arrays, please report!");
 
         mc_chi2.resize(nsim);
         mc_props.resize(nprop, nsim);
@@ -428,13 +428,13 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
         if (count(!is_finite(model.flux)) > 0) {
             fits::write_table("debug.fits",
                 "flux", model.flux, "grid_id", gridder.grid_ids(model.igrid));
-            phypp_check(false, "model has invalid values, saved in debug.fits for inspection");
+            vif_check(false, "model has invalid values, saved in debug.fits for inspection");
         }
         // DEBUG: check that model is not only zero values
         if (count(model.flux > 0.0) == 0) {
             fits::write_table("debug.fits",
                 "flux", model.flux, "grid_id", gridder.grid_ids(model.igrid));
-            phypp_check(false, "model has all zero values, saved in debug.fits for inspection");
+            vif_check(false, "model has all zero values, saved in debug.fits for inspection");
         }
     }
 

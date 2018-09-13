@@ -870,7 +870,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     // Convert photometry from [catalog unit] to [uJy]
     float abzp = e10(0.4*(23.9 - opts.ab_zeropoint));
     // Convert photometry from fnu [uJy] to flambda [1e-19 x erg/s/cm2/A]
-    vec1u idbb = uindgen(state.no_filt.size());
+    vec1u idbb = indgen(state.no_filt.size());
     for (uint_t i : range(state.id)) {
         state.flux(i,idbb) = 1e19*abzp*astro::uJy2cgs(state.lambda*1e-4, state.flux(i,idbb));
         state.eflux(i,idbb) = 1e19*abzp*astro::uJy2cgs(state.lambda*1e-4, state.eflux(i,idbb));

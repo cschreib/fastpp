@@ -1,5 +1,5 @@
 #include "fast++.hpp"
-#include <phypp/core/main.hpp>
+#include <vif/core/main.hpp>
 
 const char* fastpp_version = "1.2";
 
@@ -24,7 +24,7 @@ const constexpr uint_t log_style::decimal;
 const constexpr uint_t log_style::abmag;
 
 
-int phypp_main(int argc, char* argv[]) {
+int vif_main(int argc, char* argv[]) {
     std::string param_file = (argc >= 2 ? argv[1] : "fast.param");
 
     // Read input data

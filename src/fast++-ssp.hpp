@@ -1,12 +1,12 @@
 #ifndef FASTPP_SSP_HPP
 #define FASTPP_SSP_HPP
 
-#include <phypp/core/typedefs.hpp>
-#include <phypp/core/vec.hpp>
-#include <phypp/core/range.hpp>
-#include <phypp/math/reduce.hpp>
+#include <vif/core/typedefs.hpp>
+#include <vif/core/vec.hpp>
+#include <vif/core/range.hpp>
+#include <vif/math/reduce.hpp>
 
-using namespace phypp;
+using namespace vif;
 
 // SED libraries
 struct ssp_bc03 {

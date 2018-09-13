@@ -1,6 +1,6 @@
 #include "fast++-ssp.hpp"
-#include <phypp/utility/string.hpp>
-#include <phypp/io/fits.hpp>
+#include <vif/utility/string.hpp>
+#include <vif/io/fits.hpp>
 
 bool ssp_bc03::read_ascii(std::string filename) {
     std::string state = "";

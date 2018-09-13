@@ -12,14 +12,14 @@ set(NO_LAPACK ON)
 set(NO_GSL ON)
 set(NO_WCSLIB ON)
 
-find_package(phypp REQUIRED)
+find_package(vif REQUIRED)
 
 # Setup share directory
 add_definitions(-DFASTPP_SHARE_DIR="${FASTPP_SHARE_DIR}")
 
 # Include dependencies
-message(STATUS ${PHYPP_INCLUDE_DIRS})
-include_directories(${PHYPP_INCLUDE_DIRS})
+message(STATUS ${VIF_INCLUDE_DIRS})
+include_directories(${VIF_INCLUDE_DIRS})
 include_directories(${TINYEXPR_INCLUDE_DIR})
 
 # Build FAST++
@@ -32,15 +32,15 @@ add_executable(fast++
     fast++-fitter.cpp
     fast++-write_output.cpp
     fast++.cpp)
-target_link_libraries(fast++ ${PHYPP_LIBRARIES})
+target_link_libraries(fast++ ${VIF_LIBRARIES})
 target_link_libraries(fast++ ${TINYEXPR_LIBRARY})
 install(TARGETS fast++ DESTINATION bin)
 
 # Build FAST++ helper tools
 add_executable(fast++-grid2fits fast++-grid2fits.cpp)
-target_link_libraries(fast++-grid2fits ${PHYPP_LIBRARIES})
+target_link_libraries(fast++-grid2fits ${VIF_LIBRARIES})
 install(TARGETS fast++-grid2fits DESTINATION bin)
 
 add_executable(fast++-sfh2sed fast++-sfh2sed.cpp fast++-ssp.cpp)
-target_link_libraries(fast++-sfh2sed ${PHYPP_LIBRARIES})
+target_link_libraries(fast++-sfh2sed ${VIF_LIBRARIES})
 install(TARGETS fast++-sfh2sed DESTINATION bin)

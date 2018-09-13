@@ -1,8 +1,11 @@
-#include <phypp.hpp>
+#include <vif.hpp>
 #include <iomanip>
 #include "fast++-ssp.hpp"
 
-int phypp_main(int argc, char* argv[]) {
+using namespace vif;
+using namespace vif::astro;
+
+int vif_main(int argc, char* argv[]) {
     if (argc <= 1) {
         print("usage: fast++-sfh2sed sfh=... tobs=... ssp=... out=... "
             "[Av=... z=... H0=... omega_L=... omega_m=...]");

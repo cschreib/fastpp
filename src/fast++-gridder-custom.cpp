@@ -109,7 +109,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
 
     // Compute "cosmic" time (t=0 is when the galaxy is born)
     const double dt = opts.custom_sfh_step;
-    const vec1d ctime = reverse(dt*dindgen(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
+    const vec1d ctime = reverse(dt*indgen<double>(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
     // NB: age array is sorted from largest to smallest
 
     auto pg = progress_start(nmodel);
@@ -258,7 +258,7 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
 
     // Build analytic SFH
     double dt = opts.custom_sfh_step;
-    vec1d ctime = reverse(dt*dindgen(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
+    vec1d ctime = reverse(dt*indgen<double>(uint_t(ceil(e10(max(output_age))/dt)+1.0)));
     // NB: age array is sorted from largest to smallest
     vec1d sfh; {
         auto lock = (opts.n_thread > 1 ?

@@ -113,7 +113,7 @@ bool galaxev_ised::read(std::string filename, bool noflux) {
             lib.read(age);
 
             // Make sure input is correct
-            phypp_check(is_sorted(age), "galaxev age array is not sorted: ", age);
+            vif_check(is_sorted(age), "galaxev age array is not sorted: ", age);
         }
 
         // Read through info section (variable total size)

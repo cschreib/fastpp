@@ -1,4 +1,4 @@
-namespace phypp {
+namespace vif {
 namespace thread {
     template<typename W, typename T>
     struct worker_with_workspace {

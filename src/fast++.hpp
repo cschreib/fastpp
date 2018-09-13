@@ -1,21 +1,22 @@
 #ifndef FASTPP_HPP
 #define FASTPP_HPP
 
-#include <phypp/core/typedefs.hpp>
-#include <phypp/core/vec.hpp>
-#include <phypp/reflex/reflex.hpp>
-#include <phypp/core/error.hpp>
-#include <phypp/utility/generic.hpp>
-#include <phypp/utility/string.hpp>
-#include <phypp/utility/time.hpp>
-#include <phypp/math/base.hpp>
-#include <phypp/astro/astro.hpp>
-#include <phypp/io/ascii.hpp>
+#include <vif/core/typedefs.hpp>
+#include <vif/core/vec.hpp>
+#include <vif/reflex/reflex.hpp>
+#include <vif/core/error.hpp>
+#include <vif/utility/generic.hpp>
+#include <vif/utility/string.hpp>
+#include <vif/utility/time.hpp>
+#include <vif/math/base.hpp>
+#include <vif/astro/astro.hpp>
+#include <vif/io/ascii.hpp>
 #include <iomanip>
 #include "thread_worker_pool.hpp"
 #include "fast++-ssp.hpp"
 
-using namespace phypp;
+using namespace vif;
+using namespace vif::astro;
 
 extern const char* fastpp_version;
 
@@ -454,7 +455,7 @@ void write_output(const options_t& opts, const input_state_t& state, const gridd
 // Helper functions
 // ----------------
 
-namespace phypp {
+namespace vif {
 namespace file {
     template<typename S, typename T>
     bool write(S& s, const T& t) {

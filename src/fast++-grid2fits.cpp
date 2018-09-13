@@ -1,4 +1,6 @@
-#include <phypp.hpp>
+#include <vif.hpp>
+
+using namespace vif;
 
 const bool debug = false;
 
@@ -52,7 +54,7 @@ struct file_wrapper {
     }
 };
 
-int phypp_main(int argc, char* argv[]) {
+int vif_main(int argc, char* argv[]) {
     if (argc <= 1) {
         print("usage: fast++-grid2fits file.grid");
         return 0;
