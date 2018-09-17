@@ -61,7 +61,7 @@ ExternalProject_Add(tinyexpr
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/tinyexpr
     DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/tinyexpr
     GIT_REPOSITORY https://github.com/cschreib/tinyexpr
-    GIT_TAG 9de3ed238a2a2d4e669b50b1f6dc159b15e0e951
+    GIT_TAG d1ec9e328ba0be3743cce1856338f9a67fb608ef
     CMAKE_ARGS
         -DTE_NAT_LOG=ON
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
