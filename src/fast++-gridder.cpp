@@ -719,11 +719,11 @@ void gridder_t::compute_sfh_quantities_impl(const vec1d& ltime, const vec1d& sfh
                 }
 
                 if (left) {
-                    sum += 0.5*(sfh.safe[im0] + sfh.safe[im0-1])/
+                    sum += 0.5*(sfh.safe[im0] + sfh.safe[im0-1])*
                                 (ltime.safe[im0] - ltime.safe[im0-1]);
                     --im0;
                 } else {
-                    sum += 0.5*(sfh.safe[im1+1] + sfh.safe[im1])/
+                    sum += 0.5*(sfh.safe[im1+1] + sfh.safe[im1])*
                                 (ltime.safe[im1+1] - ltime.safe[im1]);
                     ++im1;
                 }
