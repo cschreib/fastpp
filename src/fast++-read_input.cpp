@@ -1663,6 +1663,11 @@ bool check_input(options_t& opts, input_state_t& state) {
         }
     }
 
+    // If no photometry is present then disable the auto-scaling of the spectrum
+    if (state.flux.dims[1] == 0) {
+      opts.auto_scale = false;
+    }
+    
     return true;
 }
 
