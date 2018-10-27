@@ -298,11 +298,13 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
         }
 
         // Make sure the requested age is covered by the library
-        std::array<uint_t,2> p;
-        double x;
-        if (!get_age_bounds(ised.age, e10(min(output_age)), p, x) ||
-            !get_age_bounds(ised.age, e10(max(output_age)), p, x)) {
-            return false;
+        {
+            std::array<uint_t,2> p;
+            double x;
+            if (!get_age_bounds(ised.age, e10(min(output_age)), p, x) ||
+                !get_age_bounds(ised.age, e10(max(output_age)), p, x)) {
+                return false;
+            }
         }
 
         // Apply velocity dispersion
