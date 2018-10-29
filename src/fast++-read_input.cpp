@@ -1340,7 +1340,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     state.flux = replicate(0.0f, ngal, nplam+nslam);
     state.eflux = replicate(finf, ngal, nplam+nslam);
 
-    if (nplam > 0){
+    if (nplam != 0) {
       for (uint_t i : range(ngal)) {
           state.flux(i,_-(nplam-1)) = pflx(i,_);
           state.eflux(i,_-(nplam-1)) = perr(i,_);
