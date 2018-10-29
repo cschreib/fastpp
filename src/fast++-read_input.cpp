@@ -1664,7 +1664,7 @@ bool check_input(options_t& opts, input_state_t& state) {
     }
 
     // If no photometry is present then disable the auto-scaling of the spectrum
-    if (state.flux.dims[1] == 0) {
+    if (state.no_filt.empty()) {
         if (opts.auto_scale) {
             warning("AUTO_SCALE was disabled because no photometry was provided");
             opts.auto_scale  = false;
