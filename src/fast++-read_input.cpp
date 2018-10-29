@@ -1308,7 +1308,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     for (uint_t b : range(sflx.dims[1])) {
         fast_filter_t f;
         f.spectral = true;
-        if (state.no_filt.size() > 0){
+        if (!state.no_filt.empty()) {
           f.id = max(state.no_filt)+1 + b;
         }
         else{
