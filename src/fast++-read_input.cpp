@@ -344,10 +344,14 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
             "so you do not have to specify both");
     }
 
-    for (double c : opts.c_interval) {
-        if (abs(c - 68.0) > 0.01 && abs(c - 95.0) > 0.01 && abs(c - 99.0) > 0.01) {
-            error("confidence interval must be one of 68, 95 or 99% (got ", c, ")");
-            return false;
+    std::string zphot_catalog_file = opts.catalog+".zout";
+    if (file::exists(zphot_catalog_file)) {
+        for (double c : opts.c_interval) {
+            if (abs(c - 68.0) > 0.01 && abs(c - 95.0) > 0.01 && abs(c - 99.0) > 0.01) {
+                error("when using EAzY zphots, confidence interval must be one of 68, 95 or 99% "
+                    "(got ", c, ")");
+                return false;
+            }
         }
     }
 
