@@ -1,5 +1,7 @@
 # FAST++
 
+[![Build Status](https://travis-ci.com/cschreib/fastpp.svg?branch=master)](https://travis-ci.com/cschreib/fastpp)
+
 <!-- MarkdownTOC depth=0 -->
 
 - [Description](#description)

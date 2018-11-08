@@ -12,7 +12,6 @@
 #include <vif/astro/astro.hpp>
 #include <vif/io/ascii.hpp>
 #include <iomanip>
-#include "thread_worker_pool.hpp"
 #include "fast++-ssp.hpp"
 
 using namespace vif;

@@ -17,15 +17,15 @@ double expr_max(double a, double b) {
 }
 
 bool gridder_t::tinyexpr_wrapper::compile(const std::string& sexpr, const vec1s& params) {
-    uint_t nparam = params.size();
+    uint_t nfuncparam = params.size();
     uint_t nfunc = 3;
 
-    vars_glue = new te_variable[nparam+nfunc];
-    for (uint_t p : range(nparam+nfunc)) {
+    vars_glue = new te_variable[nfuncparam+nfunc];
+    for (uint_t p : range(nfuncparam+nfunc)) {
         vars_glue[p].context = nullptr;
     }
 
-    vars.resize(nparam);
+    vars.resize(nfuncparam);
 
     // Time
     vars_glue[0].name = "t";
@@ -33,26 +33,26 @@ bool gridder_t::tinyexpr_wrapper::compile(const std::string& sexpr, const vec1s&
     vars_glue[0].type = TE_VARIABLE;
 
     // Custom parameters
-    for (uint_t p : range(nparam)) {
+    for (uint_t p : range(nfuncparam)) {
         vars_glue[p].name = params[p].c_str();
         vars_glue[p].address = &vars[p];
         vars_glue[p].type = TE_VARIABLE;
     }
 
     // Custom functions
-    vars_glue[nparam+0].name = "step";
-    vars_glue[nparam+0].address = (void*)(&expr_step);
-    vars_glue[nparam+0].type = TE_FUNCTION1 | TE_FLAG_PURE;
-    vars_glue[nparam+1].name = "min";
-    vars_glue[nparam+1].address = (void*)(&expr_min);
-    vars_glue[nparam+1].type = TE_FUNCTION2 | TE_FLAG_PURE;
-    vars_glue[nparam+2].name = "max";
-    vars_glue[nparam+2].address = (void*)(&expr_max);
-    vars_glue[nparam+2].type = TE_FUNCTION2 | TE_FLAG_PURE;
+    vars_glue[nfuncparam+0].name = "step";
+    vars_glue[nfuncparam+0].address = (void*)(&expr_step);
+    vars_glue[nfuncparam+0].type = TE_FUNCTION1 | TE_FLAG_PURE;
+    vars_glue[nfuncparam+1].name = "min";
+    vars_glue[nfuncparam+1].address = (void*)(&expr_min);
+    vars_glue[nfuncparam+1].type = TE_FUNCTION2 | TE_FLAG_PURE;
+    vars_glue[nfuncparam+2].name = "max";
+    vars_glue[nfuncparam+2].address = (void*)(&expr_max);
+    vars_glue[nfuncparam+2].type = TE_FUNCTION2 | TE_FLAG_PURE;
 
     // Compile expression
     int err = 0;
-    expr = te_compile(sexpr.c_str(), vars_glue, nparam+nfunc, &err);
+    expr = te_compile(sexpr.c_str(), vars_glue, nfuncparam+nfunc, &err);
     if (err > 0) {
         std::string head = "could not parse SFH expression: ";
         error(head, sexpr);

@@ -1227,8 +1227,10 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     }
 
     // Flag bad values
-    vec1u idb = where(serr < 0 || !is_finite(sflx) || !is_finite(serr));
-    serr[idb] = finf; sflx[idb] = 0;
+    {
+        vec1u idb = where(serr < 0 || !is_finite(sflx) || !is_finite(serr));
+        serr[idb] = finf; sflx[idb] = 0;
+    }
 
     // Apply binning if required
     if (!bin.empty()) {
@@ -1290,8 +1292,11 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
             slam1.push_back(max_lam);
         }
 
-        vec1u idb = where(!is_finite(serr) || !is_finite(sflx));
-        serr[idb] = finf; sflx[idb] = 0;
+        // Flag bad values
+        {
+            vec1u idb = where(!is_finite(serr) || !is_finite(sflx));
+            serr[idb] = finf; sflx[idb] = 0;
+        }
 
         if (opts.verbose) {
             if (oflx.dims[1] == sflx.dims[1]) {
