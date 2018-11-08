@@ -768,7 +768,7 @@ void fitter_t::find_best_fits() {
 
             // For grid parameters, use cumulative distribution
             for (uint_t ip : range(gridder.nparam)) {
-                auto& grid = output.grid[ip];
+                vec1d grid = output.grid[ip];
 
                 if (grid.size() == 1) {
                     if (opts.best_from_sim) {
@@ -779,25 +779,33 @@ void fitter_t::find_best_fits() {
                         output.best_params(is,ip,1+ic) = grid[0];
                     }
                 } else {
+                    // Build cumulative histogram of binned values
+                    uint_t ng = grid.size();
                     vec2d bins = make_grid_bins(grid);
-                    vec1d cnt = cumul(histogram(bparams.safe(ip,_), bins));
-                    cnt /= cnt.back();
+                    vec1d hist = histogram(bparams.safe(ip,_), bins);
+                    vec1d cnt = cumul(hist);
+
+                    // Treat the edges in a special way
+                    double ntot = cnt.back();
+                    cnt.front() = 0.5*(cnt[0] + cnt[1]);
+                    cnt.back() = 0.5*(cnt[ng-1] + cnt[ng-2]);
+                    cnt /= ntot;
+                    prepend(cnt, {0.0});
+                    prepend(grid, {grid.front()});
+                    append(cnt, {1.0});
+                    append(grid, {grid.back()});
+
+                    // Compute percentiles by interpolating the cumulative PDF
+                    auto get_percentile = [&](double p) {
+                        return interpolate(grid, cnt, p);
+                    };
 
                     if (opts.best_from_sim) {
-                        if (cnt[0] < 0.5) {
-                            output.best_params(is,ip,0) = interpolate(grid, cnt, 0.5);
-                        } else {
-                            output.best_params(is,ip,0) = grid[0];
-                        }
+                        output.best_params(is,ip,0) = get_percentile(0.5);
                     }
 
                     for (uint_t ic : range(input.conf_interval)) {
-                        double c = input.conf_interval[ic];
-                        if (cnt[0] < c) {
-                            output.best_params(is,ip,1+ic) = interpolate(grid, cnt, c);
-                        } else {
-                            output.best_params(is,ip,1+ic) = grid[0];
-                        }
+                        output.best_params(is,ip,1+ic) = get_percentile(input.conf_interval[ic]);
                     }
                 }
             }
