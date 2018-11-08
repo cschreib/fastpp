@@ -429,10 +429,10 @@ NO_IGM         = 0                  # 0 / 1
 #   saved in a ".grid" file in the "best_chi2" directory, for each
 #   object separately. This will occupy less disk space than the
 #   SAVE_CHI_GRID option. Usual values are "1" to have 68% chance of
-#   including the "true" model, "2.71" for 90% and "6.63" for 95%.
+#   including the "true" model, "2.71" for 90% and "6.63" for 99%.
 #   SAVE_CHI_GRID and SAVE_BESTCHI can be enabled together.
 #
 #-----------------------------------------------------------------------
 
 SAVE_CHI_GRID  = 0          # 0 / 1
-SAVE_BESTCHI   = 0          # 1 (68%) / 2.71 (90%) / 6.63 (95%) / etc
+SAVE_BESTCHI   = 0          # 1 (68%) / 2.71 (90%) / 6.63 (99%) / etc
