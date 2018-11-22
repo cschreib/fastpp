@@ -521,3 +521,10 @@ To add new filters, simply append them to the end of the ```FILTER.RES``` file f
 ```
 
 The wavelength step of the tabulated filter does not need to be constant, and the filter is assumed to have zero transmission below the minimum and above the maximum tabulated wavelength.
+
+
+# Acknowledgments
+
+Thanks to Francesco Valentino, Themiya Nanayakkara, Leindert Boobart, and Hugh Dickinson for reporting issues with the code or documentation.
+
+Particular thanks go to the authors of the original FAST implementation: Mariska Kriek and Ivo Labbé.
