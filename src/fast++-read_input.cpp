@@ -1332,10 +1332,9 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
         fast_filter_t f;
         f.spectral = true;
         if (!state.no_filt.empty()) {
-          f.id = max(state.no_filt)+1 + b;
-        }
-        else{
-          f.id = 1 + b;
+            f.id = max(state.no_filt)+1 + b;
+        } else{
+            f.id = 1 + b;
         }
         f.wl = {slam0[b], slam1[b]};
         f.tr = {1.0f, 1.0f};
@@ -1364,10 +1363,10 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     state.eflux = replicate(finf, ngal, nplam+nslam);
 
     if (nplam != 0) {
-      for (uint_t i : range(ngal)) {
-          state.flux(i,_-(nplam-1)) = pflx(i,_);
-          state.eflux(i,_-(nplam-1)) = perr(i,_);
-      }
+        for (uint_t i : range(ngal)) {
+            state.flux(i,_-(nplam-1)) = pflx(i,_);
+            state.eflux(i,_-(nplam-1)) = perr(i,_);
+        }
     }
 
     for (uint_t i : range(sid)) {
@@ -1693,7 +1692,7 @@ bool check_input(options_t& opts, input_state_t& state) {
             opts.auto_scale  = false;
         }
     }
-    
+
     return true;
 }
 
