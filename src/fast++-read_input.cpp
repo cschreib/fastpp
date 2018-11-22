@@ -754,12 +754,12 @@ bool read_filters(const options_t& opts, input_state_t& state) {
             append(idfil, replicate(state.filters.size(), idused.size()));
 
             // Add filter to database
-            state.filters.push_back(std::move(filt));
+            state.filters.push_back(filt);
         }
 
         if (rf_filt) {
             // Add filter to database
-            state.rf_filters[idrf] = std::move(filt);
+            state.rf_filters[idrf] = filt;
         }
     }
 
