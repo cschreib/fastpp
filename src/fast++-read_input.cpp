@@ -176,7 +176,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
     // Read the parameter file line by line
     std::string line;
-    while (std::getline(in, line)) {
+    while (ascii::getline(in, line)) {
         line = trim(line);
         if (line.empty() || line[0] == '#') continue;
 
@@ -618,7 +618,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 bool read_header(const std::string& filename, vec1s& header) {
     std::ifstream in(filename);
     std::string line;
-    while (std::getline(in, line)) {
+    while (ascii::getline(in, line)) {
         line = trim(line);
 
         // Find the first non-empty comment line
@@ -689,7 +689,7 @@ bool read_filters(const options_t& opts, input_state_t& state) {
     std::string line; uint_t l = 0;
     vec1u idcat, idfil;
     uint_t ntotfilt = 0;
-    while (std::getline(in, line)) {
+    while (ascii::getline(in, line)) {
         ++l;
         line = trim(line);
         if (line.empty()) continue;
@@ -725,7 +725,7 @@ bool read_filters(const options_t& opts, input_state_t& state) {
         }
 
         uint_t lcnt = 0;
-        while (lcnt < npts && std::getline(in, line)) {
+        while (lcnt < npts && ascii::getline(in, line)) {
             ++l;
 
             if (line.empty()) continue;
@@ -902,7 +902,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     uint_t ngal = 0; {
         std::ifstream in(catalog_file);
         std::string line;
-        while (std::getline(in, line)) {
+        while (ascii::getline(in, line)) {
             line = trim(line);
             if (line.empty() || line[0] == '#') continue;
 
@@ -921,7 +921,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     uint_t gid = 0;
     std::ifstream in(catalog_file);
     std::string line;
-    while (std::getline(in, line)) {
+    while (ascii::getline(in, line)) {
         ++l;
         line = trim(line);
         if (line.empty() || line[0] == '#') continue;
@@ -1100,7 +1100,7 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     uint_t l = 0;
     std::ifstream in(opts.spectrum+".spec");
     std::string line;
-    while (std::getline(in, line)) {
+    while (ascii::getline(in, line)) {
         ++l;
         line = trim(line);
         if (line.empty() || line[0] == '#') continue;
@@ -1432,7 +1432,7 @@ bool read_photoz(const options_t& opts, input_state_t& state) {
     uint_t i = 0;
     std::ifstream in(catalog_file);
     std::string line;
-    while (std::getline(in, line)) {
+    while (ascii::getline(in, line)) {
         ++l;
         line = trim(line);
         if (line.empty() || line[0] == '#') continue;
@@ -1547,7 +1547,7 @@ bool read_lir(const options_t& opts, input_state_t& state) {
     uint_t i = 0;
     std::ifstream in(catalog_file);
     std::string line;
-    while (std::getline(in, line)) {
+    while (ascii::getline(in, line)) {
         ++l;
         line = trim(line);
         if (line.empty() || line[0] == '#') continue;
@@ -1685,7 +1685,7 @@ bool read_continuum_indices(const options_t& opts, input_state_t& state) {
 
     std::string line;
     uint_t l = 0;
-    while (std::getline(in, line)) {
+    while (ascii::getline(in, line)) {
         ++l;
         line = trim(line);
         if (line.empty() || line[0] == '#') continue;
