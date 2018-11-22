@@ -792,6 +792,11 @@ bool read_filters(const options_t& opts, input_state_t& state) {
         }
     }
 
+    if (!notfound.empty()) {
+        error("filters ", notfound, " are missing from the filter library");
+        return false;
+    }
+
     for (uint_t f : range(opts.rest_mag)) {
         if (state.rf_filters[f].tr.empty()) {
             notfound.push_back(opts.rest_mag[f]);
@@ -799,7 +804,7 @@ bool read_filters(const options_t& opts, input_state_t& state) {
     }
 
     if (!notfound.empty()) {
-        error("filters ", notfound, " are missing from the filter library");
+        error("rest-frame filters ", notfound, " are missing from the filter library");
         return false;
     }
 
@@ -855,6 +860,15 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
         vec1u idh, idt;
         match(header, tr_from, idh, idt);
         header_trans[idh] = tr_to[idt];
+
+        if (opts.verbose) {
+            if (idh.size() != tr_from.size()) {
+                note("... translated ", idh.size(), " column names (",
+                    tr_from.size() - idh.size(), " translations unused)");
+            } else {
+                note("... translated ", idh.size(), " column names");
+            }
+        }
     }
 
     header_trans = to_upper(header_trans);
