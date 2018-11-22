@@ -1331,7 +1331,12 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     for (uint_t b : range(sflx.dims[1])) {
         fast_filter_t f;
         f.spectral = true;
-        f.id = max(state.no_filt)+1 + b;
+        if (!state.no_filt.empty()) {
+          f.id = max(state.no_filt)+1 + b;
+        }
+        else{
+          f.id = 1 + b;
+        }
         f.wl = {slam0[b], slam1[b]};
         f.tr = {1.0f, 1.0f};
 
@@ -1358,9 +1363,11 @@ bool read_spectra(const options_t& opts, input_state_t& state) {
     state.flux = replicate(0.0f, ngal, nplam+nslam);
     state.eflux = replicate(finf, ngal, nplam+nslam);
 
-    for (uint_t i : range(ngal)) {
-        state.flux(i,_-(nplam-1)) = pflx(i,_);
-        state.eflux(i,_-(nplam-1)) = perr(i,_);
+    if (nplam != 0) {
+      for (uint_t i : range(ngal)) {
+          state.flux(i,_-(nplam-1)) = pflx(i,_);
+          state.eflux(i,_-(nplam-1)) = perr(i,_);
+      }
     }
 
     for (uint_t i : range(sid)) {
@@ -1679,6 +1686,14 @@ bool check_input(options_t& opts, input_state_t& state) {
         }
     }
 
+    // If no photometry is present then disable the auto-scaling of the spectrum
+    if (state.no_filt.empty()) {
+        if (opts.auto_scale) {
+            warning("AUTO_SCALE was disabled because no photometry was provided");
+            opts.auto_scale  = false;
+        }
+    }
+    
     return true;
 }
 
