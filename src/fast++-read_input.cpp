@@ -1544,6 +1544,7 @@ bool read_lir(const options_t& opts, input_state_t& state) {
     uint_t col_lir = where_first(header == "LIR");
     uint_t col_err = where_first(header == "ELIR");
     uint_t col_id  = where_first(header == "ID");
+    uint_t col_log = where_first(header == "LOG");
 
     if (col_lir == npos) {
         error("missing LIR column in infrared luminosity file");
@@ -1557,10 +1558,15 @@ bool read_lir(const options_t& opts, input_state_t& state) {
         error("missing ID column in infrared luminosity file");
         return false;
     }
+    if (col_log == npos) {
+        warning("missing LOG column in infrared luminosity file");
+        warning("will assume that all luminosities are given in natural units and not in log");
+    }
 
     // Initialize the lir columns
     state.lir = replicate(fnan, state.id.size());
     state.lir_err = replicate(fnan, state.id.size());
+    state.lir_log = replicate(false, state.id.size());
 
     // Read the catalog
     uint_t l = 0;
@@ -1590,6 +1596,15 @@ bool read_lir(const options_t& opts, input_state_t& state) {
             return false;
         }
 
+        float islog = false;
+        if (col_log != npos) {
+            if (!from_string(spl[col_log], islog)) {
+                error("could not read infrared luminosity log flag from line ", l);
+                note("must be either 1 or 0, got: '", spl[col_log], "'");
+                return false;
+            }
+        }
+
         if (i >= state.id.size() || id != state.id[i]) {
             error("infrared luminosity and photometry catalogs do not match");
             return false;
@@ -1598,6 +1613,7 @@ bool read_lir(const options_t& opts, input_state_t& state) {
         if (err > 0) {
             state.lir[i] = lir;
             state.lir_err[i] = err;
+            state.lir_log[i] = islog;
         }
 
         ++i;

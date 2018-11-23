@@ -472,8 +472,9 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             nscale -= input.spec_end - input.spec_start;
         }
 
-        // Add LIR as a data point in the fit
-        if (!input.lir.empty() && is_finite(input.lir.safe[is])) {
+        // Add LIR as a data point in the fit (if given in natural units)
+        if (!input.lir.empty() && is_finite(input.lir.safe[is]) && !input.lir_log.safe[is]) {
+            // Model LIR with Gaussian likelihood
             wsp.weight[0] = 1.0/input.lir_err.safe[is];
             wsp.wflux[0] = input.lir.safe[is]*wsp.weight[0];
             wsp.wmodel[0] = model.props.safe[prop_id::ldust]*wsp.weight[0];
@@ -536,6 +537,12 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             tchi2 += sqr(wsp.wflux[il] - spec_scale*wsp.wmodel[il]);
         }
 
+        // Add LIR as a contribution to chi2 (if given in log units)
+        if (!input.lir.empty() && is_finite(input.lir.safe[is]) && input.lir_log.safe[is]) {
+            double log_model = log10(scale*max(model.props.safe[prop_id::ldust], 1e-4));
+            tchi2 += sqr((input.lir.safe[is] - log_model)/input.lir_err.safe[is]);
+        }
+
         if (keepfit) {
             // Save chi2 and properties
             wsp.chi2.safe[i] = tchi2;
@@ -595,6 +602,12 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
                 }
                 for (uint_t il : range(nscale, ndata)) {
                     tchi2 += sqr(wsp.rflux[il] - spec_scale*wsp.wmodel[il]);
+                }
+
+                // Add LIR as a contribution to chi2 (if given in log units)
+                if (!input.lir.empty() && is_finite(input.lir.safe[is]) && input.lir_log.safe[is]) {
+                    double log_model = log10(scale*max(model.props.safe[prop_id::ldust], 1e-4));
+                    tchi2 += sqr((input.lir.safe[is] - log_model)/input.lir_err.safe[is]);
                 }
 
                 if (opts.parallel == parallel_choice::none) {

@@ -201,6 +201,7 @@ struct input_state_t {
     vec2f zphot;                        // [ngal,1+2*nzconf]
     vec1f zphot_conf;                   // [nzconf]
     vec1f lir, lir_err;                 // [ngal]
+    vec1b lir_log;                      // [ngal]
     vec2f flux, eflux;                  // [ngal,nfilt+nspec]
     vec1u nobs;                         // [ngal]
     vec1f conf_interval;                // [nconf]

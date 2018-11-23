@@ -126,10 +126,17 @@ MAX_QUEUED_FITS = 1000
 # o USE_LIR: if set to 1 and [CATALOG].lir exists, FAST++ will read
 #   infrared luminosities from this file and use them to constrain the
 #   fit. Must contain columns: id, lir and elir. The observed luminosities
-#   (given in units of total solar luminosity) are compared to difference
-#   of bolometric luminosity before and after dust attenuation is applied
-#   to the models. This can help break degeneracies, but requires that
-#   the redshift is well known.
+#   (given in units of total solar luminosity) are compared to the
+#   modelled difference of bolometric luminosity before and after dust
+#   attenuation is applied to the model. This can help break degeneracies,
+#   but requires that the redshift is well known. The file can contain a
+#   fourth column, labelled 'log', which is a 0/1 flag that determines if
+#   the LIR value is given in log10 units or in natural units. This
+#   changes the way the uncertainty is interpreted: with log=0 the
+#   uncertainty is assumed to be Gaussian (additive), but with log=1 the
+#   uncertainty is assumed to be log-normal (multiplicative). Therefore
+#   when log=1, the 'elir' column must contain the 1-sigma uncertainty on
+#   log10(LIR).
 #
 #-----------------------------------------------------------------------
 
