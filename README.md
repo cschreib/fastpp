@@ -419,7 +419,18 @@ Since you have to provide the luminosity, this implicitly assumes that you know 
 
 **Warning.** The method described above assumes that the uncertainty on the FIR luminosity is Gaussian. This is a good assumption only if the S/N of the FIR luminosity measurement is very low (i.e., because the source is not detected on the FIR images), and/or if the dust temperature is well known (i.e., within +/- 1 or 2 Kelvins). A common situation that does *not* satisfy these criteria is when only a single sub-millimeter flux measurement is available to derive the FIR luminosity. This is typical with ALMA observations, for example. In such cases, the dominant source of uncertainty is the unknown dust temperature, and the uncertainty on the FIR luminosity is highly non-Gaussian. Instead, a better assumption is that the noise is log-normally distributed, or in other words, that the uncertainty on log(LIR) is Gaussian.
 
-FAST++ can deal with log-normal uncertainties too. To enable this feature, you need to specify an extra column in the ```.lir``` catalog. This column must be called ```LOG```, and must contain values that are either ```0``` or ```1``` for each source in the catalog. A value of ```0``` means that the FIR luminosity is given in natural units, with Gaussian uncertainties. A value of ```1``` means that the FIR luminosity is given in log10 units, with Gaussian uncertainties on the log. Note that, in this case, the luminosity does not participate in determining the model normalization (because the minimization problem would become non-linear), and instead only contributes the chi squared.
+FAST++ can deal with log-normal uncertainties too. To enable this feature, you need to specify an extra column in the ```.lir``` catalog. This column must be called ```LOG```, and must contain values that are either ```0``` or ```1``` for each source in the catalog. A value of ```0``` means that the FIR luminosity is given in natural units, with Gaussian uncertainties. A value of ```1``` means that the FIR luminosity is given in log10 units, with Gaussian uncertainties on the log. Note that, in this case, the luminosity does not participate in determining the model normalization (because the minimization problem would become non-linear), and instead only contributes the chi squared. Here is an example ```.lir``` file which displays the two methods:
+
+```
+# ID    LIR    ELIR LOG
+  1  1.2e12  0.5e12 0
+  2   12.15    0.23 1
+  3  3.5e12  1.2e12 0
+```
+
+In this example, the fit for source ```2``` will assume Gaussian errors on the log(luminosity). Note how the *values* in the ```LIR``` and ```ELIR``` columns are different, since now the luminosity must be given in log10 units, and the uncertainty is the uncertainty on the log (in dex).
+
+Which value of ```LOG``` you should use depends on what probability distribution you estimate for the FIR luminosity. I give here a few guidelines to help you decide. If you are limited by the S/N on your flux measurements (i.e., for non-detections or weak detections) then ```0``` is preferable. If you are limited by the uncertainty in the conversion from flux to luminosity (i.e., when Tdust is not known) then ```1``` is preferable. Lastly, if you have high S/N fluxes and a well constrained Tdust, then either ```0``` or ```1``` will be fine.
 
 ## Better treatment of spectra
 The file format for spectra in FAST-IDL is not well defined. The spectra must be given on a wavelength grid where only the central wavelength of each spectral element is specified. FAST-IDL then assumes that this wavelength grid is contiguous (no gap) and uniform (all spectral elements are defined on the same delta_lambda). No check is made to ensure this is true.
