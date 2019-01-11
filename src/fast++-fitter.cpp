@@ -734,6 +734,15 @@ void fitter_t::find_best_fits() {
 
     bool silence_invalid_chi2 = false;
 
+    // If needed, build sorted grids
+    vec<1,vec1f> sorted_grid;
+    if (opts.n_sim > 0) {
+        for (vec1f g : output.grid) {
+            inplace_sort(g);
+            sorted_grid.push_back(std::move(g));
+        }
+    }
+
     if (opts.verbose) note("finding best fits...");
     for (uint_t is : range(input.id)) {
         if (!silence_invalid_chi2 && !is_finite(output.best_chi2[is])) {
@@ -781,7 +790,7 @@ void fitter_t::find_best_fits() {
 
             // For grid parameters, use cumulative distribution
             for (uint_t ip : range(gridder.nparam)) {
-                vec1d grid = output.grid[ip];
+                vec1d grid = sorted_grid[ip];
 
                 if (grid.size() == 1) {
                     if (opts.best_from_sim) {
