@@ -260,7 +260,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
 
         // Save fluxes
         fout.open(odir+opts.catalog+"_"+input.id[is]+".input_res.fit");
-        fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+        fout << "# wl fl_model fl_obs unc_obs (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
         for (uint_t il : range(input.lambda)) {
             fout << std::setw(13) << float(input.lambda[il])
                  << std::setw(13) << flx[il]
