@@ -806,12 +806,9 @@ void fitter_t::find_best_fits() {
                     vec2d bins = make_grid_bins(grid);
                     vec1d hist = histogram(bparams.safe(ip,_), bins);
                     vec1d cnt = cumul(hist);
+                    cnt /= cnt.back();
 
-                    // Treat the edges in a special way
-                    double ntot = cnt.back();
-                    cnt.front() = 0.5*(cnt[0] + cnt[1]);
-                    cnt.back() = 0.5*(cnt[ng-1] + cnt[ng-2]);
-                    cnt /= ntot;
+                    // Treat the edges in a special way to avoid extrapolation beyond the grid
                     prepend(cnt, {0.0});
                     prepend(grid, {grid.front()});
                     append(cnt, {1.0});
