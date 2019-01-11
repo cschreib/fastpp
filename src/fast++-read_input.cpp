@@ -255,7 +255,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
 
     // Now check for the consistency of the input and make corrections when necessary
 
-    vec1s possible_dust_laws = {"calzetti", "mz", "noll", "kc"};
+    vec1s possible_dust_laws = {"calzetti", "mw", "noll", "kc"};
     if (!is_any_of(opts.dust_law, possible_dust_laws)) {
         error("unknown dust law '", opts.dust_law, "'");
         error("possible values: ", possible_dust_laws);
