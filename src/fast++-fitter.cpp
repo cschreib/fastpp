@@ -315,12 +315,6 @@ void fitter_t::write_chi2(uint_t igrid, const vec1f& chi2, const vec2f& props, u
             if (chi2.safe[cis] < best_chi2.safe[is]) {
                 best_chi2.safe[is] = chi2.safe[cis];
 
-                struct datum {
-                    uint32_t id;
-                    float chi2;
-                    vec1f p;
-                };
-
                 // Read the saved data and write simultaneously
                 file::move(chi2_filename.safe[is], chi2_filename.safe[is]+".old");
                 in.open(chi2_filename.safe[is]+".old", std::ios::binary | std::ios::in);
@@ -723,6 +717,47 @@ vec2d make_grid_bins(const vec1d& grid) {
     return bins;
 }
 
+double get_chi2_from_conf_interval(double conf) {
+    if (1.0 - conf < 1e-6) return 24.0;
+
+    double eps = 1e-3;
+
+    double chi2 = 0.0;
+    double prev_chi2;
+    double delta = 1.0;
+    bool last_increase = true;
+
+    // This is a naive iterative inversion of the error function.
+    // It yields the corresponding chi2 value with a relative accuracy of 'eps'.
+    // Not the fastest implementation, but we don't care much about speed here.
+
+    do {
+        // Compute confidence interval for this chi2
+        double p = erf(sqrt(chi2/2.0));
+
+        // Move chi2
+        prev_chi2 = chi2;
+        if (p < conf) {
+            if (!last_increase) {
+                delta *= 0.5;
+                last_increase = true;
+            }
+
+            chi2 += delta;
+        } else {
+            if (last_increase) {
+                delta *= 0.5;
+                last_increase = false;
+            }
+
+            chi2 -= delta;
+        }
+
+    } while (abs(chi2/prev_chi2 - 1.0) > eps);
+
+    return chi2;
+}
+
 void fitter_t::find_best_fits() {
     if (opts.parallel == parallel_choice::models) {
         if (opts.verbose) note("waiting for all models to finish...");
@@ -743,6 +778,17 @@ void fitter_t::find_best_fits() {
         }
     }
 
+    vec1f delta_chi2;
+    if (opts.interval_from_chi2) {
+        for (auto& c : input.conf_interval) {
+            if (c < 0.5) {
+                delta_chi2.push_back(-get_chi2_from_conf_interval(1.0 - 2*c));
+            } else {
+                delta_chi2.push_back(+get_chi2_from_conf_interval(2*c - 1.0));
+            }
+        }
+    }
+
     if (opts.verbose) note("finding best fits...");
     for (uint_t is : range(input.id)) {
         if (!silence_invalid_chi2 && !is_finite(output.best_chi2[is])) {
@@ -758,6 +804,8 @@ void fitter_t::find_best_fits() {
                 output.best_params(is,ip,0) = output.grid[ip][ids[ip]];
             }
         }
+
+        // Deal with Monte Carlo Simulations
 
         if (opts.n_sim > 0) {
             vec1u bmodel = output.mc_best_model(is,_);
@@ -788,57 +836,100 @@ void fitter_t::find_best_fits() {
                 }
             }
 
-            // For grid parameters, use cumulative distribution
-            for (uint_t ip : range(gridder.nparam)) {
-                vec1d grid = sorted_grid[ip];
+            if (!opts.interval_from_chi2) {
+                // For grid parameters, use cumulative distribution
+                for (uint_t ip : range(gridder.nparam)) {
+                    vec1d grid = sorted_grid[ip];
 
-                if (grid.size() == 1) {
+                    if (grid.size() == 1) {
+                        if (opts.best_from_sim) {
+                            output.best_params(is,ip,0) = grid[0];
+                        }
+
+                        for (uint_t ic : range(input.conf_interval)) {
+                            output.best_params(is,ip,1+ic) = grid[0];
+                        }
+                    } else {
+                        // Build cumulative histogram of binned values
+                        vec2d bins = make_grid_bins(grid);
+                        vec1d hist = histogram(bparams.safe(ip,_), bins);
+                        vec1d cnt = cumul(hist);
+                        cnt /= cnt.back();
+
+                        // Treat the edges in a special way to avoid extrapolation beyond the grid
+                        prepend(cnt, {0.0});
+                        prepend(grid, {grid.front()});
+                        append(cnt, {1.0});
+                        append(grid, {grid.back()});
+
+                        // Compute percentiles by interpolating the cumulative PDF
+                        auto get_percentile = [&](double p) {
+                            return interpolate(grid, cnt, p);
+                        };
+
+                        if (opts.best_from_sim) {
+                            output.best_params(is,ip,0) = get_percentile(0.5);
+                        }
+
+                        for (uint_t ic : range(input.conf_interval)) {
+                            output.best_params(is,ip,1+ic) =
+                                get_percentile(input.conf_interval[ic]);
+                        }
+                    }
+                }
+
+                // For properties, use percentiles
+                for (uint_t ip : range(gridder.nparam, bparams.dims[0])) {
+                    vec1d bp = bparams.safe(ip,_);
+
                     if (opts.best_from_sim) {
-                        output.best_params(is,ip,0) = grid[0];
+                        output.best_params(is,ip,0) = inplace_median(bp);
                     }
 
                     for (uint_t ic : range(input.conf_interval)) {
-                        output.best_params(is,ip,1+ic) = grid[0];
-                    }
-                } else {
-                    // Build cumulative histogram of binned values
-                    uint_t ng = grid.size();
-                    vec2d bins = make_grid_bins(grid);
-                    vec1d hist = histogram(bparams.safe(ip,_), bins);
-                    vec1d cnt = cumul(hist);
-                    cnt /= cnt.back();
-
-                    // Treat the edges in a special way to avoid extrapolation beyond the grid
-                    prepend(cnt, {0.0});
-                    prepend(grid, {grid.front()});
-                    append(cnt, {1.0});
-                    append(grid, {grid.back()});
-
-                    // Compute percentiles by interpolating the cumulative PDF
-                    auto get_percentile = [&](double p) {
-                        return interpolate(grid, cnt, p);
-                    };
-
-                    if (opts.best_from_sim) {
-                        output.best_params(is,ip,0) = get_percentile(0.5);
-                    }
-
-                    for (uint_t ic : range(input.conf_interval)) {
-                        output.best_params(is,ip,1+ic) = get_percentile(input.conf_interval[ic]);
+                        output.best_params(is,ip,1+ic) =
+                            inplace_percentile(bp, input.conf_interval[ic]);
                     }
                 }
             }
+        }
 
-            // For properties, use percentiles
-            for (uint_t ip : range(gridder.nparam, bparams.dims[0])) {
-                vec1d bp = bparams.safe(ip,_);
+        // If asked, obtain confidence intervals from chi2 grid saved on disk
 
-                if (opts.best_from_sim) {
-                    output.best_params(is,ip,0) = inplace_median(bp);
-                }
+        if (opts.interval_from_chi2) {
+            std::ifstream in(chi2_filename[is], std::ios::binary);
+            in.seekg(obchi2.hpos);
 
-                for (uint_t ic : range(input.conf_interval)) {
-                    output.best_params(is,ip,1+ic) = inplace_percentile(bp, input.conf_interval[ic]);
+            while (in) {
+                uint32_t id;
+                float chi2;
+                vec1f p(gridder.nprop);
+
+                if (file::read(in, id) && file::read(in, chi2) && file::read(in, p)) {
+                    vec1u ids = gridder.grid_ids(id);
+                    for (uint_t ip : range(gridder.nparam+gridder.nprop)) {
+                        double v;
+                        if (ip < gridder.nparam) {
+                            v = output.grid[ip][ids[ip]];
+                        } else {
+                            v = p[ip - gridder.nparam];
+                        }
+
+                        for (uint_t ic : range(input.conf_interval)) {
+                            if (chi2 - best_chi2.safe[is] < abs(delta_chi2[ic])) {
+                                float& saved = output.best_params(is,ip,1+ic);
+                                if (delta_chi2[ic] < 0.0) {
+                                    if (saved > v || !is_finite(saved)) {
+                                        saved = v;
+                                    }
+                                } else {
+                                    if (saved < v || !is_finite(saved)) {
+                                        saved = v;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

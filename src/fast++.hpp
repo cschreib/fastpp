@@ -121,6 +121,7 @@ struct options_t {
     float save_bestchi = 0.0;
     vec1u rest_mag;
     std::string continuum_indices;
+    bool interval_from_chi2 = false;
 
     // Custom SFH
     std::string custom_sfh;
@@ -537,5 +538,8 @@ namespace file {
     }
 }
 }
+
+// defined in fast++-fitter.cpp
+double get_chi2_from_conf_interval(double conf);
 
 #endif

@@ -208,6 +208,11 @@ APPLY_VDISP    = 0          # km/s
 #   best-fit instead of the model with the smallest chi squared on
 #   the original (unperturbed) photometry.
 #
+# o INTERVAL_FROM_CHI2: use the chi2 grid directly to compute confidence
+#   intervals on the fit parameters, instead of using Monte Carlo
+#   simulation. This will force setting 'SAVE_BESTCHI' to a value large
+#   enough to encompass the chosen confidence intervals.
+#
 # o SAVE_SIM: save the best-fit parameters for each Monte Carlo
 #   simulation for all sources in the "best_fits" directory.
 #
@@ -272,6 +277,7 @@ N_SIM              = 100
 C_INTERVAL         = 68            # 68 / 95 / 99 or [68,95] etc
 BEST_FIT           = 0             # 0 / 1
 BEST_FROM_SIM      = 0             # 0 / 1
+INTERVAL_FROM_CHI2 = 0             # 0 / 1
 SAVE_SIM           = 0             # 0 / 1
 SFR_AVG            = 0             # 0, 100 Myr, 300 Myr etc
 INTRINSIC_BEST_FIT = 0             # 0 / 1

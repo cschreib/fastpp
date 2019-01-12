@@ -164,6 +164,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(rest_mag)
         PARSE_OPTION(continuum_indices)
         PARSE_OPTION(sfh_quantities)
+        PARSE_OPTION(interval_from_chi2)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
@@ -321,6 +322,21 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         return false;
     }
 
+    if (opts.interval_from_chi2) {
+        double max_interval = max(opts.c_interval);
+        double max_chi2 = get_chi2_from_conf_interval(max_interval/100.0);
+        if (max_chi2 > opts.save_bestchi) {
+            error("with 'INTERVAL_FROM_CHI2=1', ", max_interval, "% confidence interval "
+                "requires 'SAVE_BESTCHI>=", max_chi2, "'");
+            return false;
+        }
+    }
+
+    if (!opts.best_from_sim && opts.interval_from_chi2 && !opts.save_sim && opts.n_sim != 0) {
+        warning("with the current setup, Monte Carlo simulations are not used; setting 'N_SIM=0'");
+        opts.n_sim = 0;
+    }
+
     if (!opts.my_sfh.empty()) {
         opts.sfh = sfh_type::single;
     } else if (!opts.custom_sfh.empty()) {
@@ -355,7 +371,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         }
     }
 
-    if (opts.n_sim != 0) {
+    if (opts.n_sim != 0 || opts.interval_from_chi2) {
         state.conf_interval = 0.5*(1.0 - opts.c_interval/100.0);
         inplace_sort(opts.c_interval);
         vec1f cint = state.conf_interval;
