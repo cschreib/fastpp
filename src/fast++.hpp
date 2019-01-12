@@ -13,6 +13,7 @@
 #include <vif/io/ascii.hpp>
 #include <iomanip>
 #include "fast++-ssp.hpp"
+#include "fast++-io.hpp"
 
 using namespace vif;
 using namespace vif::astro;
@@ -206,6 +207,7 @@ struct input_state_t {
     vec2f flux, eflux;                  // [ngal,nfilt+nspec]
     vec1u nobs;                         // [ngal]
     vec1f conf_interval;                // [nconf]
+    vec1f delta_chi2;                   // [nconf]
 
     // Filter database
     // NB: for reference, in FAST: filters = [4,nfilt+nspec], with 4={ID,wl,tr,type}
@@ -456,6 +458,22 @@ struct fitter_t {
     void fit(const model_t& model);
     void find_best_fits();
 
+    template<typename F>
+    void iterate_best_chi2(uint_t is, F&& func) const {
+        std::ifstream in(chi2_filename[is], std::ios::binary);
+        in.seekg(obchi2.hpos);
+
+        while (in) {
+            uint32_t id;
+            float chi2;
+            vec1f p(gridder.nprop);
+
+            if (file::read(in, id) && file::read(in, chi2) && file::read(in, p)) {
+                func(id, p, chi2);
+            }
+        }
+    }
+
 private :
     inline void write_chi2(uint_t igrid, const vec1f& chi2, const vec2f& props, uint_t i0);
     inline void fit_galaxies(const model_t& model, uint_t i0, uint_t i1);
@@ -469,77 +487,14 @@ bool read_input(options_t& opts, input_state_t& state, const std::string& filena
 
 // fast++-write_output.cpp
 void write_output(const options_t& opts, const input_state_t& state, const gridder_t& gridder,
-    const output_state_t& output);
+    const fitter_t& fitter, const output_state_t& output);
 
 
 // Helper functions
 // ----------------
 
-namespace vif {
-namespace file {
-    template<typename S, typename T>
-    bool write(S& s, const T& t) {
-        s.write(reinterpret_cast<const char*>(&t), sizeof(T));
-        return !s.fail();
-    }
-
-    template<typename R, typename S, typename T>
-    bool write_as(S& s, const T& t) {
-        R r = t;
-        s.write(reinterpret_cast<const char*>(&r), sizeof(R));
-        return !s.fail();
-    }
-
-    template<typename S>
-    bool write(S& s, const std::string& t) {
-        write_as<std::uint8_t>(s, t.size());
-        s.write(t.c_str(), t.size());
-        return !s.fail();
-    }
-
-    template<typename S, std::size_t D, typename T>
-    bool write(S& s, const vec<D,T>& t) {
-        s.write(reinterpret_cast<const char*>(t.data.data()), sizeof(T)*t.size());
-        return !s.fail();
-    }
-
-    template<typename S, typename T>
-    bool read(S& s, T& t) {
-        s.read(reinterpret_cast<char*>(&t), sizeof(T));
-        return !s.fail();
-    }
-
-    template<typename S>
-    bool read(S& s, std::string& t) {
-        std::uint8_t n = 0;
-        if (read(s, n)) {
-            t.resize(n);
-            s.read(&t[0], t.size());
-            return !s.fail();
-        } else {
-            return false;
-        }
-    }
-
-    template<typename R, typename S, typename T>
-    bool read_as(S& s, T& t) {
-        R r;
-        if (s.read(reinterpret_cast<char*>(&r), sizeof(R))) {
-            t = r;
-        }
-
-        return !s.fail();
-    }
-
-    template<typename S, std::size_t D, typename T>
-    bool read(S& s, vec<D,T>& t) {
-        s.read(reinterpret_cast<char*>(t.data.data()), sizeof(T)*t.size());
-        return !s.fail();
-    }
-}
-}
-
 // defined in fast++-fitter.cpp
 double get_chi2_from_conf_interval(double conf);
+
 
 #endif

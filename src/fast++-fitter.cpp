@@ -778,18 +778,8 @@ void fitter_t::find_best_fits() {
         }
     }
 
-    vec1f delta_chi2;
-    if (opts.interval_from_chi2) {
-        for (auto& c : input.conf_interval) {
-            if (c < 0.5) {
-                delta_chi2.push_back(-get_chi2_from_conf_interval(1.0 - 2*c));
-            } else {
-                delta_chi2.push_back(+get_chi2_from_conf_interval(2*c - 1.0));
-            }
-        }
-    }
-
     if (opts.verbose) note("finding best fits...");
+
     for (uint_t is : range(input.id)) {
         if (!silence_invalid_chi2 && !is_finite(output.best_chi2[is])) {
             warning("galaxy ", input.id[is], " has no best fit solution");
@@ -897,41 +887,34 @@ void fitter_t::find_best_fits() {
         // If asked, obtain confidence intervals from chi2 grid saved on disk
 
         if (opts.interval_from_chi2) {
-            std::ifstream in(chi2_filename[is], std::ios::binary);
-            in.seekg(obchi2.hpos);
+            iterate_best_chi2(is, [&](uint_t id, const vec1f& p, float chi2) {
+                if (chi2 - best_chi2.safe[is] > input.delta_chi2.back()) return;
 
-            while (in) {
-                uint32_t id;
-                float chi2;
-                vec1f p(gridder.nprop);
+                vec1u ids = gridder.grid_ids(id);
+                for (uint_t ip : range(gridder.nparam+gridder.nprop)) {
+                    double v;
+                    if (ip < gridder.nparam) {
+                        v = output.grid[ip][ids[ip]];
+                    } else {
+                        v = p[ip - gridder.nparam];
+                    }
 
-                if (file::read(in, id) && file::read(in, chi2) && file::read(in, p)) {
-                    vec1u ids = gridder.grid_ids(id);
-                    for (uint_t ip : range(gridder.nparam+gridder.nprop)) {
-                        double v;
-                        if (ip < gridder.nparam) {
-                            v = output.grid[ip][ids[ip]];
-                        } else {
-                            v = p[ip - gridder.nparam];
-                        }
-
-                        for (uint_t ic : range(input.conf_interval)) {
-                            if (chi2 - best_chi2.safe[is] < abs(delta_chi2[ic])) {
-                                float& saved = output.best_params(is,ip,1+ic);
-                                if (delta_chi2[ic] < 0.0) {
-                                    if (saved > v || !is_finite(saved)) {
-                                        saved = v;
-                                    }
-                                } else {
-                                    if (saved < v || !is_finite(saved)) {
-                                        saved = v;
-                                    }
+                    for (uint_t ic : range(input.conf_interval)) {
+                        if (chi2 - best_chi2.safe[is] < abs(input.delta_chi2[ic])) {
+                            float& saved = output.best_params(is,ip,1+ic);
+                            if (input.delta_chi2[ic] < 0.0) {
+                                if (saved > v || !is_finite(saved)) {
+                                    saved = v;
+                                }
+                            } else {
+                                if (saved < v || !is_finite(saved)) {
+                                    saved = v;
                                 }
                             }
                         }
                     }
                 }
-            }
+            });
         }
     }
 }

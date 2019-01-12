@@ -41,33 +41,34 @@ int vif_main(int argc, char* argv[]) {
         return 1;
     }
 
-    if (opts.make_seds.empty()) {
-        if (gridder.read_from_cache && opts.parallel == parallel_choice::generators &&
-            opts.n_thread > 0) {
-            if (opts.verbose) {
-                note("using cache, switched parallel execution from 'generators' to 'models'");
-            }
-
-            opts.parallel = parallel_choice::models;
-        }
-
-        // Initizalize the fitter
-        fitter_t fitter(opts, input, gridder, output);
-
-        // Build/read the grid and fit galaxies
-        if (!gridder.build_and_send(fitter)) {
-            return 1;
-        }
-
-        // Compile results
-        fitter.find_best_fits();
-
-        // Write output to disk
-        write_output(opts, input, gridder, output);
-    } else {
-        // Write SEDs if asked
+    if (!opts.make_seds.empty()) {
+        // Write SEDs if asked, then terminate
         gridder.write_seds();
+        return 0;
     }
+
+    if (gridder.read_from_cache && opts.parallel == parallel_choice::generators &&
+        opts.n_thread > 0) {
+        if (opts.verbose) {
+            note("using cache, switched parallel execution from 'generators' to 'models'");
+        }
+
+        opts.parallel = parallel_choice::models;
+    }
+
+    // Initizalize the fitter
+    fitter_t fitter(opts, input, gridder, output);
+
+    // Build/read the grid and fit galaxies
+    if (!gridder.build_and_send(fitter)) {
+        return 1;
+    }
+
+    // Compile results
+    fitter.find_best_fits();
+
+    // Write output to disk
+    write_output(opts, input, gridder, fitter, output);
 
     return 0;
 }

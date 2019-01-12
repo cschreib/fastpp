@@ -372,14 +372,19 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
     }
 
     if (opts.n_sim != 0 || opts.interval_from_chi2) {
-        state.conf_interval = 0.5*(1.0 - opts.c_interval/100.0);
-        inplace_sort(opts.c_interval);
-        vec1f cint = state.conf_interval;
-        state.conf_interval.clear();
-        for (float c : cint) {
-            state.conf_interval.push_back(c);
-            state.conf_interval.push_back(1.0 - c);
+        vec1f cint = 0.5*(1.0 - opts.c_interval/100.0);
+        inplace_sort(cint);
+        for (uint_t ic : range(cint)) {
+            state.conf_interval.push_back(cint[ic]);
+            state.conf_interval.push_back(1.0 - cint[ic]);
+
+            double chi2 = get_chi2_from_conf_interval(opts.c_interval[ic]/100.0);
+            state.delta_chi2.push_back(-chi2);
+            state.delta_chi2.push_back(+chi2);
         }
+
+        print(state.conf_interval);
+        print(state.delta_chi2);
     } else {
         opts.c_interval.clear();
     }

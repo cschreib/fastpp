@@ -274,7 +274,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
 }
 
 void write_sfhs(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
-    const output_state_t& output) {
+    const fitter_t& fitter, const output_state_t& output) {
 
     if (opts.verbose) note("saving star formation histories");
 
@@ -292,9 +292,20 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
         unit = "Msol";
     }
 
+    uint_t nconf = input.conf_interval.size();
+    bool has_median = false;
+    if (!input.conf_interval.empty() && !opts.interval_from_chi2) {
+        // Also add the median SFH for MC simulations
+        ++nconf;
+        has_median = true;
+    }
+
     std::string header = "# t "+quantity+"(t) ("+unit+")";
     if (!opts.c_interval.empty()) {
-        header += " med_"+quantity;
+        if (has_median) {
+            header += " med_"+quantity;
+        }
+
         for (float c : input.conf_interval) {
             float cc = 100*(1-2*c);
             std::string is = (cc < 0.0 ? "u" : "l")+to_string(round(abs(cc)));
@@ -308,9 +319,10 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
     for (uint_t is : range(input.id)) {
         vec1u idm = gridder.grid_ids(output.best_model[is]);
         vec1d t = rgen_step(1e6, e10(gridder.auniv[idm[grid_id::z]]), opts.sfh_output_step);
+        vec2f sfh = replicate(fnan, t.size(), 1+nconf);
 
-        // Get best fit SFH
-        vec2f sfh(t.size(), 1+input.conf_interval.size()+(input.conf_interval.empty() ? 0 : 1)); {
+        // Best fit
+        {
             vec1d tsfh;
             if (!gridder.get_sfh(output.best_model[is], t, tsfh)) {
                 return;
@@ -322,23 +334,58 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
 
         // Get confidence intervals
         if (!opts.c_interval.empty()) {
-            vec2f sim_sfh(t.size(), opts.n_sim);
-            for (uint_t ir : range(opts.n_sim)) {
-                vec1d tsfh;
-                if (!gridder.get_sfh(output.mc_best_model(is,ir), t, tsfh)) {
-                    return;
+            if (opts.n_sim != 0) {
+                // From Monte Carlo simulations
+                vec2f sim_sfh(t.size(), opts.n_sim);
+                for (uint_t ir : range(opts.n_sim)) {
+                    vec1d tsfh;
+                    if (!gridder.get_sfh(output.mc_best_model(is,ir), t, tsfh)) {
+                        return;
+                    }
+
+                    float mass = output.mc_best_props(is,prop_id::mass,ir);
+                    sim_sfh(_,ir) = tsfh*mass;
                 }
 
-                float mass = output.mc_best_props(is,prop_id::mass,ir);
-                sim_sfh(_,ir) = tsfh*mass;
-            }
-
-            for (uint_t it : range(t)) {
-                vec1f tsfh = sim_sfh(it,_);
-                sfh(it,1) = inplace_median(tsfh);
-                for (uint_t ic : range(input.conf_interval)) {
-                    sfh(it,2+ic) = inplace_percentile(tsfh, input.conf_interval[ic]);
+                for (uint_t it : range(t)) {
+                    vec1f tsfh = sim_sfh.safe(it,_);
+                    sfh.safe(it,1) = inplace_median(tsfh);
+                    for (uint_t ic : range(input.conf_interval)) {
+                        sfh.safe(it,2+ic) = inplace_percentile(tsfh, input.conf_interval[ic]);
+                    }
                 }
+            } else {
+                // From chi2 grid
+
+                fitter.iterate_best_chi2(is, [&](uint_t id, const vec1f& p, float chi2) {
+                    if (chi2 - output.best_chi2.safe[is] > input.delta_chi2.back()) return;
+
+                    vec1d tsfh;
+                    if (!gridder.get_sfh(id, t, tsfh)) {
+                        return;
+                    }
+
+                    float mass = p[prop_id::mass];
+                    tsfh *= mass;
+
+                    for (uint_t ic : range(input.conf_interval)) {
+                        if (chi2 - output.best_chi2.safe[is] < abs(input.delta_chi2[ic])) {
+                            for (uint_t it : range(t)) {
+                                double v = tsfh.safe[it];
+                                float& saved = sfh.safe(it,1+ic);
+                                if (input.delta_chi2[ic] < 0.0) {
+                                    if (saved > v || !is_finite(saved)) {
+                                        saved = v;
+                                    }
+                                } else {
+                                    if (saved < v || !is_finite(saved)) {
+                                        saved = v;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
             }
         }
 
@@ -363,7 +410,7 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
 }
 
 void write_output(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
-    const output_state_t& output) {
+    const fitter_t& fitter, const output_state_t& output) {
 
     write_catalog(opts, input, gridder, output);
 
@@ -372,7 +419,7 @@ void write_output(const options_t& opts, const input_state_t& input, const gridd
     }
 
     if (opts.best_sfhs) {
-        write_sfhs(opts, input, gridder, output);
+        write_sfhs(opts, input, gridder, fitter, output);
     }
 
     if (opts.verbose) {
