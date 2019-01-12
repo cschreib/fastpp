@@ -59,9 +59,9 @@
 #-----------------------------------------------------------------------
 
 VERBOSE         = 1         # 0 / 1
-PARALLEL        = 'none'    # 'none', 'generators', 'models', or 'sources'
-N_THREAD        = 0
-MAX_QUEUED_FITS = 1000
+PARALLEL        = 'generators'    # 'none', 'generators', 'models', or 'sources'
+N_THREAD        = 4
+MAX_QUEUED_FITS = 10000
 
 
 #--- BROADBAND PHOTOMETRIC INFORMATION ---------------------------------
@@ -140,16 +140,16 @@ MAX_QUEUED_FITS = 1000
 #
 #-----------------------------------------------------------------------
 
-CATALOG        = 'hdfn_fs99'
-AB_ZEROPOINT   = 25.
-FILTERS_RES    = '../share/FILTER.RES.latest'
+CATALOG        = 'photometry'
+AB_ZEROPOINT   = 23.9
+FILTERS_RES    = '../../share/FILTER.RES.latest'
 FILTER_FORMAT  = 1
-TEMP_ERR_FILE  = '../share/TEMPLATE_ERROR.fast.v0.2'
-NAME_ZPHOT     = 'z_m2'
+TEMP_ERR_FILE  = '../../share/TEMPLATE_ERROR.fast.v0.2'
+NAME_ZPHOT     = ''
 FORCE_ZPHOT    = 0          # 0 / 1
 BEST_AT_ZPHOT  = 1          # 0 / 1
 ZPHOT_CONF     = 68         # 68 / 95 / 99
-USE_LIR        = 0          # 0 / 1
+USE_LIR        = 1          # 0 / 1
 
 
 #--- SPECTROSCOPIC INFORMATION -----------------------------------------
@@ -183,9 +183,9 @@ USE_LIR        = 0          # 0 / 1
 #
 #-----------------------------------------------------------------------
 
-SPECTRUM       = ''
-AUTO_SCALE     = 0          # 0 / 1
-APPLY_VDISP    = 0          # km/s
+SPECTRUM       = 'spectrum'
+AUTO_SCALE     = 1          # 0 / 1
+APPLY_VDISP    = 350        # km/s
 
 
 #--- OUTPUT INFORMATION  -----------------------------------------------
@@ -273,20 +273,20 @@ APPLY_VDISP    = 0          # km/s
 
 OUTPUT_DIR         = ''
 OUTPUT_FILE        = ''
-N_SIM              = 100
-C_INTERVAL         = 68            # 68 / 95 / 99 or [68,95] etc
-BEST_FIT           = 0             # 0 / 1
+N_SIM              = 0
+C_INTERVAL         = 90            # 68 / 95 / 99 or [68,95] etc
+BEST_FIT           = 1             # 0 / 1
 BEST_FROM_SIM      = 0             # 0 / 1
 INTERVAL_FROM_CHI2 = 0             # 0 / 1
 SAVE_SIM           = 0             # 0 / 1
 SFR_AVG            = 0             # 0, 100 Myr, 300 Myr etc
 INTRINSIC_BEST_FIT = 0             # 0 / 1
-BEST_SFHS          = 0             # 0 / 1
-SFH_OUTPUT_STEP    = 10            # 10 Myr, 100 Myr etc
+BEST_SFHS          = 1             # 0 / 1
+SFH_OUTPUT_STEP    = 1             # 10 Myr, 100 Myr etc
 SFH_OUTPUT         = 'sfr'         # 'sfr' or 'mass'
 REST_MAG           = []            # [140,142,161] for UVJ colors
 CONTINUUM_INDICES  = ''
-SFH_QUANTITIES     = []            # ['tquench10','tform50','brate10', ...]
+SFH_QUANTITIES     = ['tsf','past_sfr','sfr10','brate10','tquench10','tform50']
 OUTPUT_COLUMNS     = []            # ['id','Av','lmass','lsfr', ...]
 
 
@@ -362,7 +362,7 @@ OUTPUT_COLUMNS     = []            # ['id','Av','lmass','lsfr', ...]
 #
 #-----------------------------------------------------------------------
 
-LIBRARY_DIR         = '../share/libraries/'
+LIBRARY_DIR         = '../../share/libraries/'
 LIBRARY             = 'bc03'         # 'bc03' / 'ma05' / 'co11'
 RESOLUTION          = 'hr'           # 'pr' / 'lr' / 'hr'
 IMF                 = 'ch'           # 'ch' / 'sa' / 'kr'
@@ -371,9 +371,9 @@ DUST_LAW            = 'calzetti'     # 'calzetti' / 'mw' / 'kc' / 'noll'
 # E_B               = 1              # only define for 'noll' dust law
 # delta             = -0.2           # only define for 'noll' dust law
 MY_SFH              = ''
-CUSTOM_SFH          = ''             # '(1 + t)^alpha'
-CUSTOM_PARAMS       = []             # ['alpha', ...]
-CUSTOM_SFH_LOOKBACK = 0              # 0 / 1
+CUSTOM_SFH         = '((t > 10^ltburst)*exp(-(t - 10^ltburst)/10^ltrise) + (t < 10^ltburst)*exp((t - 10^ltburst)/10^ltdecl))*10^(lrsfr*(t < 10^ltfree))'
+CUSTOM_PARAMS      = ['ltburst','ltrise','ltdecl','lrsfr','ltfree']
+CUSTOM_SFH_LOOKBACK = 1              # 0 / 1
 # ALPHA_MIN         = -2             # define these for each parameter
 # ALPHA_MAX         = 2              # define these for each parameter
 # ALPHA_STEP        = 0.1            # define these for each parameter
@@ -407,19 +407,41 @@ CUSTOM_SFH_LOOKBACK = 0              # 0 / 1
 LOG_TAU_MIN    = 8.5            # log [yr]
 LOG_TAU_MAX    = 10.            # log [yr]
 LOG_TAU_STEP   = 0.5            # log [yr], min 0.1
-LOG_AGE_MIN    = 8.0            # log [yr]
-LOG_AGE_MAX    = 10.0           # log [yr]
-LOG_AGE_STEP   = 0.2            # log [yr]
-NO_MAX_AGE     = 0              # 0 / 1
-Z_MIN          = 0.01           # Cannot be 0.0
-Z_MAX          = 6.00
-Z_STEP         = 0.05
+LOG_AGE_MIN    = 9.21931        # log [yr]
+LOG_AGE_MAX    = 9.21931        # log [yr]
+LOG_AGE_STEP   = 0.05           # log [yr]
+NO_MAX_AGE     = 1              # 0 / 1
+Z_MIN          = 3.71453        # Cannot be 0.
+Z_MAX          = 3.71453
+Z_STEP         = 0.1
 Z_STEP_TYPE    = 0              # 0: Z_STEP, 1: Z_STEP*(1+z)
-A_V_MIN        = 0.             # [mag]
-A_V_MAX        = 3.             # [mag]
+A_V_MIN        = 0.0            # [mag]
+A_V_MAX        = 1.0            # [mag]
 A_V_STEP       = 0.1            # [mag]
-METAL          = [0.02]         # [0.0096,0.019,0.03]
-NO_CACHE       = 0              # 0 / 1
+METAL          = 0.02           # [0.0096,0.019,0.03]
+NO_CACHE       = 1              # 0 / 1
+
+#--- CUSTOM GRID PARAMETERS --------------------------------------------
+
+LTBURST_MIN  = 7            # log [yr]
+LTBURST_MAX  = 9.21931      # log [yr]
+LTBURST_STEP = 0.05         # log [yr]
+
+LRSFR_MIN    = -2.0         # log ratio
+LRSFR_MAX    = 5.0          # log ratio
+LRSFR_STEP   = 0.2          # log ratio
+
+LTFREE_MIN   = 7.0          # log [yr]
+LTFREE_MAX   = 8.5          # log [yr]
+LTFREE_STEP  = 0.5          # log [yr]
+
+LTRISE_MIN   = 7.0          # log [yr]
+LTRISE_MAX   = 9.5          # log [yr]
+LTRISE_STEP  = 0.1          # log [yr]
+
+LTDECL_MIN   = 7.0          # log [yr]
+LTDECL_MAX   = 9.5          # log [yr]
+LTDECL_STEP  = 0.1          # log [yr]
 
 
 #--- COSMOLOGY ---------------------------------------------------------
@@ -448,4 +470,4 @@ NO_IGM         = 0                  # 0 / 1
 #-----------------------------------------------------------------------
 
 SAVE_CHI_GRID  = 0          # 0 / 1
-SAVE_BESTCHI   = 0          # 1 (68%) / 2.71 (90%) / 6.63 (99%) / etc
+SAVE_BESTCHI   = 2.71       # 1 (68%) / 2.71 (90%) / 6.63 (99%) / etc
