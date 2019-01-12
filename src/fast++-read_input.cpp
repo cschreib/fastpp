@@ -326,9 +326,10 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         double max_interval = max(opts.c_interval);
         double max_chi2 = get_chi2_from_conf_interval(max_interval/100.0);
         if (max_chi2 > opts.save_bestchi) {
-            error("with 'INTERVAL_FROM_CHI2=1', ", max_interval, "% confidence interval "
-                "requires 'SAVE_BESTCHI>=", max_chi2, "'");
-            return false;
+            warning("with 'INTERVAL_FROM_CHI2=1', ", max_interval, "% confidence interval "
+                "requires 'SAVE_BESTCHI>=", max_chi2, "' (got '", opts.save_bestchi, "')");
+            warning("forcing 'SAVE_BESTCHI=", max_chi2, "'");
+            opts.save_bestchi = max_chi2;
         }
     }
 
