@@ -32,6 +32,7 @@
     - [Multithreading](#multithreading)
     - [Photometric redshifts from EAzY](#photometric-redshifts-from-eazy)
     - [Monte Carlo simulations](#monte-carlo-simulations)
+    - [Confidence intervals from chi2 grid](#confidence-intervals-from-chi2-grid
     - [Controlling the cache](#controlling-the-cache)
     - [More output options](#more-output-options)
     - [Custom star formation histories](#custom-star-formation-histories)
