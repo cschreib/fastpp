@@ -1,7 +1,7 @@
 #include "fast++.hpp"
 #include <vif/core/main.hpp>
 
-const char* fastpp_version = "1.2";
+const char* fastpp_version = "1.3-git";
 
 const constexpr uint_t grid_id::z;
 const constexpr uint_t grid_id::av;
