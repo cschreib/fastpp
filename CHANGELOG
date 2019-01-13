@@ -1,0 +1,59 @@
+v1.2 (13/01/2019)
+====
+
+Features:
+ - Added the APPLY_VDISP opion, to convolve SEDs with a fixed velocity dispersion.
+ - Added the REST_MAG option to produce rest-frame magnitudes.
+ - Added the CUSTOM_SFH_LOOKBACK option to have time running backwards in the custom SFH expression
+ - Added the CONTINUUM_INDICES option to produce absorption line EWs, Dn4000, etc.
+ - Added fast++-grid2fits tool to convert .grid files into .fits files.
+ - Added fast++-sfh2sed tool to produce SED for a given SFH.
+ - Added 'nmodel' as a possible output column, showing the number of models fit to each galaxy.
+ - Added the NO_IGM option to disable IGM absorption.
+ - Added the SFH_QUANTITIES option to output non-parametric quantities of the SFH.
+ - When not using EAzY photometric redshifts, confidence intervals can now be freely chosen.
+ - Added option to fit log(LIR) instead of LIR, better for galaxies with uncertain Tdust.
+ - Added the INTERVAL_FROM_CHI2 option to compute conf intervals from chi2 grid directly.
+
+Bug fixes:
+ - Made sure that attenuation law never goes negative.
+ - Added explicit check for galaxies with no valid data.
+ - Added the DEBUG option to help identify invalid models.
+ - Added explicit check to catch incorrect wavelength units in filters.
+ - Fixed crash for galaxies with spectra but no valid photometry (thanks to Hugh Dickinson).
+ - Fixed issues with unexpected line endings in input files.
+ - Fixed bug where it was not possible to use the 'mw' dust law (thanks brojonat).
+ - Fixed incorrect MC outputs for unsorted grids (e.g., metallicity, thanks Themiya Nanayakkara).
+ - Fixed missing column names on the .input_res.fit files (thanks Themiya Nanayakkara).
+ - Fixed MC conf intervals for gridded values close to grid edges (thanks Francesco Valentino).
+
+Performances:
+ - Added the 'generators' parallel execution scheme, which should be faster in all cases.
+ - Improved performances of dust attenuation.
+ - Faster implementation of the fit progress bar.
+ - Improved speed of MAKE_SEDS by about a factor 5, and also enabled multithreading for this stage.
+ - Simplified IGM absorption formula.
+
+
+v1.1 (08/11/2017)
+====
+
+Bug fixes:
+ - BEST_FROM_SIM=1 now produces valid chi2 and best-fit SEDs.
+ - The FILTER.RES file is now read exactly as in FAST and EAzY, to avoid some incompatibilities.
+
+Other changes:
+ - When MAKE_SED=1, the fitting stage is now disabled and the program only creates the SEDs.
+
+
+v1.0 (13/09/2017)
+====
+
+Features:
+ - This is the first release that contains all the features of the original FAST.
+ - Additional features:
+   - Custom star formation histories
+   - Priors on L_IR
+   - More outputs: average SFR, ionizing luminosity, dust luminosity, formed stellar mass, ...
+   - Create SEDs from list of models and stellar masses
+   - Multithreading
