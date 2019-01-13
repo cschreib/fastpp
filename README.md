@@ -35,6 +35,7 @@
     - [Confidence intervals from chi2 grid](#confidence-intervals-from-chi2-grid)
     - [Controlling the cache](#controlling-the-cache)
     - [More output options](#more-output-options)
+    - [Non-parametric SFH quantities](#non-parametric-sfh-quantities)
     - [Custom star formation histories](#custom-star-formation-histories)
     - [Using priors on the infrared luminosity](#using-priors-on-the-infrared-luminosity)
     - [Better treatment of spectra](#better-treatment-of-spectra)
@@ -396,7 +397,7 @@ Lastly, by default the variable ```t``` in the SFH expression is the "cosmic" ti
 ## Non-parametric SFH quantities
 Generally, the grid parameters which are used to define the SFH are not particularly meaningful. For example, the 'age' parameter is the elapsed time since the birth of the very first star. This quantity is, in theory, impossible to measure; the only reason it looks like a well constrained quantity with standard fit setups is because most SFH parametrizations are quite rigid and will not explore a large enough variety of SFHs. Likewise, the 'tau' parameter in exponentially-declining SFHs is only meaningful in the case where the galaxy's true SFH is indeed an exponential. If not, interpreting this value becomes difficult.
 
-For this reason, it is often advocated to not give any credit to these grid parameters, but instead compute non-parametric quantities. The simplest example would be to compute the elapsed time since half of the stars were born (which is essentially the mass-weighted age). FAST++ provides a number of such non-parametric quantities for each SFH, which you can ask the program to compute.
+For this reason, it is often advocated to not give any credit to these grid parameters, but instead compute non-parametric quantities. The simplest example would be to compute the elapsed time since half of the stars were born (which is essentially the mass-weighted age). FAST++ provides a number of such non-parametric quantities for each SFH, which you can ask the program to compute by listing them in the ```SFH_QUANTITIES``` option.
 
 List of available quantities:
 
