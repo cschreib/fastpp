@@ -277,7 +277,7 @@ N_SIM              = 0
 C_INTERVAL         = 90            # 68 / 95 / 99 or [68,95] etc
 BEST_FIT           = 1             # 0 / 1
 BEST_FROM_SIM      = 0             # 0 / 1
-INTERVAL_FROM_CHI2 = 0             # 0 / 1
+INTERVAL_FROM_CHI2 = 1             # 0 / 1
 SAVE_SIM           = 0             # 0 / 1
 SFR_AVG            = 0             # 0, 100 Myr, 300 Myr etc
 INTRINSIC_BEST_FIT = 0             # 0 / 1
@@ -374,9 +374,6 @@ MY_SFH              = ''
 CUSTOM_SFH         = '((t > 10^ltburst)*exp(-(t - 10^ltburst)/10^ltrise) + (t < 10^ltburst)*exp((t - 10^ltburst)/10^ltdecl))*10^(lrsfr*(t < 10^ltfree))'
 CUSTOM_PARAMS      = ['ltburst','ltrise','ltdecl','lrsfr','ltfree']
 CUSTOM_SFH_LOOKBACK = 1              # 0 / 1
-# ALPHA_MIN         = -2             # define these for each parameter
-# ALPHA_MAX         = 2              # define these for each parameter
-# ALPHA_STEP        = 0.1            # define these for each parameter
 
 
 #--- DEFINE GRID -------------------------------------------------------

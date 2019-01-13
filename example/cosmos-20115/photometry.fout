@@ -1,0 +1,23 @@
+# FAST++ version: 1.2
+# Photometric catalog file: photometry.cat
+# Spectrum file: spectrum
+# Template error function: ../../share/TEMPLATE_ERROR.fast.v0.2
+# AB ZP:       23.9
+# Library:     Bruzual & Charlot (2003)
+# SFH:         ((t > 10^ltburst)*exp(-(t - 10^ltburst)/10^ltrise) + (t < 10^ltburst)*exp((t - 10^ltburst)/10^ltdecl))*10^(lrsfr*(t < 10^ltfree)) (inst. SFR)
+# Stellar IMF: Chabrier
+# Dust law:    Calzetti (2000) dust attenuation law              
+# metallicity: 0.02
+# ltburst:     7       - 9.2193  in steps of 0.05
+# ltrise:      7       - 9.5     in steps of 0.1
+# ltdecl:      7       - 9.5     in steps of 0.1
+# lrsfr:       -2      - 5       in steps of 0.2
+# ltfree:      7       - 8.5     in steps of 0.5
+# log(age/yr): 9.22    - 9.22    in steps of 0.05
+# A_V:         0       - 6       in steps of 0.1
+# z:           3.7145  - 3.7145  in steps of 0.1 (linear)
+# Filters:     4  6  18  19  20  21  78  79  82  81  83  258  257  259  256  203  205  254  253  249  250  251  255
+# lage: log[age/yr], lmass: log[mass/Msol], lsfr: log[sfr/(Msol/yr)], lssfr: log[ssfr*yr], tform50: log[yr], tsf: log[yr], past_sfr: log[Msol/yr], tquench10: log[yr], sfr10: log[Msol/yr]
+# For value=0. log[value] is set to -99
+#     id         z     l90_z     u90_z     metal l90_metal u90_metal      lage  l90_lage  u90_lage        Av    l90_Av    u90_Av     lmass l90_lmass u90_lmass      lsfr  l90_lsfr  u90_lsfr     lssfr l90_lssfr u90_lssfr   ltburst l90_ltburst u90_ltburst    ltrise l90_ltrise u90_ltrise    ltdecl l90_ltdecl u90_ltdecl     lrsfr l90_lrsfr u90_lrsfr    ltfree l90_ltfree u90_ltfree   tform50 l90_tform50 u90_tform50       tsf   l90_tsf   u90_tsf  past_sfr l90_past_sfr u90_past_sfr tquench10 l90_tquench10 u90_tquench10     sfr10 l90_sfr10 u90_sfr10   brate10 l90_brate10 u90_brate10           chi2
+       1    3.7145    3.7145    3.7145      0.02      0.02      0.02      9.22      9.22      9.22       0.3       0.2       0.4     11.07     11.03     11.12     -1.77    -29.24     -0.15    -12.84    -40.32    -11.24       8.9        8.65           9       7.9          7        9.1       8.1          7        8.4        -2        -2         5       8.5          7        8.5      8.89        8.78        8.95      8.36      7.36      8.86      2.75         2.27         3.74      8.64          8.43          8.85     -1.76       -29     -0.12      -4.5      -32.29       -2.85   1.425553e+00
