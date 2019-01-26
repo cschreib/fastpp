@@ -221,18 +221,47 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
     vec1f lam, sed, sed_nodust, flx;
     auto pg = progress_start(input.id.size());
     for (uint_t is : range(input.id)) {
-        float scale = output.best_params(is,gridder.nparam+prop_id::scale,0);
+        float scale = finf;
+        uint_t model = npos;
+
+        if (!opts.best_from_sim) {
+            // Get the model with smallest chi2
+            scale = output.best_params(is,gridder.nparam+prop_id::scale,0);
+            model = output.best_model[is];
+        } else {
+            // Get the "median model" among MC simulations
+            // NB: the median is computed on the multidimensional space of the fitting grid,
+            // yet there is no unique definition of the median in N-dimensional space. Here
+            // we pick the model with the smallest distance to the other models
+            double best_dist = dinf;
+            for (uint_t imc : range(opts.n_sim)) {
+                vec1i idm = vec1i{gridder.grid_ids(output.mc_best_model(is,imc))};
+                double dist = 0.0;
+                for (uint_t imc2 : range(opts.n_sim)) {
+                    if (imc2 == imc) continue;
+
+                    vec1i idm2 = vec1i{gridder.grid_ids(output.mc_best_model(is,imc2))};
+                    dist += sqrt(total(sqr(idm - idm2)));
+                }
+
+                if (dist < best_dist) {
+                    best_dist = dist;
+                    scale = output.mc_best_props(is,prop_id::scale,imc);
+                    model = output.mc_best_model(is,imc);
+                }
+            }
+        }
 
         // Get model
         if (opts.intrinsic_best_fit) {
-            if (!gridder.build_template_nodust(output.best_model[is], lam, sed_nodust, flx)) {
+            if (!gridder.build_template_nodust(model, lam, sed_nodust, flx)) {
                 return;
             }
 
             sed_nodust *= scale;
         }
 
-        if (!gridder.build_template(output.best_model[is], lam, sed, flx)) {
+        if (!gridder.build_template(model, lam, sed, flx)) {
             return;
         }
 
