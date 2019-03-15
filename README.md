@@ -545,6 +545,6 @@ The wavelength step of the tabulated filter does not need to be constant, and th
 
 # Acknowledgments
 
-Thanks to Francesco Valentino, Themiya Nanayakkara, Leindert Boobart for reporting issues with the code or documentation. Particular thanks to Hugh Dickinson for contributing changes to the code.
+Thanks to Francesco Valentino, Themiya Nanayakkara, Leindert Boogaard for reporting issues with the code or documentation. Particular thanks to Hugh Dickinson for contributing changes to the code.
 
 Particular thanks go to the authors of the original FAST implementation: Mariska Kriek and Ivo Labbé.
