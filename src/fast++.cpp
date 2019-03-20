@@ -1,7 +1,12 @@
 #include "fast++.hpp"
 #include <vif/core/main.hpp>
 
-const char* fastpp_version = "1.3-git";
+#ifndef FASTPP_GIT_HASH
+#define FASTPP_GIT_HASH ""
+#endif
+
+const char* fastpp_version = "1.2.1";
+const char* fastpp_git_hash = FASTPP_GIT_HASH;
 
 const constexpr uint_t grid_id::z;
 const constexpr uint_t grid_id::av;

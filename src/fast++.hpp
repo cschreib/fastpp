@@ -19,6 +19,7 @@ using namespace vif;
 using namespace vif::astro;
 
 extern const char* fastpp_version;
+extern const char* fastpp_git_hash;
 
 // Program structures
 // ------------------

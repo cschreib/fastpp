@@ -14,6 +14,21 @@ set(NO_WCSLIB ON)
 
 find_package(vif REQUIRED)
 
+# Figure out git hash, if any
+execute_process(
+  COMMAND git log -1 --format=%h
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_COMMIT_HASH
+  RESULT_VARIABLE GIT_COMMAND_SUCCESS
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+if (GIT_COMMAND_SUCCESS EQUAL 0)
+    add_definitions(-DFASTPP_GIT_HASH="${GIT_COMMIT_HASH}")
+else()
+    add_definitions(-DFASTPP_GIT_HASH="")
+endif()
+
 # Setup share directory
 add_definitions(-DFASTPP_SHARE_DIR="${FASTPP_SHARE_DIR}")
 
