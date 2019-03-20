@@ -383,9 +383,6 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
             state.delta_chi2.push_back(-chi2);
             state.delta_chi2.push_back(+chi2);
         }
-
-        print(state.conf_interval);
-        print(state.delta_chi2);
     } else {
         opts.c_interval.clear();
     }
