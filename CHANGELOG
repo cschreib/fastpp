@@ -1,3 +1,11 @@
+v1.2.1 (20/03/2019)
+======
+
+Bug fixes:
+ - Fixed best-fit SED wrong normalization when BEST_FROM_SIM=1 (thanks Themiya Nanayakkara)
+ - Fixed Milky Way attenuation curve (thanks anhackastro)
+
+
 v1.2 (13/01/2019)
 ====
 
