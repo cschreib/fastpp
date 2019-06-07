@@ -5,7 +5,7 @@
 #define FASTPP_GIT_HASH ""
 #endif
 
-const char* fastpp_version = "1.2.1";
+const char* fastpp_version = "1.2.2";
 const char* fastpp_git_hash = FASTPP_GIT_HASH;
 
 const constexpr uint_t grid_id::z;
