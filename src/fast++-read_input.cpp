@@ -625,10 +625,6 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         opts.filters_res = std::string(FASTPP_SHARE_DIR)+"/FILTER.RES.latest";
     }
 
-    if (opts.temp_err_file.empty()) {
-        opts.temp_err_file = std::string(FASTPP_SHARE_DIR)+"/TEMPLATE_ERROR.fast.v0.2";
-    }
-
     if (opts.library_dir.empty()) {
         opts.library_dir = std::string(FASTPP_SHARE_DIR)+"/libraries/";
     } else {
