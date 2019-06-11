@@ -48,7 +48,11 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     std::ofstream fout(opts.output_dir+opts.output_file+".fout");
 
     // Print header
-    fout << "# FAST++ version: " << fastpp_version << std::endl;
+    if (std::string(fastpp_git_hash).empty()) {
+        fout << "# FAST++ version: " << fastpp_version << std::endl;
+    } else {
+        fout << "# FAST++ version: " << fastpp_version << "-" << fastpp_git_hash << std::endl;
+    }
     fout << "# Photometric catalog file: " << opts.catalog << ".cat" << std::endl;
     if (!input.zphot.empty()) {
     fout << "# Photometric redshift file: " << opts.catalog << ".zout" << std::endl;

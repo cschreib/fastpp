@@ -242,7 +242,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         if (std::string(fastpp_git_hash).empty()) {
             note("this is FAST++ version '", fastpp_version, "'");
         } else {
-            note("this is FAST++ version '", fastpp_version, "-", fastpp_git_hash, "')");
+            note("this is FAST++ version '", fastpp_version, "-", fastpp_git_hash, "'");
         }
     }
 
