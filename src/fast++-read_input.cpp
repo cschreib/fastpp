@@ -395,6 +395,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
     if (opts.n_sim != 0 || opts.interval_from_chi2) {
         vec1f cint = 0.5*(1.0 - opts.c_interval/100.0);
         inplace_sort(cint);
+        cint = reverse(cint);
         for (uint_t ic : range(cint)) {
             state.conf_interval.push_back(cint[ic]);
             state.conf_interval.push_back(1.0 - cint[ic]);
