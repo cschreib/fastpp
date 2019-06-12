@@ -1661,6 +1661,12 @@ bool read_lir(const options_t& opts, input_state_t& state) {
                 note("allowed values are 'all', 'bc', or 'cirrus'");
                 return false;
             }
+
+            if (!opts.differential_a_v && comp != lir_component::all) {
+                error("cannot specify attenuation component other than 'all' when "
+                    "DIFFERENTIAL_A_V=0");
+                return false;
+            }
         }
 
         if (i >= state.id.size() || id != state.id[i]) {
