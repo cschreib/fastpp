@@ -1657,14 +1657,14 @@ bool read_lir(const options_t& opts, input_state_t& state) {
             } else if (scomp == "cirrus") {
                 comp = lir_component::cirrus;
             } else {
-                error("unknown LIR component '", spl[col_comp], "'");
+                error("unknown LIR component '", spl[col_comp], "' on line ", l);
                 note("allowed values are 'all', 'bc', or 'cirrus'");
                 return false;
             }
 
             if (!opts.differential_a_v && comp != lir_component::all) {
                 error("cannot specify attenuation component other than 'all' when "
-                    "DIFFERENTIAL_A_V=0");
+                    "DIFFERENTIAL_A_V=0, on line ", l);
                 return false;
             }
         }
