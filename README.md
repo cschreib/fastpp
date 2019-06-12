@@ -2,21 +2,14 @@
 
 [![Build Status](https://travis-ci.com/cschreib/fastpp.svg?branch=master)](https://travis-ci.com/cschreib/fastpp)
 
-<!-- MarkdownTOC depth=0 -->
+<!-- MarkdownTOC autolink=true levels=1,2 -->
 
 - [Description](#description)
 - [Install instructions](#install-instructions)
 - [Benchmarks](#benchmarks)
     - [Hardware/software](#hardwaresoftware)
     - [Run 1: a catalog of galaxies with broadband fluxes](#run-1-a-catalog-of-galaxies-with-broadband-fluxes)
-        - [Parameters](#parameters)
-        - [Runs](#runs)
-        - [Recorded times](#recorded-times)
-        - [Memory consumption](#memory-consumption)
     - [Run 2: one galaxy with a high resolution spectrum](#run-2-one-galaxy-with-a-high-resolution-spectrum)
-        - [Parameters](#parameters-1)
-        - [Recorded times](#recorded-times-1)
-        - [Memory consumption](#memory-consumption-1)
 - [What is the trick?](#what-is-the-trick)
     - [Why is it faster?](#why-is-it-faster)
     - [Why does it use so little memory?](#why-does-it-use-so-little-memory)
@@ -35,16 +28,19 @@
     - [Confidence intervals from chi2 grid](#confidence-intervals-from-chi2-grid)
     - [Controlling the cache](#controlling-the-cache)
     - [More output options](#more-output-options)
-    - [Non-parametric SFH quantities](#non-parametric-sfh-quantities)
     - [Custom star formation histories](#custom-star-formation-histories)
+    - [Non-parametric SFH quantities](#non-parametric-sfh-quantities)
+    - [Differential attenuation](#differential-attenuation)
     - [Using priors on the infrared luminosity](#using-priors-on-the-infrared-luminosity)
     - [Better treatment of spectra](#better-treatment-of-spectra)
     - [Velocity broadening](#velocity-broadening)
     - [Continuum indices](#continuum-indices)
 - [Additional documentation](#additional-documentation)
     - [Adding new filters](#adding-new-filters)
+- [Acknowledgments](#acknowledgments)
 
 <!-- /MarkdownTOC -->
+
 
 # Description
 
