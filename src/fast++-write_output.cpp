@@ -33,6 +33,12 @@ std::string pretty_dust_law(const std::string& law, float eb, float delta) {
 
 template<typename T>
 std::string pretty_grid(T x0, T x1, T step, uint_t ndecimal) {
+    if (step != 0) {
+        uint_t ndecimal_step = max(0u, -floor(log10(step)));
+        if (ndecimal_step > ndecimal) {
+            ndecimal = ndecimal_step;
+        }
+    }
     double dd = e10(ndecimal);
     uint_t cwidth = 7;
     return align_left(to_string(round(dd*x0)/dd), cwidth)+" - "+
