@@ -393,10 +393,20 @@ CUSTOM_SFH_LOOKBACK = 0              # 0 / 1
 #   You can choose more than one by defining an array.
 #
 # o If a grid has already been made for a specific LIBRARY, RESOLUTION,
-#   IMF, tau, age, z, A_v, metallicity, and filter set and/or spectral
-#   elements, the grid will be automatically read from the cache unless
-#   the NO_CACHE option is set to "1". This option will also prevent the
-#   code from writing this cache in the first place.
+#   IMF, tau, age, z, A_v, A_v_bc, metallicity, and filter set and/or
+#   spectral elements, the grid will be automatically read from the cache
+#   unless the NO_CACHE option is set to "1". This option will also
+#   prevent the code from writing this cache in the first place.
+#
+# o DIFFERENTIAL_A_V: By default (0), all stars suffer the same amount
+#   of extinction by dust. If DIFFERENTIAL_A_V is set to "1", young
+#   stars will be place under a thicker screen of dust, as controlled by
+#   A_V_BC_MIN, A_V_BC_MAX, A_V_BC_STEP, and LOG_BC_AGE_MAX.
+#
+# o LOG_BC_AGE_MAX: When DIFFERENTIAL_A_V is set to "1", stars in their
+#   birth cloud will be given extra attenuation. Only stars younger than
+#   LOG_BC_AGE_MAX are considered to be in their birthcloud. The default
+#   of 10 Myr is taken from Charlot&Fall (2001).
 #
 # o NO_MAX_AGE: By default (0), ages that exceed the age of the universe
 #   are not allowed. However, when NO_MAX_AGE is put to "1" you can have
@@ -404,22 +414,27 @@ CUSTOM_SFH_LOOKBACK = 0              # 0 / 1
 #
 #-----------------------------------------------------------------------
 
-LOG_TAU_MIN    = 8.5            # log [yr]
-LOG_TAU_MAX    = 10.            # log [yr]
-LOG_TAU_STEP   = 0.5            # log [yr], min 0.1
-LOG_AGE_MIN    = 8.0            # log [yr]
-LOG_AGE_MAX    = 10.0           # log [yr]
-LOG_AGE_STEP   = 0.2            # log [yr]
-NO_MAX_AGE     = 0              # 0 / 1
-Z_MIN          = 0.01           # Cannot be 0.0
-Z_MAX          = 6.00
-Z_STEP         = 0.05
-Z_STEP_TYPE    = 0              # 0: Z_STEP, 1: Z_STEP*(1+z)
-A_V_MIN        = 0.             # [mag]
-A_V_MAX        = 3.             # [mag]
-A_V_STEP       = 0.1            # [mag]
-METAL          = [0.02]         # [0.0096,0.019,0.03]
-NO_CACHE       = 0              # 0 / 1
+LOG_TAU_MIN      = 8.5            # log [yr]
+LOG_TAU_MAX      = 10.            # log [yr]
+LOG_TAU_STEP     = 0.5            # log [yr], min 0.1
+LOG_AGE_MIN      = 8.0            # log [yr]
+LOG_AGE_MAX      = 10.0           # log [yr]
+LOG_AGE_STEP     = 0.2            # log [yr]
+NO_MAX_AGE       = 0              # 0 / 1
+Z_MIN            = 0.01           # Cannot be 0.0
+Z_MAX            = 6.00
+Z_STEP           = 0.05
+Z_STEP_TYPE      = 0              # 0: Z_STEP, 1: Z_STEP*(1+z)
+A_V_MIN          = 0.             # [mag]
+A_V_MAX          = 3.             # [mag]
+A_V_STEP         = 0.1            # [mag]
+A_V_BC_MIN       = 0.             # [mag]
+A_V_BC_MAX       = 0.             # [mag]
+A_V_BC_STEP      = 0.1            # [mag]
+DIFFERENTIAL_A_V = 0              # 0 / 1
+LOG_BC_AGE_MAX   = 7.0            # log [yr]
+METAL            = [0.02]         # [0.0096,0.019,0.03]
+NO_CACHE         = 0              # 0 / 1
 
 
 #--- COSMOLOGY ---------------------------------------------------------

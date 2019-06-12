@@ -411,6 +411,18 @@ List of available quantities:
 Some of these parameters are defined and used in [Schreiber et al. (2018)](http://adsabs.harvard.edu/cgi-bin/nph-data_query?bibcode=2018arXiv180702523S&db_key=PRE&link_type=ABSTRACT&high=5b4379bf1108433). Look at this paper for more information.
 
 
+## Differential attenuation
+The default dust model of FAST is that of the "uniform screen", in which all stars in a galaxy are placed behind a screen of dust of uniform depth (e.g., Calzetti et al. 2000). This is the simplest possible model, however it is also less physically-motivated. An alternative is the Charlot & Fall (2000) model which separates stars in two categories based on their ages: young stars are expected to still reside within their birth clouds and should thus be more attenuated by dust, while old stars have migrated out of their birth clouds and are only seen through the normal inter-stellar medium dust. This model is more refined, but also has two more free parameters: the extra amount of extinction in birth clouds, and the age at which stars exit their birth clouds.
+
+It is possible to switch to the two-component dust model by enabling the ```DIFFERENTIAL_A_V``` option. Currently, FAST++ allows you to create a grid of birth cloud extinction using the ```A_V_BC_MIN```, ```A_V_BC_MAX```, and ```A_V_BC_STEP``` parameters, as for the usual extinction. However, the age at which stars exit their birth clouds is a fixed parameter defined by ```LOG_BC_AGE_MAX``` (it may be possible to vary this parameter in a future version). When this is enabled, stars younger than ```LOG_BC_AGE_MAX``` will have their Av defined as the *sum* of the values of ```Av``` and ```Av_bc``` as taken from the grid.
+
+For example, for a grid of ```Av = [0, 1, 2]``` and ```Av_bc = [0, 0.5]```, stars in their birth clouds can have effective attenuations of ```[0, 0.5, 1, 1.5, 2, 2.5]```. And if you set ```Av = [0]``` and ```Av_bc = [0, 1, 2]```, then only the young stars will have attenuation.
+
+It is also possible to enable the differential attenuation model but still fix ```Av_bc = 0```. The models will be the same as with the standard dust model, however this allows splitting the predicted ```ldust``` (infrared luminosity) in two components, birth clouds and cirrus. This can be useful when applying infrared luminosity priors (see next section).
+
+Important note: the differential attenuation model can only be enabled when using custom star formation histories (```CUSTOM_SFH```); an error message will be shown if you try to enable it on some other SFH model.
+
+
 ## Using priors on the infrared luminosity
 One of the main degeneracy that arises when fitting UV-to-NIR data is that of dust versus age. When a galaxy has a red SED, unless the signal to noise and the wavelength sampling are high, it is very difficult to say if this is caused by a large amount of dust, or by an older stellar population, or a combination of both. It is for this reason that SFRs obtained from such fits are very uncertain, and that SFRs determined from the far-IR are preferred.
 
@@ -436,6 +448,9 @@ FAST++ can deal with log-normal uncertainties too. To enable this feature, you n
 In this example, the fit for source ```2``` will assume Gaussian errors on the log(luminosity). Note how the *values* in the ```LIR``` and ```ELIR``` columns are different, since now the luminosity must be given in log10 units, and the uncertainty is the uncertainty on the log (in dex).
 
 Which value of ```LOG``` you should use depends on what probability distribution you estimate for the FIR luminosity. I give here a few guidelines to help you decide. If you are limited by the S/N on your flux measurements (i.e., for non-detections or weak detections) then ```0``` is preferable. If you are limited by the uncertainty in the conversion from flux to luminosity (i.e., when Tdust is not known) then ```1``` is preferable. Lastly, if you have high S/N fluxes and a well constrained Tdust, then either ```0``` or ```1``` will be fine.
+
+**Differential attenuation.** When ```DIFFERENTIAL_A_V``` is enabled, it is possible to apply the dust luminosity prior to different components of the galaxy, namely birth clouds or cirrus (or the sum of the two). The component that the prior applies to is then determined by an extra column in the ```.lir``` catalog. This column must be called ```COMP```, and possible values are ```all``` (birth clouds + cirrus), ```bc``` (birth clouds), or ```cirrus``` (cirrus). When available, a prior on the birth cloud luminosity provides a more direct constraint on the current SFR of the galaxy.
+
 
 ## Better treatment of spectra
 The file format for spectra in FAST-IDL is not well defined. The spectra must be given on a wavelength grid where only the central wavelength of each spectral element is specified. FAST-IDL then assumes that this wavelength grid is contiguous (no gap) and uniform (all spectral elements are defined on the same delta_lambda). No check is made to ensure this is true.
@@ -466,6 +481,7 @@ Spectrum file (FAST++ format):
 In this example the information in both catalogs in the same. But the new syntax allows more possibilities, for example adaptive binning, or combining spectra from different instruments (or passbands) with large gaps in between or different spectral resolutions. The ```tr``` (transmission) column, which is just a binary "use/don't use" flag becomes useless since the grid does not need to be uniform anymore.
 
 Even when using the old format, the treatment of these spectrum files is also more correct in FAST++. The ```bin``` column correctly combines multiple data points into a single measurement (using inverse variance weighting) rather than simply using the first value of a bin (why this is implemented in this way in FAST-IDL, I do not know). The order of the columns in the file do not matter, while FAST-IDL assumes a fixed format (but does not tell you).
+
 
 ## Velocity broadening
 By default, the template spectra produced by FAST++ assume no velocity dispersion of the stars inside the galaxy. This is a good approximation when only fitting broadband photometry, but it becomes incorrect when fitting high spectral resolution data, such as narrow band photometry or spectra, which can sample the spectral profile of the various absorption lines that compose the spectrum (i.e., mostly the Balmer series).

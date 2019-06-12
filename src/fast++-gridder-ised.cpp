@@ -283,7 +283,6 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
     const vec1f& output_tau = output.grid[grid_id::custom+0];
     const vec1f& output_age = output.grid[grid_id::age];
     const vec1f& output_z = output.grid[grid_id::z];
-    const vec1f& output_av = output.grid[grid_id::av];
 
     auto pg = progress_start(nmodel);
     for (uint_t im : range(output_metal))
@@ -313,7 +312,7 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
         }
 
         // Pre-compute dust law & IGM absorption (they don't change with SFH)
-        vec2d dust_law = build_dust_law(output_av, ised.lambda);
+        vec1d dust_law = build_dust_law(ised.lambda);
         vec2d igm_abs;
         if (!opts.no_igm) {
             igm_abs = build_igm_absorption(output_z, ised.lambda);
@@ -368,7 +367,7 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
             model_a2t = output_age[ia] - output_tau[it];
 
             // The rest is not specific to the SFH, use generic code
-            build_and_send_impl(fitter, pg, ised.lambda, tpl_flux, dust_law, igm_abs,
+            attenuate_and_send(fitter, pg, ised.lambda, tpl_flux, dust_law, igm_abs,
                 output_age[ia], tm.idm, tm.model);
         };
 

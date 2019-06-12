@@ -38,20 +38,25 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
 
     if (opts.verbose) note("define grid...");
 
+    const uint_t nparam_core = grid_id::custom; // [z,av,av_bc,age,metal]
+
+    nprop = prop_id::custom;
+    uint_t nparam_sfh = 0;
+
     switch (opts.sfh) {
     case sfh_type::gridded:
-        nparam = 5; // [z,av,age,tau,metal]
-        nprop = 9;  // [scale,sscale,mass,sfr,ssfr,ldust,lion,mformed,a2t]
+        nparam_sfh = 1; // [tau]
+        nprop += 1;  // [a2t]
         break;
     case sfh_type::single:
-        nparam = 4; // [z,av,age,metal]
-        nprop = 8;  // [scale,sscale,mass,sfr,ssfr,ldust,lion,mformed]
+        nparam_sfh = 0; // []
         break;
     case sfh_type::custom:
-        nparam = 4+opts.custom_params.size(); // [z,av,age,metal,...]
-        nprop = 8;  // [scale,sscale,mass,sfr,ssfr,ldust,lion,mformed]
+        nparam_sfh = opts.custom_params.size(); // [...]
         break;
     }
+
+    nparam = nparam_core + nparam_sfh;
 
     output.ifirst_rlum  = nprop;
     nprop += opts.rest_mag.size();
@@ -107,21 +112,24 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
 
     // Base grid parameters
     output.grid[grid_id::av]    = rgen_step(opts.a_v_min,     opts.a_v_max,     opts.a_v_step);
+    output.grid[grid_id::av_bc] = rgen_step(opts.a_v_bc_min,  opts.a_v_bc_max,  opts.a_v_bc_step);
     output.grid[grid_id::age]   = rgen_step(opts.log_age_min, opts.log_age_max, opts.log_age_step);
     output.grid[grid_id::metal] = opts.metal;
 
-    set_param(grid_id::z,     "z",      "",                   false, log_style::none,    1e-4);
-    set_param(grid_id::av,    "Av",     "",                   false, log_style::none,    1e-2);
-    set_param(grid_id::age,   "lage",   "log[age/yr]",        false, log_style::none,    1e-2);
-    set_param(grid_id::metal, "metal",  "",                   false, log_style::none,    1e-4);
-    set_prop(prop_id::scale,  "lscale", "log[scale]",         true,  log_style::decimal, 1e-2);
-    set_prop(prop_id::spec_scale, "sscale", "spec_rescale",   true,  log_style::none,    1e-3);
-    set_prop(prop_id::mass,   "lmass",  "log[mass/Msol]",     true,  log_style::decimal, 1e-2);
-    set_prop(prop_id::sfr,    "lsfr",   "log[sfr/(Msol/yr)]", true,  log_style::decimal, 1e-2);
-    set_prop(prop_id::ssfr,   "lssfr",  "log[ssfr*yr]",       false, log_style::decimal, 1e-2);
-    set_prop(prop_id::ldust,  "lldust", "log[lum/Lsol]",      true,  log_style::decimal, 1e-2);
-    set_prop(prop_id::lion,   "llion",  "log[lum/Lsol]",      true,  log_style::decimal, 1e-2);
-    set_prop(prop_id::mform,  "lmform", "log[mass/Msol]",     true,  log_style::decimal, 1e-2);
+    set_param(grid_id::z,       "z",         "",                   false, log_style::none,    1e-4);
+    set_param(grid_id::av,      "Av",        "",                   false, log_style::none,    1e-2);
+    set_param(grid_id::av_bc,   "Av_bc",     "",                   false, log_style::none,    1e-2);
+    set_param(grid_id::age,     "lage",      "log[age/yr]",        false, log_style::none,    1e-2);
+    set_param(grid_id::metal,   "metal",     "",                   false, log_style::none,    1e-4);
+    set_prop(prop_id::scale,    "lscale",    "log[scale]",         true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::spec_scale, "sscale",  "spec_rescale",       true,  log_style::none,    1e-3);
+    set_prop(prop_id::mass,     "lmass",     "log[mass/Msol]",     true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::sfr,      "lsfr",      "log[sfr/(Msol/yr)]", true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::ssfr,     "lssfr",     "log[ssfr*yr]",       false, log_style::decimal, 1e-2);
+    set_prop(prop_id::ldust,    "lldust",    "log[lum/Lsol]",      true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::ldust_bc, "lldust_bc", "log[lum/Lsol]",      true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::lion,     "llion",     "log[lum/Lsol]",      true,  log_style::decimal, 1e-2);
+    set_prop(prop_id::mform,    "lmform",    "log[mass/Msol]",     true,  log_style::decimal, 1e-2);
 
     // Rest luminosities
     for (uint_t i : range(opts.rest_mag)) {
@@ -225,7 +233,9 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
     if (opts.verbose) {
         std::string grid_common = "nmetal="+to_string(output.grid[grid_id::metal].size())+
             ",nage="+to_string(output.grid[grid_id::age].size())+
-            ",nav="+to_string(output.grid[grid_id::av].size())+",nz="+to_string(output_z.size());
+            ",nav="+to_string(output.grid[grid_id::av].size())+
+            ",navbc="+to_string(output.grid[grid_id::av_bc].size())+
+            ",nz="+to_string(output_z.size());
 
         switch (opts.sfh) {
         case sfh_type::gridded:
@@ -482,22 +492,16 @@ namespace igm {
     }
 }
 
-vec2d gridder_t::build_dust_law(const vec1f& av, const vec1f& lambda) const {
-    vec2d dust_law(av.size(), lambda.size());
-
-    vec1d tdust_law;
+vec1d gridder_t::build_dust_law(const vec1f& lambda) const {
+    vec1d dust_law;
     if (opts.dust_law == "calzetti") {
-        tdust_law = dust::calzetti2000(lambda);
+        dust_law = dust::calzetti2000(lambda);
     } else if (opts.dust_law == "mw") {
-        tdust_law = dust::milky_way(lambda);
+        dust_law = dust::milky_way(lambda);
     } else if (opts.dust_law == "noll") {
-        tdust_law = dust::noll2009(lambda, opts.dust_noll_eb, opts.dust_noll_delta);
+        dust_law = dust::noll2009(lambda, opts.dust_noll_eb, opts.dust_noll_delta);
     } else if (opts.dust_law == "kc") {
-        tdust_law = dust::noll2009(lambda, 1.0, -0.1);
-    }
-
-    for (uint_t ia : range(av)) {
-        dust_law(ia,_) = e10(-0.4*av.safe[ia]*tdust_law);
+        dust_law = dust::noll2009(lambda, 1.0, -0.1);
     }
 
     return dust_law;
@@ -511,22 +515,19 @@ vec2d gridder_t::build_igm_absorption(const vec1f& z, const vec1f& lambda) const
     return igm_abs;
 }
 
-void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
-    const vec1d& lam, const vec1d& tpl_flux, const vec2d& dust_law, const vec2d& igm_abs,
+void gridder_t::attenuate_and_send(fitter_t& fitter, progress_t& pg,
+    const vec1d& lam, const vec1d& tpl_flux, const vec1d& dust_law, const vec2d& igm_abs,
     float lage, vec1u& idm, model_t& model) {
 
     vec1f& output_av = output.grid[grid_id::av];
-    vec1f& output_z = output.grid[grid_id::z];
-    float& model_scale = model.props[prop_id::scale];
-    float& model_sscale = model.props[prop_id::spec_scale];
     float& model_ldust = model.props[prop_id::ldust];
+    float& model_ldust_bc = model.props[prop_id::ldust_bc];
     float& model_lion = model.props[prop_id::lion];
-
-    model_scale = 1.0; // by definition
-    model_sscale = 1.0; // by definition
 
     // Pre-compute bolometric luminosity
     double lbol = integrate(lam, tpl_flux);
+    model_ldust = 0.0;
+    model_ldust_bc = 0.0;
     model_lion = integrate(lam, tpl_flux, lam.front(), opts.lambda_ion);
 
     for (uint_t id : range(output_av)) {
@@ -536,139 +537,214 @@ void gridder_t::build_and_send_impl(fitter_t& fitter, progress_t& pg,
         vec1f tpl_att_flux = tpl_flux;
         if (output_av[id] > 0) {
             for (uint_t il : range(tpl_att_flux)) {
-                tpl_att_flux.safe[il] *= dust_law.safe(id,il);
+                tpl_att_flux.safe[il] *= e10(-0.4*output_av.safe[id]*dust_law.safe[il]);
             }
 
             // Compute absorbed energy
             double lobs = integrate(lam, tpl_att_flux);
             model_ldust = lbol - lobs;
-        } else {
-            model_ldust = 0;
         }
 
-        // Compute rest-frame luminosities
-        for (uint_t i : range(opts.rest_mag)) {
-            model.props[output.ifirst_rlum+i] = rflum2fl*sqr(input.rf_lambda[i])*astro::sed2flux(
-                input.rf_filters.safe[i].wl, input.rf_filters.safe[i].tr,
-                lam, tpl_att_flux
+        // Generic treatment
+        redshift_and_send(fitter, pg, lam, tpl_att_flux, igm_abs, lage, idm, model);
+    }
+}
+
+void gridder_t::attenuate_and_send(fitter_t& fitter, progress_t& pg,
+    const vec1d& lam, const vec1d& tpl_flux_young, const vec1d& tpl_flux_old,
+    const vec1d& dust_law, const vec2d& igm_abs,
+    float lage, vec1u& idm, model_t& model) {
+
+    vec1f& output_av = output.grid[grid_id::av];
+    vec1f& output_av_bc = output.grid[grid_id::av_bc];
+    float& model_ldust = model.props[prop_id::ldust];
+    float& model_ldust_bc = model.props[prop_id::ldust_bc];
+    float& model_lion = model.props[prop_id::lion];
+
+    // Pre-compute bolometric luminosity
+    double lbol_young = integrate(lam, tpl_flux_young);
+    double lbol_old = integrate(lam, tpl_flux_old);
+
+    model_ldust = 0.0;
+    model_ldust_bc = 0.0;
+    model_lion = integrate(lam, tpl_flux_young, lam.front(), opts.lambda_ion)
+               + integrate(lam, tpl_flux_old, lam.front(), opts.lambda_ion);
+
+    for (uint_t id : range(output_av)) {
+        idm[grid_id::av] = id;
+
+        // Apply dust reddening to old stars
+        vec1f tpl_att_flux_old = tpl_flux_old;
+        double ldust_old = 0.0;
+        if (output_av[id] > 0) {
+            for (uint_t il : range(tpl_att_flux_old)) {
+                tpl_att_flux_old.safe[il] *= e10(-0.4*output_av.safe[id]*dust_law.safe[il]);
+            }
+
+            // Compute absorbed energy
+            double lobs = integrate(lam, tpl_att_flux_old);
+            ldust_old = lbol_old - lobs;
+        }
+
+        for (uint_t id_bc : range(output_av_bc)) {
+            idm[grid_id::av_bc] = id_bc;
+
+            // Apply dust reddening to young stars
+            vec1f tpl_att_flux_young = tpl_flux_young;
+            if (output_av_bc[id_bc] > 0 || output_av[id] > 0) {
+                double bc_av = output_av.safe[id] + output_av_bc[id_bc];
+                for (uint_t il : range(tpl_att_flux_young)) {
+                    tpl_att_flux_young.safe[il] *= e10(-0.4*bc_av*dust_law.safe[il]);
+                }
+
+                // Compute absorbed energy
+                double lobs = integrate(lam, tpl_att_flux_young);
+                double ldust_young = lbol_young - lobs;
+                model_ldust = ldust_young + ldust_old;
+                model_ldust_bc = ldust_young;
+            }
+
+            // Generic treatment
+            redshift_and_send(
+                fitter, pg, lam, tpl_att_flux_young + tpl_att_flux_old, igm_abs, lage, idm, model
+            );
+        }
+    }
+}
+
+void gridder_t::redshift_and_send(fitter_t& fitter, progress_t& pg,
+    const vec1d& lam, const vec1d& tpl_att_flux, const vec2d& igm_abs,
+    float lage, vec1u& idm, model_t& model) {
+
+    vec1f& output_z = output.grid[grid_id::z];
+    float& model_scale = model.props[prop_id::scale];
+    float& model_sscale = model.props[prop_id::spec_scale];
+
+    model_scale = 1.0; // by definition
+    model_sscale = 1.0; // by definition
+
+    // Compute rest-frame luminosities
+    for (uint_t i : range(opts.rest_mag)) {
+        model.props[output.ifirst_rlum+i] = rflum2fl*sqr(input.rf_lambda[i])*astro::sed2flux(
+            input.rf_filters.safe[i].wl, input.rf_filters.safe[i].tr,
+            lam, tpl_att_flux
+        );
+
+        if (!is_finite(model.props[output.ifirst_rlum+i])) {
+            // Filter goes out of model coverage, assume zero
+            model.props[output.ifirst_rlum+i] = 0;
+        }
+    }
+
+    // Compute absorption lines EW
+    for (uint_t i : range(input.abs_lines)) {
+        auto& l = input.abs_lines[i];
+
+        double fl = integrate(lam, tpl_att_flux, l.line_low, l.line_up);
+
+        double fc = 0.0;
+        if (l.cont_low.size() == 1) {
+            // Single window, assume continuum is constant
+            fc = integrate(lam, tpl_att_flux, l.cont_low[0], l.cont_up[0])/
+                (l.cont_up[0] - l.cont_low[0]);
+
+            // Subtract continuum
+            fl -= fc*(l.line_up - l.line_low);
+        } else {
+            // Two windows, assume continuum is linear
+            double l1 = 0.5*(l.cont_low[0] + l.cont_up[0]);
+            double l2 = 0.5*(l.cont_low[1] + l.cont_up[1]);
+
+            double f1 = integrate(lam, tpl_att_flux, l.cont_low[0], l.cont_up[0])/
+                (l.cont_up[0] - l.cont_low[0]);
+            double f2 = integrate(lam, tpl_att_flux, l.cont_low[1], l.cont_up[1])/
+                (l.cont_up[1] - l.cont_low[1]);
+
+            fc = interpolate(f1, f2, l1, l2, 0.5*(l.line_low + l.line_up));
+
+            // Subtract continuum
+            double a = (f1*l2 - f2*l1)/(l2 - l1);
+            double b = (f2 - f1)/(l2 - l1)/2.0;
+            fl -= a*(l.line_up - l.line_low) + b*(sqr(l.line_up) - sqr(l.line_low));
+        }
+
+        model.props[output.ifirst_abs+i] = -fl/fc;
+    }
+
+    // Compute continuum indices
+    for (uint_t i : range(input.cont_ratios)) {
+        auto& r = input.cont_ratios[i];
+
+        double fc1 = integrate(lam, tpl_att_flux, r.cont1_low, r.cont1_up)/
+            (r.cont1_up - r.cont1_low);
+        double fc2 = integrate(lam, tpl_att_flux, r.cont2_low, r.cont2_up)/
+            (r.cont2_up - r.cont2_low);
+
+        model.props[output.ifirst_ratio+i] = fc2/fc1;
+    }
+
+    // Redshift, integrate, and send to fitter
+    for (uint_t iz : range(output_z)) {
+        idm[grid_id::z] = iz;
+        model.igrid = model_id(idm);
+
+        vec1f tpl_att_z_lam = lam;
+        vec1f tpl_att_z_flux = tpl_att_flux;
+
+        for (uint_t il : range(tpl_att_z_flux)) {
+            // Apply IGM absorption & redshift
+            if (opts.no_igm) {
+                tpl_att_z_flux.safe[il] *= lum2fl.safe[iz];
+            } else {
+                tpl_att_z_flux.safe[il] *= lum2fl.safe[iz]*igm_abs.safe(iz,il);
+            }
+            tpl_att_z_lam.safe[il] *= (1.0 + output_z.safe[iz]);
+        }
+
+        // Integrate
+        for (uint_t il : range(input.lambda)) {
+            model.flux.safe[il] = astro::sed2flux(
+                input.filters.safe[il].wl, input.filters.safe[il].tr,
+                tpl_att_z_lam, tpl_att_z_flux
             );
 
-            if (!is_finite(model.props[output.ifirst_rlum+i])) {
+            if (!is_finite(model.flux.safe[il])) {
                 // Filter goes out of model coverage, assume zero
-                model.props[output.ifirst_rlum+i] = 0;
+                model.flux.safe[il] = 0;
             }
         }
 
-        // Compute absorption lines EW
-        for (uint_t i : range(input.abs_lines)) {
-            auto& l = input.abs_lines[i];
-
-            double fl = integrate(lam, tpl_att_flux, l.line_low, l.line_up);
-
-            double fc = 0.0;
-            if (l.cont_low.size() == 1) {
-                // Single window, assume continuum is constant
-                fc = integrate(lam, tpl_att_flux, l.cont_low[0], l.cont_up[0])/
-                    (l.cont_up[0] - l.cont_low[0]);
-
-                // Subtract continuum
-                fl -= fc*(l.line_up - l.line_low);
-            } else {
-                // Two windows, assume continuum is linear
-                double l1 = 0.5*(l.cont_low[0] + l.cont_up[0]);
-                double l2 = 0.5*(l.cont_low[1] + l.cont_up[1]);
-
-                double f1 = integrate(lam, tpl_att_flux, l.cont_low[0], l.cont_up[0])/
-                    (l.cont_up[0] - l.cont_low[0]);
-                double f2 = integrate(lam, tpl_att_flux, l.cont_low[1], l.cont_up[1])/
-                    (l.cont_up[1] - l.cont_low[1]);
-
-                fc = interpolate(f1, f2, l1, l2, 0.5*(l.line_low + l.line_up));
-
-                // Subtract continuum
-                double a = (f1*l2 - f2*l1)/(l2 - l1);
-                double b = (f2 - f1)/(l2 - l1)/2.0;
-                fl -= a*(l.line_up - l.line_low) + b*(sqr(l.line_up) - sqr(l.line_low));
-            }
-
-            model.props[output.ifirst_abs+i] = -fl/fc;
+        // See if we want to use this model or not
+        bool nofit = false;
+        if (!opts.no_max_age && lage > auniv[iz]) {
+            // Age greater than the age of the universe
+            nofit = true;
         }
 
-        // Compute continuum indices
-        for (uint_t i : range(input.cont_ratios)) {
-            auto& r = input.cont_ratios[i];
+        if (!nofit && !opts.grid_exclude.empty()) {
+            // Custom exclude function
+            auto lock = (opts.parallel == parallel_choice::generators ?
+                std::unique_lock<std::mutex>(exclude_mutex) : std::unique_lock<std::mutex>());
 
-            double fc1 = integrate(lam, tpl_att_flux, r.cont1_low, r.cont1_up)/
-                (r.cont1_up - r.cont1_low);
-            double fc2 = integrate(lam, tpl_att_flux, r.cont2_low, r.cont2_up)/
-                (r.cont2_up - r.cont2_low);
+            for (uint_t i : range(nparam)) {
+                exclude_expr.vars.safe[i] = output.grid.safe[i].safe[idm.safe[i]];
+            }
 
-            model.props[output.ifirst_ratio+i] = fc2/fc1;
+            nofit = abs(exclude_expr.eval()) > 0;
         }
 
-        // Redshift, integrate, and send to fitter
-        for (uint_t iz : range(output_z)) {
-            idm[grid_id::z] = iz;
-            model.igrid = model_id(idm);
+        // Send to fitter
+        if (!nofit) {
+            fitter.fit(model);
+        }
 
-            vec1f tpl_att_z_lam = lam;
-            vec1f tpl_att_z_flux = tpl_att_flux;
+        // Cache and print progress
+        {
+            auto lock = (opts.parallel == parallel_choice::generators ?
+                std::unique_lock<std::mutex>(progress_mutex) : std::unique_lock<std::mutex>());
 
-            for (uint_t il : range(tpl_att_z_flux)) {
-                // Apply IGM absorption & redshift
-                if (opts.no_igm) {
-                    tpl_att_z_flux.safe[il] *= lum2fl.safe[iz];
-                } else {
-                    tpl_att_z_flux.safe[il] *= lum2fl.safe[iz]*igm_abs.safe(iz,il);
-                }
-                tpl_att_z_lam.safe[il] *= (1.0 + output_z.safe[iz]);
-            }
-
-            // Integrate
-            for (uint_t il : range(input.lambda)) {
-                model.flux.safe[il] = astro::sed2flux(
-                    input.filters.safe[il].wl, input.filters.safe[il].tr,
-                    tpl_att_z_lam, tpl_att_z_flux
-                );
-
-                if (!is_finite(model.flux.safe[il])) {
-                    // Filter goes out of model coverage, assume zero
-                    model.flux.safe[il] = 0;
-                }
-            }
-
-            // See if we want to use this model or not
-            bool nofit = false;
-            if (!opts.no_max_age && lage > auniv[iz]) {
-                // Age greater than the age of the universe
-                nofit = true;
-            }
-
-            if (!nofit && !opts.grid_exclude.empty()) {
-                // Custom exclude function
-                auto lock = (opts.parallel == parallel_choice::generators ?
-                    std::unique_lock<std::mutex>(exclude_mutex) : std::unique_lock<std::mutex>());
-
-                for (uint_t i : range(nparam)) {
-                    exclude_expr.vars.safe[i] = output.grid.safe[i].safe[idm.safe[i]];
-                }
-
-                nofit = abs(exclude_expr.eval()) > 0;
-            }
-
-            // Send to fitter
-            if (!nofit) {
-                fitter.fit(model);
-            }
-
-            // Cache and print progress
-            {
-                auto lock = (opts.parallel == parallel_choice::generators ?
-                    std::unique_lock<std::mutex>(progress_mutex) : std::unique_lock<std::mutex>());
-
-                cache.write_model(model);
-                if (opts.verbose) progress_tick(pg, 0.5);
-            }
+            cache.write_model(model);
+            if (opts.verbose) progress_tick(pg, 0.5);
         }
     }
 }
@@ -858,33 +934,67 @@ bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
     vec1u idm = grid_ids(iflat);
     uint_t iz = idm[grid_id::z];
     uint_t id = idm[grid_id::av];
+    uint_t id_bc = idm[grid_id::av_bc];
 
     float z = output.grid[grid_id::z][iz];
     float av = output.grid[grid_id::av][id];
+    float av_bc = output.grid[grid_id::av_bc][id_bc];
 
-    switch (opts.sfh) {
-    case sfh_type::gridded:
-        if (!build_template_ised(iflat, lam, flux)) {
+    if (av_bc == 0.0 || nodust) {
+        switch (opts.sfh) {
+        case sfh_type::gridded:
+            if (!build_template_ised(iflat, lam, flux)) {
+                return false;
+            }
+            break;
+        case sfh_type::custom:
+            if (!build_template_custom(iflat, lam, flux)) {
+                return false;
+            }
+            break;
+        default:
+            error("this SFH is not implemented yet");
             return false;
         }
-        break;
-    case sfh_type::custom:
-        if (!build_template_custom(iflat, lam, flux)) {
+
+        // Apply dust reddening
+        if (av > 0 && !nodust) {
+            vec1d dust_law = build_dust_law(lam);
+
+            for (uint_t il : range(flux)) {
+                flux.safe[il] *= e10(-0.4*av*dust_law.safe[il]);
+            }
+        }
+    } else {
+        vec1f flux_young, flux_old;
+
+        switch (opts.sfh) {
+        case sfh_type::custom:
+            if (!build_template_custom(iflat, lam, flux_young, flux_old)) {
+                return false;
+            }
+            break;
+        default:
+            error("this SFH is not implemented yet");
             return false;
         }
-        break;
-    default:
-        error("this SFH is not implemented yet");
-        return false;
-    }
 
-    // Apply dust reddening
-    if (av > 0 && !nodust) {
-        vec2d dust_law = build_dust_law({av}, lam);
+        vec1d dust_law = build_dust_law(lam);
 
-        for (uint_t il : range(flux)) {
-            flux.safe[il] *= dust_law.safe(0,il);
+        // Apply dust reddening
+        if (av > 0) {
+            for (uint_t il : range(flux_old)) {
+                flux_old.safe[il] *= e10(-0.4*av*dust_law.safe[il]);
+            }
         }
+        if (av+av_bc > 0) {
+            for (uint_t il : range(flux_young)) {
+                flux_young.safe[il] *= e10(-0.4*(av+av_bc)*dust_law.safe[il]);
+            }
+        }
+
+        // Combine young and old
+        flux = flux_young + flux_old;
     }
 
     // Compute IGM absorption

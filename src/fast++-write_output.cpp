@@ -80,7 +80,11 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     }
     fout << "# Stellar IMF: " << pretty_imf(opts.name_imf) << std::endl;
     fout << "# Dust law:    " <<
-        pretty_dust_law(opts.dust_law, opts.dust_noll_eb, opts.dust_noll_delta) << std::endl;
+        pretty_dust_law(opts.dust_law, opts.dust_noll_eb, opts.dust_noll_delta);
+    if (opts.differential_a_v) {
+        fout << " (with differential attenuation)" << std::endl;
+    }
+    fout << std::endl;
     fout << "# metallicity: " << collapse(to_string_vector(opts.metal), "  ") << std::endl;
     if (opts.sfh == sfh_type::gridded) {
         fout << "# log(tau/yr): " <<
@@ -97,6 +101,10 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
         pretty_grid(opts.log_age_min, opts.log_age_max, opts.log_age_step, 2) << std::endl;
     fout << "# A_V:         " <<
         pretty_grid(opts.a_v_min, opts.a_v_max, opts.a_v_step, 2) << std::endl;
+    if (opts.differential_a_v) {
+        fout << "# A_V_BC:      " <<
+            pretty_grid(opts.a_v_bc_min, opts.a_v_bc_max, opts.a_v_bc_step, 2) << std::endl;
+    }
     fout << "# z:           " <<
         pretty_grid(opts.z_min, opts.z_max, opts.z_step, 4) <<
         " (" << (opts.z_step_type == 0 ? "linear" : "logarithmic") << ")" << std::endl;

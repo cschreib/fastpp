@@ -62,9 +62,14 @@ struct options_t {
     float z_max = 9.0;
     float z_step = 0.02;
     int_t z_step_type = 0;
-    float a_v_min = 0;
-    float a_v_max = 3;
+    float a_v_min = 0.0;
+    float a_v_max = 3.0;
     float a_v_step = 0.1;
+    float a_v_bc_min = 0.0;
+    float a_v_bc_max = 0.0;
+    float a_v_bc_step = 0.1;
+    float log_bc_age_max = 7.0;
+    bool differential_a_v = false;
     float log_age_min = 6.3;
     float log_age_max = 10.3;
     float log_age_step = 0.5;
@@ -205,6 +210,7 @@ struct input_state_t {
     vec1f zphot_conf;                   // [nzconf]
     vec1f lir, lir_err;                 // [ngal]
     vec1b lir_log;                      // [ngal]
+    vec1u lir_comp;                     // [ngal]
     vec2f flux, eflux;                  // [ngal,nfilt+nspec]
     vec1u nobs;                         // [ngal]
     vec1f conf_interval;                // [nconf]
@@ -229,16 +235,20 @@ struct input_state_t {
 };
 
 struct grid_id {
-    static const constexpr uint_t z = 0, av = 1, age = 2, metal = 3, custom = 4;
+    static const constexpr uint_t z = 0, av = 1, av_bc = 2, age = 3, metal = 4, custom = 5;
 };
 
 struct prop_id {
     static const constexpr uint_t scale = 0, spec_scale = 1, mass = 2, sfr = 3, ssfr = 4,
-        ldust = 5, lion = 6, mform = 7, custom = 8;
+        ldust = 5, ldust_bc = 6, lion = 7, mform = 8, custom = 9;
 };
 
 struct log_style {
     static const constexpr uint_t none = 0, decimal = 1, abmag = 2;
+};
+
+struct lir_component {
+    static const constexpr uint_t all = 0, bc = 1, cirrus = 2;
 };
 
 // Holds the output state of the program
@@ -247,11 +257,11 @@ struct output_state_t {
     vec<1,vec1f> grid;               // [ngrid][...]
 
     // Model properties
-    vec1s param_names;                // [ngrid+nprop]
-    vec1s param_descriptions;         // [ngrid+nprop]
-    vec1b param_scale;                // [ngrid+nprop]
-    vec1u param_log;                  // [ngrid+nprop]
-    vec1f param_precision;            // [ngrid+nprop]
+    vec1s param_names;               // [ngrid+nprop]
+    vec1s param_descriptions;        // [ngrid+nprop]
+    vec1b param_scale;               // [ngrid+nprop]
+    vec1u param_log;                 // [ngrid+nprop]
+    vec1f param_precision;           // [ngrid+nprop]
 
     // Best fits
     vec3f best_params;               // [ngal,ngrid+nprop,1+nconf]
@@ -361,8 +371,17 @@ struct gridder_t {
     vec1u grid_ids(uint_t iflat) const;
 
 private :
-    void build_and_send_impl(fitter_t& fitter, progress_t& pg,
-        const vec1d& lam, const vec1d& tpl_flux, const vec2d& dust_law, const vec2d& igm_abs,
+    void attenuate_and_send(fitter_t& fitter, progress_t& pg,
+        const vec1d& lam, const vec1d& tpl_flux, const vec1d& dust_law, const vec2d& igm_abs,
+        float lage, vec1u& idm, model_t& model);
+
+    void attenuate_and_send(fitter_t& fitter, progress_t& pg,
+        const vec1d& lam, const vec1d& tpl_flux_young, const vec1d& tpl_flux_old,
+        const vec1d& dust_law, const vec2d& igm_abs,
+        float lage, vec1u& idm, model_t& model);
+
+    void redshift_and_send(fitter_t& fitter, progress_t& pg,
+        const vec1d& lam, const vec1d& tpl_flux, const vec2d& igm_abs,
         float lage, vec1u& idm, model_t& model);
 
     void compute_sfh_quantities_impl(const vec1d& ltime, const vec1d& sfh, model_t& model);
@@ -374,6 +393,7 @@ private :
 
     bool build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux) const;
     bool build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) const;
+    bool build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux_young, vec1f& flux_old) const;
 
     bool get_sfh_ised(uint_t iflat, const vec1d& t, vec1d& sfh, const std::string& type) const;
     bool get_sfh_custom(uint_t iflat, const vec1d& t, vec1d& sfh, const std::string& type) const;
@@ -381,7 +401,7 @@ private :
     std::string get_library_file_ised(uint_t im, uint_t it) const;
     std::string get_library_file_ssp(uint_t im) const;
 
-    vec2d build_dust_law(const vec1f& av, const vec1f& lambda) const;
+    vec1d build_dust_law(const vec1f& lambda) const;
     vec2d build_igm_absorption(const vec1f& z, const vec1f& lambda) const;
 
     bool get_age_bounds(const vec1f& ised_age, float nage, std::array<uint_t,2>& p, double& x) const;

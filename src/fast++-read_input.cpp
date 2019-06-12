@@ -165,6 +165,11 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(continuum_indices)
         PARSE_OPTION(sfh_quantities)
         PARSE_OPTION(interval_from_chi2)
+        PARSE_OPTION(a_v_bc_min)
+        PARSE_OPTION(a_v_bc_max)
+        PARSE_OPTION(a_v_bc_step)
+        PARSE_OPTION(log_bc_age_max)
+        PARSE_OPTION(differential_a_v)
 
         #undef  PARSE_OPTION
         #undef  PARSE_OPTION_RENAME
@@ -265,6 +270,17 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         error("unknown dust law '", opts.dust_law, "'");
         error("possible values: ", possible_dust_laws);
         return false;
+    }
+
+    if (opts.differential_a_v && opts.custom_sfh.empty()) {
+        error("differential attenuation for birthcloud can only be enabled when using a custom SFH");
+        error("please set A_V_BC_MAX = 0, or specify a star formation history expression "
+            "in CUSTOM_SFH");
+        return false;
+    }
+
+    if (opts.verbose && opts.differential_a_v) {
+        note("using differential attenuation for stars in birthcloud");
     }
 
     if (opts.sfr_avg < 0 || !is_finite(opts.sfr_avg)) {
@@ -1564,6 +1580,7 @@ bool read_lir(const options_t& opts, input_state_t& state) {
     uint_t col_err = where_first(header == "ELIR");
     uint_t col_id  = where_first(header == "ID");
     uint_t col_log = where_first(header == "LOG");
+    uint_t col_comp = where_first(header == "COMP");
 
     if (col_lir == npos) {
         error("missing LIR column in infrared luminosity file");
@@ -1581,11 +1598,16 @@ bool read_lir(const options_t& opts, input_state_t& state) {
         warning("missing LOG column in infrared luminosity file");
         warning("will assume that all luminosities are given in natural units and not in log");
     }
+    if (col_comp == npos && opts.differential_a_v) {
+        warning("missing COMP column in infrared luminosity file");
+        warning("will assume that all LIR values are to be assigned to cirrus+birthclouds");
+    }
 
     // Initialize the lir columns
     state.lir = replicate(fnan, state.id.size());
     state.lir_err = replicate(fnan, state.id.size());
     state.lir_log = replicate(false, state.id.size());
+    state.lir_comp = replicate(lir_component::all, state.id.size());
 
     // Read the catalog
     uint_t l = 0;
@@ -1624,6 +1646,22 @@ bool read_lir(const options_t& opts, input_state_t& state) {
             }
         }
 
+        uint_t comp = lir_component::all;
+        if (col_comp != npos) {
+            std::string scomp = to_lower(spl[col_comp]);
+            if (scomp == "all") {
+                comp = lir_component::all;
+            } else if (scomp == "bc") {
+                comp = lir_component::bc;
+            } else if (scomp == "cirrus") {
+                comp = lir_component::cirrus;
+            } else {
+                error("unknown LIR component '", spl[col_comp], "'");
+                note("allowed values are 'all', 'bc', or 'cirrus'");
+                return false;
+            }
+        }
+
         if (i >= state.id.size() || id != state.id[i]) {
             error("infrared luminosity and photometry catalogs do not match");
             return false;
@@ -1633,6 +1671,7 @@ bool read_lir(const options_t& opts, input_state_t& state) {
             state.lir[i] = lir;
             state.lir_err[i] = err;
             state.lir_log[i] = islog;
+            state.lir_comp[i] = comp;
         }
 
         ++i;

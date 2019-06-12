@@ -105,7 +105,6 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
     const vec1f& output_metal = output.grid[grid_id::metal];
     const vec1f& output_age = output.grid[grid_id::age];
     const vec1f& output_z = output.grid[grid_id::z];
-    const vec1f& output_av = output.grid[grid_id::av];
 
     auto pg = progress_start(nmodel);
     for (uint_t im : range(output_metal)) {
@@ -124,7 +123,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
         }
 
         // Pre-compute dust law & IGM absorption (they don't change with SFH)
-        vec2d dust_law = build_dust_law(output_av, ssp.lambda);
+        vec1d dust_law = build_dust_law(ssp.lambda);
         vec2d igm_abs;
         if (!opts.no_igm) {
             igm_abs = build_igm_absorption(output_z, ssp.lambda);
@@ -151,19 +150,6 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
                 evaluate_sfh_custom(tm.idm, ltime, sfh);
             }
 
-            // Integrate SFH on local time grid
-            vec1d tpl_flux(ssp.lambda.size());
-            double tmodel_mass  = 0.0;
-            double tformed_mass = 0.0;
-            ssp.integrate(ltime, sfh, [&](uint_t it, double formed) {
-                tmodel_mass  += formed*ssp.mass.safe[it];
-                tformed_mass += formed;
-                tpl_flux     += formed*ssp.sed.safe(it,_);
-            });
-
-            model_mass = tmodel_mass;
-            model_mform = tformed_mass*ssp.mass.safe[0];
-
             // Compute SFH quantities
             if (!input.sfh_quant.empty()) {
                 compute_sfh_quantities_impl(ltime, sfh, tm.model);
@@ -178,11 +164,50 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
                 model_sfr = interpolate(sfh, ltime, 0.0);
             }
 
+            // Integrate SFH for total mass
+            double tmodel_mass  = 0.0;
+            double tformed_mass = 0.0;
+            ssp.integrate(ltime, sfh, [&](uint_t it, double formed) {
+                tmodel_mass  += formed*ssp.mass.safe[it];
+                tformed_mass += formed;
+            });
+
+            model_mass = tmodel_mass;
+            model_mform = tformed_mass*ssp.mass.safe[0];
+
             model_ssfr = model_sfr/model_mass;
 
-            // The rest is not specific to the SFH, use generic code
-            build_and_send_impl(fitter, pg, ssp.lambda, tpl_flux, dust_law, igm_abs,
-                output_age[ia], tm.idm, tm.model);
+            if (opts.differential_a_v) {
+                // Need to separate yound and old stars for differential attenuation
+
+                // Integrate SFH for template
+                vec1d tpl_flux_young(ssp.lambda.size());
+                vec1d tpl_flux_old(ssp.lambda.size());
+                double age_bc = e10(opts.log_bc_age_max); // [yr]
+                ssp.integrate(ltime, sfh, [&](uint_t it, double formed) {
+                    if (ssp.age.safe[it] <= age_bc) {
+                        tpl_flux_young += formed*ssp.sed.safe(it,_);
+                    } else {
+                        tpl_flux_old += formed*ssp.sed.safe(it,_);
+                    }
+                });
+
+                // The rest is not specific to the SFH, use generic code
+                attenuate_and_send(fitter, pg, ssp.lambda, tpl_flux_young, tpl_flux_old,
+                    dust_law, igm_abs, output_age[ia], tm.idm, tm.model);
+            } else {
+                // Treat all stars the same way
+
+                // Integrate SFH for template
+                vec1d tpl_flux(ssp.lambda.size());
+                ssp.integrate(ltime, sfh, [&](uint_t it, double formed) {
+                    tpl_flux += formed*ssp.sed.safe(it,_);
+                });
+
+                // The rest is not specific to the SFH, use generic code
+                attenuate_and_send(fitter, pg, ssp.lambda, tpl_flux, dust_law, igm_abs,
+                    output_age[ia], tm.idm, tm.model);
+            }
         };
 
         thread::worker_pool<model_id_pair> pool;
@@ -231,32 +256,59 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
     uint_t im = idm[grid_id::metal];
     const vec1f& output_age = output.grid[grid_id::age];
 
+    // Build analytic SFH
+    double dt = opts.custom_sfh_step;
+    vec1d ltime = dt*indgen<double>(uint_t(ceil(e10(output_age[ia])/dt)+1.0));
+    vec1d sfh; {
+        auto lock = (opts.n_thread > 1 ?
+            std::unique_lock<std::mutex>(sfh_mutex) : std::unique_lock<std::mutex>());
+
+        evaluate_sfh_custom(idm, ltime, sfh);
+    }
+
+    auto lock = (opts.n_thread > 1 ?
+        std::unique_lock<std::mutex>(sed_mutex) : std::unique_lock<std::mutex>());
+
+    if (!cached_ssp_bc03) {
+        cached_ssp_bc03 = std::unique_ptr<ssp_bc03>(new ssp_bc03());
+    }
+
     ssp_bc03* ssp = cached_ssp_bc03.get();
 
-    {
-        auto lock = (opts.n_thread > 1 ?
-            std::unique_lock<std::mutex>(sed_mutex) : std::unique_lock<std::mutex>());
-
-        if (!cached_ssp_bc03) {
-            cached_ssp_bc03 = std::unique_ptr<ssp_bc03>(new ssp_bc03());
-            ssp = cached_ssp_bc03.get();
+    // Load SSP if not cached
+    std::string filename = get_library_file_ssp(im);
+    if (filename != cached_library) {
+        if (!ssp->read(filename)) {
+            return false;
         }
 
-        // Load SSP
-        std::string filename = get_library_file_ssp(im);
-        if (filename != cached_library) {
-            if (!ssp->read(filename)) {
-                return false;
-            }
+        cached_library = filename;
 
-            cached_library = filename;
-
-            // Apply velocity dispersion
-            if (is_finite(opts.apply_vdisp)) {
-                ssp->sed = convolve_vdisp(ssp->lambda, ssp->sed, opts.apply_vdisp);
-            }
+        // Apply velocity dispersion
+        if (is_finite(opts.apply_vdisp)) {
+            ssp->sed = convolve_vdisp(ssp->lambda, ssp->sed, opts.apply_vdisp);
         }
     }
+
+    // Integrate SFH on local time grid
+    vec1d tpl_flux(ssp->lambda.size());
+    ssp->integrate(ltime, sfh, [&](uint_t it, double formed) {
+        tpl_flux += formed*ssp->sed.safe(it,_);
+    });
+
+    lam = ssp->lambda;
+    flux = tpl_flux;
+
+    return true;
+}
+
+bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux_young,
+    vec1f& flux_old) const {
+
+    vec1u idm = grid_ids(iflat);
+    uint_t ia = idm[grid_id::age];
+    uint_t im = idm[grid_id::metal];
+    const vec1f& output_age = output.grid[grid_id::age];
 
     // Build analytic SFH
     double dt = opts.custom_sfh_step;
@@ -268,14 +320,45 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
         evaluate_sfh_custom(idm, ltime, sfh);
     }
 
-    // Integrate SFH on local time grid
-    vec1d tpl_flux(ssp->lambda.size());
+    auto lock = (opts.n_thread > 1 ?
+        std::unique_lock<std::mutex>(sed_mutex) : std::unique_lock<std::mutex>());
+
+    if (!cached_ssp_bc03) {
+        cached_ssp_bc03 = std::unique_ptr<ssp_bc03>(new ssp_bc03());
+    }
+
+    ssp_bc03* ssp = cached_ssp_bc03.get();
+
+    // Load SSP if not cached
+    std::string filename = get_library_file_ssp(im);
+    if (filename != cached_library) {
+        if (!ssp->read(filename)) {
+            return false;
+        }
+
+        cached_library = filename;
+
+        // Apply velocity dispersion
+        if (is_finite(opts.apply_vdisp)) {
+            ssp->sed = convolve_vdisp(ssp->lambda, ssp->sed, opts.apply_vdisp);
+        }
+    }
+
+    // Integrate SFH for template
+    vec1d tpl_flux_young(ssp->lambda.size());
+    vec1d tpl_flux_old(ssp->lambda.size());
+    double age_bc = e10(opts.log_bc_age_max);
     ssp->integrate(ltime, sfh, [&](uint_t it, double formed) {
-        tpl_flux += formed*ssp->sed.safe(it,_);
+        if (ssp->age.safe[it] <= age_bc) {
+            tpl_flux_young += formed*ssp->sed.safe(it,_);
+        } else {
+            tpl_flux_old += formed*ssp->sed.safe(it,_);
+        }
     });
 
     lam = ssp->lambda;
-    flux = tpl_flux;
+    flux_young = tpl_flux_young;
+    flux_old = tpl_flux_old;
 
     return true;
 }
