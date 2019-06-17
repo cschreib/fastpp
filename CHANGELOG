@@ -1,3 +1,10 @@
+v1.3.0 (12/06/2019)
+======
+
+Features:
+ - Added a differential attenuation model a la Charlot & Fall.
+
+
 v1.2.1 (20/03/2019)
 ======
 
