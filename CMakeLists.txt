@@ -36,6 +36,8 @@ ExternalProject_Add(cfitsio
         -DBUILD_TOOLS=OFF
         -DBUILD_TESTS=OFF
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DCMAKE_BUILD_TYPE=Release)
 
 # Configure and build vif
@@ -54,6 +56,8 @@ ExternalProject_Add(vif
         -DVIF_INPLACE_BUILD=ON
         -DCFITSIO_ROOT_DIR=${PROJECT_SOURCE_DIR}/external
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DCMAKE_BUILD_TYPE=Release)
 
 # Configure and build tinyexpr
@@ -65,6 +69,8 @@ ExternalProject_Add(tinyexpr
     CMAKE_ARGS
         -DTE_NAT_LOG=ON
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DCMAKE_BUILD_TYPE=Release)
 
 # Configure and build FAST++
@@ -79,6 +85,8 @@ ExternalProject_Add(fast++
         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}
         -DCMAKE_MODULE_PATH=${PROJECT_SOURCE_DIR}/external/vif/cmake
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DFASTPP_SHARE_DIR=${FASTPP_SHARE_DIR})
 
 if (INSTALL_SHARED_DATA)
