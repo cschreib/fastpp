@@ -188,7 +188,7 @@ int vif_main(int argc, char* argv[]) {
             main_state = "read data";
 
             state = "properties";
-            props.resize(nmodel, ngal, 1+nprop);
+            props.resize(nmodel, 1+nprop, ngal);
             in.read(props);
 
             prepend(prop_names, vec1s{"chi2"});
@@ -197,11 +197,11 @@ int vif_main(int argc, char* argv[]) {
             return 1;
         }
 
-        vec3f vgrid(nmodel, ngal, ngrid);
+        vec3f vgrid(nmodel, ngrid, ngal);
         vec1u idm(ngrid);
         for (uint_t im = 0; im < nmodel; ++im) {
             for (uint_t ig : range(ngrid)) {
-                vgrid.safe(im,_,ig) = grid.safe[ig].safe[idm.safe[ig]];
+                vgrid.safe(im,ig,_) = grid.safe[ig].safe[idm.safe[ig]];
             }
 
             increment_index_list(idm, grid_dims);
@@ -213,10 +213,10 @@ int vif_main(int argc, char* argv[]) {
         otbl.reach_hdu(1);
 
         for (uint_t i : range(prop_names)) {
-            otbl.write_column(prop_names[i], props(_,_,i));
+            otbl.write_column(prop_names[i], props(_,i,_));
         }
         for (uint_t i : range(grid_names)) {
-            otbl.write_column(grid_names[i], vgrid(_,_,i));
+            otbl.write_column(grid_names[i], vgrid(_,i,_));
         }
     } else if (ftype == 'B') {
         if (debug) {
