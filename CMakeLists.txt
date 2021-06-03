@@ -28,8 +28,8 @@ endif()
 ExternalProject_Add(cfitsio
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/cfitsio
     DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/cfitsio
-    GIT_REPOSITORY https://github.com/HEASARC/cfitsio.git
-    GIT_TAG ff6bdb0c2f891ae6709f6bb2378e24e005b7c92b
+    GIT_REPOSITORY https://github.com/cschreib/cfitsio.git
+    GIT_TAG 9a9fbdba78f5583795f995c0f43007c191ff1b91
     CMAKE_ARGS
         -DBUILD_SHARED_LIBS=OFF
         -DUSE_PTHREADS=ON
@@ -38,8 +38,7 @@ ExternalProject_Add(cfitsio
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DCMAKE_BUILD_TYPE=Release
-        -DCMAKE_C_FLAGS="-DHAVE_UNISTD_H")
+        -DCMAKE_BUILD_TYPE=Release)
 
 # Configure and build vif
 ExternalProject_Add(vif
