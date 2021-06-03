@@ -1,0 +1,48 @@
+name: CI
+
+on: [push, pull_request]
+
+env:
+  BUILD_TYPE: Release
+
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+        - { name: Ubuntu GCC,   os: ubuntu-latest,  compiler: g++,    }
+        - { name: Ubuntu Clang, os: ubuntu-latest,  compiler: clang++ }
+        - { name: MacOS,        os: macos-latest,   compiler: clang++ }
+
+    name: ${{matrix.platform.name}}
+    runs-on: ${{matrix.platform.os}}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
+    - name: Setup Linux compiler
+      if: runner.os == 'Linux'
+      run: export CXX=${{matrix.platform.compiler}}
+
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{github.workspace}}/build
+
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      run: cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+
+    - name: Build
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      run: cmake --build . --config ${BUILD_TYPE} --parallel 2
+
+    - name: Install
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      run: cmake --install . --config ${BUILD_TYPE}
