@@ -38,7 +38,8 @@ ExternalProject_Add(cfitsio
         -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DCMAKE_BUILD_TYPE=Release)
+        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_C_FLAGS="-DHAVE_UNISTD_H")
 
 # Configure and build vif
 ExternalProject_Add(vif
