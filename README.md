@@ -1,6 +1,6 @@
 # FAST++
 
-[![Build Status](https://travis-ci.com/cschreib/fastpp.svg?branch=master)](https://travis-ci.com/cschreib/fastpp)
+![Build Status](https://github.com/cschreib/fastpp/actions/workflows/cmake.yml/badge.svg)
 
 <!-- MarkdownTOC autolink=true levels=1,2 -->
 
