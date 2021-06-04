@@ -1,3 +1,16 @@
+v1.3.1 (04/06/2021)
+======
+
+Features:
+ - Added line number information to error messages from the LIR input catalog
+
+Bug fixes:
+ - Added missing "log_bc_age_max" to the hash for cached grids (will invalidate existing grids)
+ - Fixed grid2fits reading data in wrong order where there is more than one galaxy
+ - Fixed compilation with XCode 12
+ - Fixed compiler setup not properly propagated to dependencies (CFITSIO etc.)
+
+
 v1.3.0 (12/06/2019)
 ======
 
