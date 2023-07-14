@@ -137,60 +137,72 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
 
         ochi2.out_filename = opts.output_dir+"chi2.grid";
         ochi2.out_file.open(ochi2.out_filename, std::ios::binary | std::ios::out | std::ios::trunc);
+        if (ochi2.out_file.is_open()) {
+            ochi2.out_file.exceptions(std::ios::failbit);
 
-        // Write header
-        // Format:
-        // char:   file type ('C' = chi2 grid)
-        // uint32: size of header in bytes (to skip it)
-        // uint32: number of galaxies
-        // uint32: number of properties
-        // for each property:
-        //     char[*]: name
-        // uint32: number of grid axis
-        // for each grid axis:
-        //     char[*]: name
-        //     uint32: number of values
-        //     float[*]: grid values
-        const unsigned char ftype_chi2grid = 'C';
-        file::write_as<std::uint32_t>(ochi2.out_file, 0);
-        file::write(ochi2.out_file, ftype_chi2grid);
-        file::write_as<std::uint32_t>(ochi2.out_file, input.id.size());
+            try {
+                // Write header
+                // Format:
+                // char:   file type ('C' = chi2 grid)
+                // uint32: size of header in bytes (to skip it)
+                // uint32: number of galaxies
+                // uint32: number of properties
+                // for each property:
+                //     char[*]: name
+                // uint32: number of grid axis
+                // for each grid axis:
+                //     char[*]: name
+                //     uint32: number of values
+                //     float[*]: grid values
+                const unsigned char ftype_chi2grid = 'C';
+                file::write_as<std::uint32_t>(ochi2.out_file, 0);
+                file::write(ochi2.out_file, ftype_chi2grid);
+                file::write_as<std::uint32_t>(ochi2.out_file, input.id.size());
 
-        file::write_as<std::uint32_t>(ochi2.out_file, gridder.nprop);
-        for (uint_t i : range(gridder.nprop)) {
-            file::write(ochi2.out_file, output.param_names[gridder.nparam+i]);
-        }
+                file::write_as<std::uint32_t>(ochi2.out_file, gridder.nprop);
+                for (uint_t i : range(gridder.nprop)) {
+                    file::write(ochi2.out_file, output.param_names[gridder.nparam+i]);
+                }
 
-        file::write_as<std::uint32_t>(ochi2.out_file, gridder.grid_dims.size());
-        for (uint_t i : range(gridder.grid_dims)) {
-            file::write(ochi2.out_file, output.param_names[i]);
-            file::write_as<std::uint32_t>(ochi2.out_file, gridder.grid_dims[i]);
-            file::write(ochi2.out_file, output.grid[i]);
-        }
+                file::write_as<std::uint32_t>(ochi2.out_file, gridder.grid_dims.size());
+                for (uint_t i : range(gridder.grid_dims)) {
+                    file::write(ochi2.out_file, output.param_names[i]);
+                    file::write_as<std::uint32_t>(ochi2.out_file, gridder.grid_dims[i]);
+                    file::write(ochi2.out_file, output.grid[i]);
+                }
 
-        ochi2.hpos = ochi2.out_file.tellp();
+                ochi2.hpos = ochi2.out_file.tellp();
 
-        ochi2.out_file.seekp(0);
-        file::write_as<std::uint32_t>(ochi2.out_file, ochi2.hpos);
-        ochi2.out_file.seekp(ochi2.hpos);
+                ochi2.out_file.seekp(0);
+                file::write_as<std::uint32_t>(ochi2.out_file, ochi2.hpos);
+                ochi2.out_file.seekp(ochi2.hpos);
 
-        // Populate the file with empty data now
-        // For each point of the grid, we store chi2 and properties
-        uint_t nmodel1 = gridder.nmodel;
-        uint_t idm = max_id(gridder.grid_dims);
-        nmodel1 /= gridder.grid_dims[idm];
-        vec1f chunk = replicate(fnan, gridder.grid_dims[idm]*input.id.size()*(1+gridder.nprop));
-        for (uint_t im = 0; im < nmodel1; ++im) {
-            if (!file::write(ochi2.out_file, chunk)) {
-                warning("the chi2 grid could not be initialized");
+                // Populate the file with empty data now
+                // For each point of the grid, we store chi2 and properties
+                uint_t nmodel1 = gridder.nmodel;
+                uint_t idm = max_id(gridder.grid_dims);
+                nmodel1 /= gridder.grid_dims[idm];
+                vec1f chunk = replicate(fnan, gridder.grid_dims[idm]*input.id.size()*(1+gridder.nprop));
+                for (uint_t im = 0; im < nmodel1; ++im) {
+                    file::write(ochi2.out_file, chunk);
+                }
+            }
+            catch (const std::exception&) {
+                warning("the best chi2 file could not be initialized");
                 ochi2.out_file.close();
+
                 file::remove(ochi2.out_filename);
 
                 warning("in case you ran out of disk space, the file was deleted "
-                    "and the grid will not be saved");
+                    "and the data will not be saved");
+
                 save_chi2 = false;
-                break;
             }
+        } else {
+            error("could not open chi2 file for saving: '", ochi2.out_filename, "'");
+            error("please check that you have permission to write in this directory");
+            error("chi2 grid will not be saved");
+            save_chi2 = false;
         }
     }
 
@@ -202,55 +214,74 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
             chi2_filename.resize(input.id.size());
             best_chi2 = replicate(finf, input.id.size());
 
-            std::ofstream out;
             for (uint_t is : range(input.id)) {
-                chi2_filename[is] = odir+opts.catalog+"_"+input.id[is]+".chi2.grid";
+                chi2_filename[is] = odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".chi2.grid";
+                std::ofstream out;
                 out.open(chi2_filename[is], std::ios::binary | std::ios::out | std::ios::trunc);
+                if (!out.is_open()) {
+                    error("could not open chi2 file for saving: '", chi2_filename[is], "'");
+                    error("please check that you have permission to write in this directory");
+                    error("best chi2 data will not be saved");
+                    break;
+                }
 
-                if (is == 0) {
-                    // Format:
-                    // char:   file type ('B' = best chi2)
-                    // uint32: size of header in bytes (to skip it)
-                    // uint32: number of properties
-                    // for each property:
-                    //     char[*]: name
-                    // uint32: number of grid axis
-                    // for each grid axis:
-                    //     char[*]: name
-                    //     uint32: number of values
-                    //     float[*]: grid values
-                    const unsigned char ftype_bestchi2 = 'B';
-                    file::write_as<std::uint32_t>(out, 0);
-                    file::write(out, ftype_bestchi2);
-                    file::write_as<std::uint32_t>(out, gridder.nprop);
-                    for (uint_t i : range(gridder.nprop)) {
-                        file::write(out, output.param_names[gridder.nparam+i]);
+                out.exceptions(std::ios::failbit);
+
+                try {
+                    if (is == 0) {
+                        // Format:
+                        // char:   file type ('B' = best chi2)
+                        // uint32: size of header in bytes (to skip it)
+                        // uint32: number of properties
+                        // for each property:
+                        //     char[*]: name
+                        // uint32: number of grid axis
+                        // for each grid axis:
+                        //     char[*]: name
+                        //     uint32: number of values
+                        //     float[*]: grid values
+                        const unsigned char ftype_bestchi2 = 'B';
+                        file::write_as<std::uint32_t>(out, 0);
+                        file::write(out, ftype_bestchi2);
+                        file::write_as<std::uint32_t>(out, gridder.nprop);
+                        for (uint_t i : range(gridder.nprop)) {
+                            file::write(out, output.param_names[gridder.nparam+i]);
+                        }
+
+                        file::write_as<std::uint32_t>(out, gridder.grid_dims.size());
+                        for (uint_t i : range(gridder.grid_dims)) {
+                            file::write(out, output.param_names[i]);
+                            file::write_as<std::uint32_t>(out, gridder.grid_dims[i]);
+                            file::write(out, output.grid[i]);
+                        }
+
+                        obchi2.hpos = out.tellp();
+
+                        out.seekp(0);
+                        file::write_as<std::uint32_t>(out, obchi2.hpos);
+                        out.close();
+
+                        // Read back header for faster writes
+                        std::ifstream in(chi2_filename[is], std::ios::binary | std::ios::in);
+                        obchi2.header.resize(obchi2.hpos);
+                        file::read(in, obchi2.header);
+                    } else {
+                        file::write(out, obchi2.header);
+                        out.close();
                     }
-
-                    file::write_as<std::uint32_t>(out, gridder.grid_dims.size());
-                    for (uint_t i : range(gridder.grid_dims)) {
-                        file::write(out, output.param_names[i]);
-                        file::write_as<std::uint32_t>(out, gridder.grid_dims[i]);
-                        file::write(out, output.grid[i]);
-                    }
-
-                    obchi2.hpos = out.tellp();
-
-                    out.seekp(0);
-                    file::write_as<std::uint32_t>(out, obchi2.hpos);
+                }
+                catch (const std::exception&) {
+                    warning("the best chi2 file could not be initialized");
                     out.close();
 
-                    // Read back header for faster writes
-                    std::ifstream in(chi2_filename[is], std::ios::binary | std::ios::in);
-                    obchi2.header.resize(obchi2.hpos);
-                    file::read(in, obchi2.header);
-                } else {
-                    file::write(out, obchi2.header);
-                    out.close();
+                    file::remove(ochi2.out_filename);
+
+                    warning("in case you ran out of disk space, the file was deleted "
+                        "and the data will not be saved");
                 }
             }
         } else {
-            warning("best chi2 file will also not be saved because of lack of disk space");
+            warning("best chi2 file will also not be saved");
         }
     }
 
@@ -838,7 +869,7 @@ void fitter_t::find_best_fits() {
                     warning("could not save simulations");
                     warning("the output directory '", odir, "' could not be created");
                 } else {
-                    fits::write_table(odir+opts.catalog+"_"+input.id[is]+".sims.fits",
+                    fits::write_table(odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".sims.fits",
                         "result", bparams, "params", output.param_names,
                         "chi2", output.mc_best_chi2(is,_)
                     );

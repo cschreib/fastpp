@@ -287,7 +287,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         flx *= scale;
 
         // Save model
-        std::ofstream fout(odir+opts.catalog+"_"+input.id[is]+".fit");
+        std::ofstream fout(odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".fit");
         if (opts.intrinsic_best_fit) {
             fout << "# wl fl fl_nodust (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
         } else {
@@ -306,7 +306,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         fout.close();
 
         // Save fluxes
-        fout.open(odir+opts.catalog+"_"+input.id[is]+".input_res.fit");
+        fout.open(odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".input_res.fit");
         fout << "# wl fl_model fl_obs unc_obs (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
         for (uint_t il : range(input.lambda)) {
             fout << std::setw(13) << float(input.lambda[il])

@@ -1,3 +1,10 @@
+v1.3.3 (14/07/2023)
+======
+
+Bug fixes:
+ - Fixed crash when saving extra outputs and using an absolute path in CATALOG
+
+
 v1.3.2 (16/07/2022)
 ======
 
