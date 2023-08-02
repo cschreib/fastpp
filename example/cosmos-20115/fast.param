@@ -106,6 +106,9 @@ MAX_QUEUED_FITS = 10000
 # o TEMP_ERR_FILE: Template error function. The photometric errors are
 #   in rest-frame multiplied by this function.
 #
+# o TEMP_ERR_SPEC_FILE: Template error function for spectrum. The
+#   spectroscopic errors are in rest-frame multiplied by this function.
+#
 # o NAME_ZPHOT: Header name of the column in your [CATALOG].zout file
 #   that you want to use for your photometric redshifts. If not defined,
 #   FAST will look for 'z_phot'
@@ -140,16 +143,17 @@ MAX_QUEUED_FITS = 10000
 #
 #-----------------------------------------------------------------------
 
-CATALOG        = 'photometry'
-AB_ZEROPOINT   = 23.9
-FILTERS_RES    = '../../share/FILTER.RES.latest'
-FILTER_FORMAT  = 1
-TEMP_ERR_FILE  = '../../share/TEMPLATE_ERROR.fast.v0.2'
-NAME_ZPHOT     = ''
-FORCE_ZPHOT    = 0          # 0 / 1
-BEST_AT_ZPHOT  = 1          # 0 / 1
-ZPHOT_CONF     = 68         # 68 / 95 / 99
-USE_LIR        = 1          # 0 / 1
+CATALOG             = 'photometry'
+AB_ZEROPOINT        = 23.9
+FILTERS_RES         = '../../share/FILTER.RES.latest'
+FILTER_FORMAT       = 1
+TEMP_ERR_FILE       = '../../share/TEMPLATE_ERROR.fast.v0.2'
+TEMP_ERR_SPEC_FILE  = ''
+NAME_ZPHOT          = ''
+FORCE_ZPHOT         = 0          # 0 / 1
+BEST_AT_ZPHOT       = 1          # 0 / 1
+ZPHOT_CONF          = 68         # 68 / 95 / 99
+USE_LIR             = 1          # 0 / 1
 
 
 #--- SPECTROSCOPIC INFORMATION -----------------------------------------

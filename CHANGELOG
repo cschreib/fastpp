@@ -1,5 +1,10 @@
-v1.3.3 (14/07/2023)
+v1.4.0 (02/08/2023)
 ======
+
+Features:
+ - Added option TEMP_ERR_SPEC_FILE to control the template error function for the spectrum
+ - The spectrum no longer inherits the same template error function as the photometry
+ - AUTO_SCALE=1 no longer automatically disables the template error for the spectrum
 
 Bug fixes:
  - Fixed crash when saving extra outputs and using an absolute path in CATALOG

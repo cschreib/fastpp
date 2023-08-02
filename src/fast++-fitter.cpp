@@ -7,27 +7,38 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
     vec1f& output_z = output.grid[grid_id::z];
 
     // Pre-compute template error
-    if (!opts.temp_err_file.empty()) {
+    if (!opts.temp_err_file.empty() || !opts.temp_err_spec_file.empty()) {
         if (opts.verbose) note("initializing template error function...");
-        double l0 = median(input.tplerr_lam);
+        tpl_err = replicate(0.0f, output_z.size(), input.lambda.size());
+    }
 
-        tpl_err.resize(output_z.size(), input.lambda.size());
+    auto precompute_tpl_err = [&](uint_t is, uint_t nlambda, const vec1f& lam, const vec1f& err) {
+        double l0 = median(lam);
+
         for (uint_t iz : range(output_z))
-        for (uint_t il : range(input.lambda)) {
-            tpl_err.safe(iz,il) = sqr(astro::sed2flux(
+        for (uint_t il : range(is, nlambda)) {
+            tpl_err.safe(iz,il) = astro::sed2flux(
                 input.filters[il].wl, input.filters[il].tr,
-                input.tplerr_lam*(1.0 + output_z[iz]), input.tplerr_err
-            ));
+                lam*(1.0 + output_z[iz]), err
+            );
 
             if (!is_finite(tpl_err.safe(iz,il))) {
                 // The filter goes out of the template error function, extrapolate
                 if (input.lambda.safe[il] < l0) {
-                    tpl_err.safe(iz,il) = sqr(input.tplerr_err.front());
+                    tpl_err.safe(iz,il) = err.front();
                 } else {
-                    tpl_err.safe(iz,il) = sqr(input.tplerr_err.back());
+                    tpl_err.safe(iz,il) = err.back();
                 }
             }
         }
+    };
+
+    if (!opts.temp_err_file.empty()) {
+        precompute_tpl_err(input.phot_start, input.phot_end, input.tplerr_lam, input.tplerr_err);
+    }
+
+    if (!opts.temp_err_spec_file.empty()) {
+        precompute_tpl_err(input.spec_start, input.spec_end, input.tplerr_spec_lam, input.tplerr_spec_err);
     }
 
     // Pre-identify zgrid for galaxies with zspec or zphot
@@ -522,18 +533,24 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
             ++iflx;
         }
 
-        for (uint_t il : range(iflx, nscale)) {
-            wsp.weight[il] = (opts.temp_err_file.empty() ?
-                1.0/input.eflux.safe(is,il-iflx) :
-                1.0/sqrt((sqr(input.eflux.safe(is,il-iflx)) +
-                    tpl_err.safe(iz,il-iflx)*sqr(input.flux.safe(is,il-iflx))))
+        bool use_template_error = !tpl_err.empty();
+
+        auto fill_workspace = [&](uint_t iw, uint_t il) {
+            wsp.weight[iw] = (!use_template_error ?
+                1.0/input.eflux.safe(is,il) :
+                1.0/sqrt((sqr(input.eflux.safe(is,il)) +
+                    sqr(tpl_err.safe(iz,il)*input.flux.safe(is,il))))
             );
 
-            wsp.wflux[il] = input.flux.safe(is,il-iflx)*wsp.weight[il];
-            wsp.wmodel[il] = model.flux.safe[il-iflx]*wsp.weight[il];
+            wsp.wflux[iw] = input.flux.safe(is,il)*wsp.weight[iw];
+            wsp.wmodel[iw] = model.flux.safe[il]*wsp.weight[iw];
 
-            wfm += wsp.wmodel[il]*wsp.wflux[il];
-            wmm += sqr(wsp.wmodel[il]);
+        };
+
+        for (uint_t iw : range(iflx, nscale)) {
+            fill_workspace(iw, iw-iflx);
+            wfm += wsp.wmodel[iw]*wsp.wflux[iw];
+            wmm += sqr(wsp.wmodel[iw]);
         }
 
         double scale = wfm/wmm;
@@ -546,13 +563,10 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
         // the shape of the spectrum.
         double swfm = 0, swmm = 0;
         if (spec_auto_scale) {
-            for (uint_t il : range(nscale, ndata)) {
-                wsp.weight[il] = 1.0/input.eflux.safe(is,il-iflx);
-                wsp.wflux[il] = input.flux.safe(is,il-iflx)*wsp.weight[il];
-                wsp.wmodel[il] = model.flux.safe[il-iflx]*wsp.weight[il];
-
-                swfm += wsp.wmodel[il]*wsp.wflux[il];
-                swmm += sqr(wsp.wmodel[il]);
+            for (uint_t iw : range(nscale, ndata)) {
+                fill_workspace(iw, iw-iflx);
+                swfm += wsp.wmodel[iw]*wsp.wflux[iw];
+                swmm += sqr(wsp.wmodel[iw]);
             }
 
             spec_scale = swfm/swmm;
@@ -565,11 +579,11 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
         // Compute chi2
         double tchi2 = 0;
-        for (uint_t il : range(nscale)) {
-            tchi2 += sqr(wsp.wflux[il] - scale*wsp.wmodel[il]);
+        for (uint_t iw : range(nscale)) {
+            tchi2 += sqr(wsp.wflux[iw] - scale*wsp.wmodel[iw]);
         }
-        for (uint_t il : range(nscale, ndata)) {
-            tchi2 += sqr(wsp.wflux[il] - spec_scale*wsp.wmodel[il]);
+        for (uint_t iw : range(nscale, ndata)) {
+            tchi2 += sqr(wsp.wflux[iw] - spec_scale*wsp.wmodel[iw]);
         }
 
         // Add LIR as a contribution to chi2 (if given in log units)
@@ -621,15 +635,15 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
                 // all models (and each galaxy) will use the same random numbers
                 wfm = 0;
                 swfm = 0;
-                for (uint_t il : range(nscale)) {
+                for (uint_t iw : range(nscale)) {
                     // In weighted units, the random perturbations have a sigma of unity
-                    wsp.rflux[il] = wsp.wflux[il] + sim_rnd.safe(im,il);
-                    wfm += wsp.wmodel[il]*wsp.rflux[il];
+                    wsp.rflux[iw] = wsp.wflux[iw] + sim_rnd.safe(im,iw);
+                    wfm += wsp.wmodel[iw]*wsp.rflux[iw];
                 }
-                for (uint_t il : range(nscale, ndata)) {
+                for (uint_t iw : range(nscale, ndata)) {
                     // When auto scale is ON, spectral data doesn't participate in scale factor
-                    wsp.rflux[il] = wsp.wflux[il] + sim_rnd.safe(im,il);
-                    swfm += wsp.wmodel[il]*wsp.rflux[il];
+                    wsp.rflux[iw] = wsp.wflux[iw] + sim_rnd.safe(im,iw);
+                    swfm += wsp.wmodel[iw]*wsp.rflux[iw];
                 }
 
                 scale = wfm/wmm;
@@ -641,11 +655,11 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
                 // Compute chi2
                 tchi2 = 0;
-                for (uint_t il : range(nscale)) {
-                    tchi2 += sqr(wsp.rflux[il] - scale*wsp.wmodel[il]);
+                for (uint_t iw : range(nscale)) {
+                    tchi2 += sqr(wsp.rflux[iw] - scale*wsp.wmodel[iw]);
                 }
-                for (uint_t il : range(nscale, ndata)) {
-                    tchi2 += sqr(wsp.rflux[il] - spec_scale*wsp.wmodel[il]);
+                for (uint_t iw : range(nscale, ndata)) {
+                    tchi2 += sqr(wsp.rflux[iw] - spec_scale*wsp.wmodel[iw]);
                 }
 
                 // Add LIR as a contribution to chi2 (if given in log units)

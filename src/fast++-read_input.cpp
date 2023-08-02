@@ -95,6 +95,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(filters_res)
         PARSE_OPTION_RENAME(filters_format, "filter_format")
         PARSE_OPTION(temp_err_file)
+        PARSE_OPTION(temp_err_spec_file)
         PARSE_OPTION(name_zphot)
         PARSE_OPTION(spectrum)
         PARSE_OPTION(auto_scale)
@@ -1062,6 +1063,9 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
         state.eflux(i,idbb) = 1e19*abzp*astro::uJy2cgs(state.lambda*1e-4, state.eflux(i,idbb));
     }
 
+    state.phot_start = 0;
+    state.phot_end = state.flux.dims[1];
+
     if (opts.verbose) {
         note("fitting ", state.flux.dims[0], " source", (state.flux.dims[0] > 1 ? "s" : ""),
             " with ", state.flux.dims[1], " fluxes", (state.flux.dims[0] > 1 ? " each" : ""));
@@ -1717,6 +1721,30 @@ bool read_template_error(const options_t& opts, input_state_t& state) {
     return true;
 }
 
+bool read_template_error_spec(const options_t& opts, input_state_t& state) {
+    if (opts.temp_err_spec_file.empty()) {
+        return true;
+    }
+
+    if (opts.verbose) {
+        note("apply template library error function to spectrum");
+    }
+
+    if (!file::exists(opts.temp_err_spec_file)) {
+        error("could not open template spectrum error function file '", opts.temp_err_spec_file, "'");
+        return false;
+    }
+
+    ascii::read_table(opts.temp_err_spec_file, state.tplerr_spec_lam, state.tplerr_spec_err);
+
+    if (state.tplerr_spec_lam.empty()) {
+        error("template spectrum error function is empty, something must be wrong in the file");
+        return false;
+    }
+
+    return true;
+}
+
 bool check_input(options_t& opts, input_state_t& state) {
     if (!state.zspec.empty()) {
         // Check that zspecs are covered by the redshift grid
@@ -1910,6 +1938,11 @@ bool read_input(options_t& opts, input_state_t& state, const std::string& filena
 
     // Read the template error function, if any
     if (!read_template_error(opts, state)) {
+        return false;
+    }
+
+    // Read the spectrum template error function, if any
+    if (!read_template_error_spec(opts, state)) {
         return false;
     }
 

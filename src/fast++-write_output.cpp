@@ -69,6 +69,9 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     if (!opts.temp_err_file.empty()) {
     fout << "# Template error function: " << opts.temp_err_file << std::endl;
     }
+    if (!opts.temp_err_spec_file.empty()) {
+    fout << "# Template spectrum error function: " << opts.temp_err_spec_file << std::endl;
+    }
     fout << "# AB ZP:       " << opts.ab_zeropoint << std::endl;
     fout << "# Library:     " << pretty_library(opts.library) << std::endl;
     switch (opts.sfh) {

@@ -49,6 +49,7 @@ struct options_t {
 
     // Templates parameter
     std::string temp_err_file;
+    std::string temp_err_spec_file;
     std::string library_dir;
     std::string library;
     std::string dust_law;
@@ -197,6 +198,8 @@ struct sfh_quantity_t {
 struct input_state_t {
     // List of filter ID used in the photometric catalog
     vec1u no_filt;                      // [nfilt]
+    // First and last ID of photometric measurements in the flux array
+    uint_t phot_start = npos, phot_end = npos; // [nphot]
     // First and last ID of spectral measurements in the flux array
     uint_t spec_start = npos, spec_end = npos; // [nspec]
     // Central wavelength of the filters
@@ -222,8 +225,9 @@ struct input_state_t {
     vec<1,fast_filter_t> filters; // [nfilt+nspec]
     vec<1,fast_filter_t> rf_filters; // [nrffilt]
 
-    // Template error function
+    // Template error functions
     vec1f tplerr_lam, tplerr_err;
+    vec1f tplerr_spec_lam, tplerr_spec_err;
 
     // Continuum indices definitions
     vec<1,absorption_line_t> abs_lines;
