@@ -49,7 +49,6 @@ struct options_t {
 
     // Templates parameter
     std::string temp_err_file;
-    std::string temp_err_spec_file;
     std::string library_dir;
     std::string library;
     std::string dust_law;
@@ -98,6 +97,10 @@ struct options_t {
 
     // NB: parameters below were not in original FAST
     // ----------------------------------------------
+
+    // Spectra
+    std::string temp_err_spec_file;
+    std::string spec_lsf_file;
 
     // z-phot behavior
     bool force_zphot = false;
@@ -228,6 +231,9 @@ struct input_state_t {
     // Template error functions
     vec1f tplerr_lam, tplerr_err;
     vec1f tplerr_spec_lam, tplerr_spec_err;
+
+    // Line spread function
+    vec1f tpllsf_lam, tpllsf_sigma;
 
     // Continuum indices definitions
     vec<1,absorption_line_t> abs_lines;
@@ -411,7 +417,10 @@ private :
     bool get_age_bounds(const vec1f& ised_age, float nage, std::array<uint_t,2>& p, double& x) const;
     void evaluate_sfh_custom(const vec1u& idm, const vec1d& t, vec1d& sfh) const;
 
-    vec2d convolve_vdisp(const vec1d& lam, const vec2d& osed, double vdisp) const;
+    vec2d convolve_function(const vec1d& lam, const vec2d& osed, uint_t n_thread,
+        std::function<double(double)> sigma_fun) const;
+    vec1d convolve_obs(const vec1d& lam, const vec1d& osed) const;
+    vec2d convolve_rest(const vec1d& lam, const vec2d& osed) const;
 
     mutable tinyexpr_wrapper sfh_expr;
     mutable tinyexpr_wrapper exclude_expr;

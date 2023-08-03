@@ -119,7 +119,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
 
         // Apply velocity dispersion
         if (is_finite(opts.apply_vdisp)) {
-            ssp.sed = convolve_vdisp(ssp.lambda, ssp.sed, opts.apply_vdisp);
+            ssp.sed = convolve_rest(ssp.lambda, ssp.sed);
         }
 
         // Pre-compute dust law & IGM absorption (they don't change with SFH)
@@ -286,7 +286,7 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
 
         // Apply velocity dispersion
         if (is_finite(opts.apply_vdisp)) {
-            ssp->sed = convolve_vdisp(ssp->lambda, ssp->sed, opts.apply_vdisp);
+            ssp->sed = convolve_rest(ssp->lambda, ssp->sed);
         }
     }
 
@@ -340,7 +340,7 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux_youn
 
         // Apply velocity dispersion
         if (is_finite(opts.apply_vdisp)) {
-            ssp->sed = convolve_vdisp(ssp->lambda, ssp->sed, opts.apply_vdisp);
+            ssp->sed = convolve_rest(ssp->lambda, ssp->sed);
         }
     }
 

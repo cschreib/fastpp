@@ -5,6 +5,7 @@ Features:
  - Added option TEMP_ERR_SPEC_FILE to control the template error function for the spectrum
  - The spectrum no longer inherits the same template error function as the photometry
  - AUTO_SCALE=1 no longer automatically disables the template error for the spectrum
+ - Added option SPEC_LSF_FILE to apply a line spread function to the models
 
 Bug fixes:
  - Fixed crash when saving extra outputs and using an absolute path in CATALOG

@@ -702,6 +702,11 @@ void gridder_t::redshift_and_send(fitter_t& fitter, progress_t& pg,
             tpl_att_z_lam.safe[il] *= (1.0 + output_z.safe[iz]);
         }
 
+        if (!input.tpllsf_sigma.empty()) {
+            // Apply velocity dispersion
+            tpl_att_z_flux = convolve_obs(tpl_att_z_lam, tpl_att_z_flux);
+        }
+
         // Integrate
         for (uint_t il : range(input.lambda)) {
             model.flux.safe[il] = astro::sed2flux(
@@ -716,6 +721,8 @@ void gridder_t::redshift_and_send(fitter_t& fitter, progress_t& pg,
         }
 
         // See if we want to use this model or not
+        // NB we still want to compute the model fluxes for the cache, this is just to
+        // decide whether the model is used in the fit
         bool nofit = false;
         if (!opts.no_max_age && lage > auniv[iz]) {
             // Age greater than the age of the universe
@@ -1014,6 +1021,11 @@ bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
         lam.safe[il] *= (1.0 + z);
     }
 
+    if (!input.tpllsf_sigma.empty()) {
+        // Apply velocity dispersion
+        flux = convolve_obs(lam, flux);
+    }
+
     // Integrate
     iflux.resize(input.lambda.size());
     for (uint_t il : range(input.lambda)) {
@@ -1046,8 +1058,10 @@ bool gridder_t::get_sfh(uint_t igrid, const vec1d& t, vec1d& sfh) const {
     }
 }
 
-vec2d gridder_t::convolve_vdisp(const vec1d& lam, const vec2d& osed, double vdisp) const {
-    vec2d sed(osed.dims);
+vec2d gridder_t::convolve_function(const vec1d& lam, const vec2d& osed, uint_t n_thread,
+    std::function<double(double)> sigma_fun) const {
+
+    vec2d sed = replicate(0.0, osed.dims);
 
     const uint_t nlam = lam.size();
     const double max_sigma = 5.0;
@@ -1055,7 +1069,7 @@ vec2d gridder_t::convolve_vdisp(const vec1d& lam, const vec2d& osed, double vdis
     auto do_convolve = [&](uint_t lbegin, uint_t lend) {
         for (uint_t l : range(lbegin, lend)) {
             // Get sigma in wavelength units
-            double sigma = lam.safe[l]*(vdisp/2.99792e5);
+            double sigma = sigma_fun(lam.safe[l]);
 
             // Find bounds
             uint_t i0 = l, i1 = l;
@@ -1077,16 +1091,16 @@ vec2d gridder_t::convolve_vdisp(const vec1d& lam, const vec2d& osed, double vdis
         }
     };
 
-    if (opts.n_thread <= 1) {
+    if (n_thread <= 1) {
         // Single-threaded
         do_convolve(0, lam.size());
     } else {
         // Multi-threaded
-        auto tp = thread::pool(opts.n_thread);
-        uint_t dl = lam.size()/opts.n_thread + 1;
+        auto tp = thread::pool(n_thread);
+        uint_t dl = lam.size()/n_thread + 1;
         uint_t l0 = 0;
         uint_t l1 = dl;
-        for (uint_t it : range(opts.n_thread)) {
+        for (uint_t it : range(n_thread)) {
             tp[it].start(do_convolve, l0, l1);
             l0 += dl;
             l1 += dl;
@@ -1095,12 +1109,34 @@ vec2d gridder_t::convolve_vdisp(const vec1d& lam, const vec2d& osed, double vdis
             }
         }
 
-        for (uint_t it : range(opts.n_thread)) {
+        for (uint_t it : range(n_thread)) {
             tp[it].join();
         }
     }
 
     return sed;
+}
+
+vec1d gridder_t::convolve_obs(const vec1d& lam, const vec1d& osed) const {
+    // We can't use multi-threading if 'generators' is chosen as parallel mode, since
+    // we will already be generating multiple models in different threads.
+    uint_t nthread = (opts.parallel == parallel_choice::generators ? 1 : opts.n_thread);
+
+    return flatten(convolve_function(lam, reform(osed, 1, osed.size()), nthread, [&](double lobs) {
+        if (lobs < input.tpllsf_lam.front()) {
+            return input.tpllsf_sigma.front();
+        } else if (lobs > input.tpllsf_lam.back()) {
+            return input.tpllsf_sigma.back();
+        } else {
+            return interpolate(input.tpllsf_sigma, input.tpllsf_lam, lobs);
+        }
+    }));
+}
+
+vec2d gridder_t::convolve_rest(const vec1d& lam, const vec2d& osed) const {
+    return convolve_function(lam, osed, opts.n_thread, [&](double lrest) {
+        return lrest*opts.apply_vdisp/2.99792e5;
+    });
 }
 
 struct sed_id_pair {

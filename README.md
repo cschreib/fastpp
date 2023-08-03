@@ -34,6 +34,7 @@
     - [Using priors on the infrared luminosity](#using-priors-on-the-infrared-luminosity)
     - [Better treatment of spectra](#better-treatment-of-spectra)
     - [Velocity broadening](#velocity-broadening)
+    - [Line spread function](#line-spread-function)
     - [Continuum indices](#continuum-indices)
 - [Additional documentation](#additional-documentation)
     - [Adding new filters](#adding-new-filters)
@@ -485,6 +486,10 @@ By default, the template spectra produced by FAST++ assume no velocity dispersio
 The solution implemented in FAST++ is to broaden all the spectral templates with a fixed velocity dispersion, specified in ```APPLY_VDISP``` (in km/s). Note that this is the value of the velocity *dispersion* (i.e., the "sigma" of the Gaussian velocity profile), not the FWHM. Unfortunately, because of the architecture of the code, it is not possible to specify different velocity dispersions for each galaxy of the input catalog. If you need to do this, you will have to fit each galaxy separately, in different FAST++ runs.
 
 NB: applying the velocity dispersion needs to be done for each SED library that is used in the fit. This incurs a small performance penalty at the beginning of the fit (and whenever the library is changed, e.g., when switching to a new metallicity). If your grid is small, this step can actually dominate the total computation time.
+
+
+## Line spread function
+```SPEC_LSF_FILE``` can be used to specify a file holding the line spread function of the instrument that was used to acquire the spectra. This file must contain the "sigma" of the Gaussian profile of the line spread function, expressed in Angstroms (observer frame), as a function of observed wavelength (also in Angstroms). It will be linearly interpolated at each observed wavelength of the models used in the fit, and the resulting value will be used to broaden the model by the specified value around that observed wavelength.
 
 
 ## Continuum indices

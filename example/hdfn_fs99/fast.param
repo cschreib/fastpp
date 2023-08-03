@@ -106,9 +106,6 @@ MAX_QUEUED_FITS = 1000
 # o TEMP_ERR_FILE: Template error function. The photometric errors are
 #   in rest-frame multiplied by this function.
 #
-# o TEMP_ERR_SPEC_FILE: Template error function for spectrum. The
-#   spectroscopic errors are in rest-frame multiplied by this function.
-#
 # o NAME_ZPHOT: Header name of the column in your [CATALOG].zout file
 #   that you want to use for your photometric redshifts. If not defined,
 #   FAST will look for 'z_phot'
@@ -148,7 +145,6 @@ AB_ZEROPOINT        = 25.
 FILTERS_RES         = '../../share/FILTER.RES.latest'
 FILTER_FORMAT       = 1
 TEMP_ERR_FILE       = '../../share/TEMPLATE_ERROR.fast.v0.2'
-TEMP_ERR_SPEC_FILE  = ''
 NAME_ZPHOT          = 'z_m2'
 FORCE_ZPHOT         = 0          # 0 / 1
 BEST_AT_ZPHOT       = 1          # 0 / 1
@@ -170,6 +166,9 @@ USE_LIR             = 0          # 0 / 1
 #   - id[.]: should be an ID in the flux catalog
 #   - Missing values can be signaled with negative errors or "NaN".
 #
+# o TEMP_ERR_SPEC_FILE: Template error function for spectrum. The
+#   spectroscopic errors are in rest-frame multiplied by this function.
+#
 # o AUTO_SCALE: This option automatically adjusts the spectrum to the
 #   model separately from the rest of the photometry. The spectrum thus
 #   does not participate in determining the best amplitude of the
@@ -185,11 +184,21 @@ USE_LIR             = 0          # 0 / 1
 #   when fitting spectra, and has an impact on performances (a couple
 #   seconds of extra delay), so it is disabled by default.
 #
+# o SPEC_LSF_FILE: Line spread function for spectrum. Must be given as the
+#   dispersion (in Angstrom) as a function of observed wavelength
+#   (in Angstrom). If specified, will broaden the templates with the
+#   provided dispersion. This is only relevant when fitting spectra, and
+#   has an large impact on performances. Only use if the spectral
+#   resolution of is finer than the LSF, and if binning the spectrum is
+#   not acceptable.
+#
 #-----------------------------------------------------------------------
 
-SPECTRUM       = ''
-AUTO_SCALE     = 0          # 0 / 1
-APPLY_VDISP    = 0          # km/s
+SPECTRUM            = ''
+TEMP_ERR_SPEC_FILE  = ''
+AUTO_SCALE          = 0          # 0 / 1
+APPLY_VDISP         = 0          # km/s
+SPEC_LSF_FILE       = ''
 
 
 #--- OUTPUT INFORMATION  -----------------------------------------------

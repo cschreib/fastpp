@@ -96,6 +96,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION_RENAME(filters_format, "filter_format")
         PARSE_OPTION(temp_err_file)
         PARSE_OPTION(temp_err_spec_file)
+        PARSE_OPTION(spec_lsf_file)
         PARSE_OPTION(name_zphot)
         PARSE_OPTION(spectrum)
         PARSE_OPTION(auto_scale)
@@ -1703,7 +1704,7 @@ bool read_template_error(const options_t& opts, input_state_t& state) {
     }
 
     if (opts.verbose) {
-        note("apply template library error function to photometry");
+        note("apply template library error function to photometry '", opts.temp_err_file, "'");
     }
 
     if (!file::exists(opts.temp_err_file)) {
@@ -1718,6 +1719,11 @@ bool read_template_error(const options_t& opts, input_state_t& state) {
         return false;
     }
 
+    if (!is_sorted(state.tplerr_lam)) {
+        error("template error function must be sorted by increasing wavelength");
+        return false;
+    }
+
     return true;
 }
 
@@ -1727,7 +1733,7 @@ bool read_template_error_spec(const options_t& opts, input_state_t& state) {
     }
 
     if (opts.verbose) {
-        note("apply template library error function to spectrum");
+        note("apply template library error function to spectrum '", opts.temp_err_spec_file, "'");
     }
 
     if (!file::exists(opts.temp_err_spec_file)) {
@@ -1739,6 +1745,40 @@ bool read_template_error_spec(const options_t& opts, input_state_t& state) {
 
     if (state.tplerr_spec_lam.empty()) {
         error("template spectrum error function is empty, something must be wrong in the file");
+        return false;
+    }
+
+    if (!is_sorted(state.tplerr_spec_lam)) {
+        error("template spectrum error function must be sorted by increasing wavelength");
+        return false;
+    }
+
+    return true;
+}
+
+bool read_lsf_spec(const options_t& opts, input_state_t& state) {
+    if (opts.spec_lsf_file.empty()) {
+        return true;
+    }
+
+    if (opts.verbose) {
+        note("apply line spread function to models '", opts.spec_lsf_file, "'");
+    }
+
+    if (!file::exists(opts.spec_lsf_file)) {
+        error("could not open line spread function file '", opts.spec_lsf_file, "'");
+        return false;
+    }
+
+    ascii::read_table(opts.spec_lsf_file, state.tpllsf_lam, state.tpllsf_sigma);
+
+    if (state.tpllsf_sigma.empty()) {
+        error("line spread function is empty, something must be wrong in the file");
+        return false;
+    }
+
+    if (!is_sorted(state.tpllsf_lam)) {
+        error("line spread function must be sorted by increasing wavelength");
         return false;
     }
 
@@ -1943,6 +1983,11 @@ bool read_input(options_t& opts, input_state_t& state, const std::string& filena
 
     // Read the spectrum template error function, if any
     if (!read_template_error_spec(opts, state)) {
+        return false;
+    }
+
+    // Read the spectrum line spread function, if any
+    if (!read_lsf_spec(opts, state)) {
         return false;
     }
 
