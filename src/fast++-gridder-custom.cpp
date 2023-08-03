@@ -118,9 +118,7 @@ bool gridder_t::build_and_send_custom(fitter_t& fitter) {
         }
 
         // Apply velocity dispersion
-        if (is_finite(opts.apply_vdisp)) {
-            ssp.sed = convolve_rest(ssp.lambda, ssp.sed);
-        }
+        convolve_rest(ssp.lambda, ssp.sed);
 
         // Pre-compute dust law & IGM absorption (they don't change with SFH)
         vec1d dust_law = build_dust_law(ssp.lambda);
@@ -285,9 +283,7 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux) con
         cached_library = filename;
 
         // Apply velocity dispersion
-        if (is_finite(opts.apply_vdisp)) {
-            ssp->sed = convolve_rest(ssp->lambda, ssp->sed);
-        }
+        convolve_rest(ssp->lambda, ssp->sed);
     }
 
     // Integrate SFH on local time grid
@@ -339,9 +335,7 @@ bool gridder_t::build_template_custom(uint_t iflat, vec1f& lam, vec1f& flux_youn
         cached_library = filename;
 
         // Apply velocity dispersion
-        if (is_finite(opts.apply_vdisp)) {
-            ssp->sed = convolve_rest(ssp->lambda, ssp->sed);
-        }
+        convolve_rest(ssp->lambda, ssp->sed);
     }
 
     // Integrate SFH for template

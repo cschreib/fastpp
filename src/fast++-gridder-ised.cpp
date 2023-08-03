@@ -307,9 +307,7 @@ bool gridder_t::build_and_send_ised(fitter_t& fitter) {
         }
 
         // Apply velocity dispersion
-        if (is_finite(opts.apply_vdisp)) {
-            ised.fluxes = convolve_rest(ised.lambda, ised.fluxes);
-        }
+        convolve_rest(ised.lambda, ised.fluxes);
 
         // Pre-compute dust law & IGM absorption (they don't change with SFH)
         vec1d dust_law = build_dust_law(ised.lambda);
@@ -433,9 +431,7 @@ bool gridder_t::build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux) const
             cached_library = filename;
 
             // Apply velocity dispersion
-            if (is_finite(opts.apply_vdisp)) {
-                ised->fluxes = convolve_rest(ised->lambda, ised->fluxes);
-            }
+            convolve_rest(ised->lambda, ised->fluxes);
         }
     }
 

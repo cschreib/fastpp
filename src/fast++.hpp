@@ -101,6 +101,7 @@ struct options_t {
     // Spectra
     std::string temp_err_spec_file;
     std::string spec_lsf_file;
+    bool fast_spec_convolve = false;
 
     // z-phot behavior
     bool force_zphot = false;
@@ -419,8 +420,9 @@ private :
 
     vec2d convolve_function(const vec1d& lam, const vec2d& osed, uint_t n_thread,
         std::function<double(double)> sigma_fun) const;
-    vec1d convolve_obs(const vec1d& lam, const vec1d& osed) const;
-    vec2d convolve_rest(const vec1d& lam, const vec2d& osed) const;
+    void convolve_obs(const vec1f& lam, vec1f& osed) const;
+    void convolve_rest(const vec1d& lam, vec2d& osed) const;
+    void convolve_rest(const vec1f& lam, vec2f& osed) const;
 
     mutable tinyexpr_wrapper sfh_expr;
     mutable tinyexpr_wrapper exclude_expr;

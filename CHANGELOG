@@ -6,6 +6,7 @@ Features:
  - The spectrum no longer inherits the same template error function as the photometry
  - AUTO_SCALE=1 no longer automatically disables the template error for the spectrum
  - Added option SPEC_LSF_FILE to apply a line spread function to the models
+ - Added option FAST_SPEC_CONVOLVE for faster line spread function convolution
 
 Bug fixes:
  - Fixed crash when saving extra outputs and using an absolute path in CATALOG

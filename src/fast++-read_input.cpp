@@ -97,6 +97,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(temp_err_file)
         PARSE_OPTION(temp_err_spec_file)
         PARSE_OPTION(spec_lsf_file)
+        PARSE_OPTION(fast_spec_convolve)
         PARSE_OPTION(name_zphot)
         PARSE_OPTION(spectrum)
         PARSE_OPTION(auto_scale)

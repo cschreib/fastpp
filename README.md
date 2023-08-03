@@ -491,6 +491,12 @@ NB: applying the velocity dispersion needs to be done for each SED library that 
 ## Line spread function
 ```SPEC_LSF_FILE``` can be used to specify a file holding the line spread function of the instrument that was used to acquire the spectra. This file must contain the "sigma" of the Gaussian profile of the line spread function, expressed in Angstroms (observer frame), as a function of observed wavelength (also in Angstroms). It will be linearly interpolated at each observed wavelength of the models used in the fit, and the resulting value will be used to broaden the model by the specified value around that observed wavelength.
 
+This is a costly process since it must be done for each model. If your model grid has a narrow redshift range, an approximation can be enbaled with ```FAST_SPEC_CONVOLVE=1``` (default is ```0```), in which case the LSF will be applied to the rest-frame templates, pre-attenuation & IGM absorption, instead of observer-frame templates. This is not quite correct, since the LSF spectral broadening is a phenomenon happening in the instrument and not to the stellar population, but in practice this is a very good approximation provided that:
+ - the range of redshifts in the grid is small (e.g., max delta_z/z = 0.05)
+ - the LSF varies smoothly as a function of wavelength
+
+If using ```FAST_SPEC_CONVOLVE=1```, please make sure to test its impact for your specific use case before using the results.
+
 
 ## Continuum indices
 Traditionally, absorption line strengths are measured as "equivalent widths" (in wavelength unit). These are part of a large set of continuum features call "spectral indices", see for example [Balogh et al. (1999)](http://adsabs.harvard.edu/abs/1999ApJ...527...54B), which includes other commonly used quantities such as the Dn4000 index. These features have been used extensively in the past to characterize the SEDs of galaxies and infer their star formation histories and/or metal abundances.

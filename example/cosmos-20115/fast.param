@@ -192,6 +192,11 @@ USE_LIR             = 1          # 0 / 1
 #   resolution of is finer than the LSF, and if binning the spectrum is
 #   not acceptable.
 #
+# o FAST_SPEC_CONVOLVE: Set to 1 to enable a speed optimisation to
+#   convolve the line spread function. This optimisation is only valid
+#   if the LSF varies smoothly, and the redshift range of the grid is
+#   small.
+#
 #-----------------------------------------------------------------------
 
 SPECTRUM            = 'spectrum'
@@ -199,6 +204,7 @@ TEMP_ERR_SPEC_FILE  = ''
 AUTO_SCALE          = 1          # 0 / 1
 APPLY_VDISP         = 350        # km/s
 SPEC_LSF_FILE       = ''
+FAST_SPEC_CONVOLVE  = 0
 
 
 #--- OUTPUT INFORMATION  -----------------------------------------------
