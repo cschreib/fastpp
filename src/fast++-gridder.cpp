@@ -1027,7 +1027,7 @@ bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
     }
 
     // Apply LSF
-    convolve_obs(lam, flux);
+    // convolve_obs(lam, flux);
 
     // Integrate
     iflux.resize(input.lambda.size());
