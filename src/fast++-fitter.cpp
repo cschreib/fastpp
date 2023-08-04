@@ -544,7 +544,6 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
             wsp.wflux[iw] = input.flux.safe(is,il)*wsp.weight[iw];
             wsp.wmodel[iw] = model.flux.safe[il]*wsp.weight[iw];
-
         };
 
         for (uint_t iw : range(iflx, nscale)) {

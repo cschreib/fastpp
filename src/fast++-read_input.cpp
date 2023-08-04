@@ -1816,7 +1816,7 @@ bool read_lsf_spec(const options_t& opts, input_state_t& state) {
         vec1d l = rgen(l0-dll/2, l0+dll/2, npt);
 
         f.wl = l;
-        f.tr = 0.5*(erf((l0+dl/2-l)/(sqrt(2)*s)) - erf((l0-dl/2-l)/(sqrt(2)*s)));
+        f.tr = 0.5*(erf((l0+dl/2-l)/(sqrt(2)*lsf)) - erf((l0-dl/2-l)/(sqrt(2)*lsf)));
 
         double ttot = integrate(f.wl, f.tr);
         if (!is_finite(ttot) || ttot == 0) {
