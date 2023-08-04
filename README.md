@@ -489,13 +489,9 @@ NB: applying the velocity dispersion needs to be done for each SED library that 
 
 
 ## Line spread function
-```SPEC_LSF_FILE``` can be used to specify a file holding the line spread function of the instrument that was used to acquire the spectra. This file must contain the "sigma" of the Gaussian profile of the line spread function, expressed in Angstroms (observer frame), as a function of observed wavelength (also in Angstroms). It will be linearly interpolated at each observed wavelength of the models used in the fit, and the resulting value will be used to broaden the model by the specified value around that observed wavelength.
+By default in FAST++, each spectral element in a spectrum is assumed to have a top-hat response to the input galaxy spectrum, with intensity 1 between the beginning and end of the spectral bin and 0 otherwise. This is a simplification; real life spectographs have a "line spread function", such that each spectral element actually contains light from wavelengths that are outside its fiducial bin. This is normally fine to ignore if the spectrum has been binned substantially (which is usually a good thing anyway, to avoid correlated noise). However, binning will destroy some of the information on the details of the observed spectrum, and it may not always be acceptable.
 
-This is a costly process since it must be done for each model. If your model grid has a narrow redshift range, an approximation can be enbaled with ```FAST_SPEC_CONVOLVE=1``` (default is ```0```), in which case the LSF will be applied to the rest-frame templates, pre-attenuation & IGM absorption, instead of observer-frame templates. This is not quite correct, since the LSF spectral broadening is a phenomenon happening in the instrument and not to the stellar population, but in practice this is a very good approximation provided that:
- - the range of redshifts in the grid is small (e.g., max delta_z/z = 0.05)
- - the LSF varies smoothly as a function of wavelength
-
-If using ```FAST_SPEC_CONVOLVE=1```, please make sure to test its impact for your specific use case before using the results.
+If binning the spectrum is not an option, ```SPEC_LSF_FILE``` can be used to specify a file holding the line spread function of the instrument that was used to acquire the spectra. This file must contain the "sigma" of the Gaussian profile of the line spread function, expressed in Angstroms (observer frame), as a function of observed wavelength (also in Angstroms). It will be linearly interpolated at the central wavelength of each spectral element in the input spectra. The resulting value will be used to modify the synthetic response for each spectral element, by convolving the default top-hat response with the specified Gaussian LSF. This does not incur any substantial slowdown.
 
 
 ## Continuum indices

@@ -97,7 +97,6 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(temp_err_file)
         PARSE_OPTION(temp_err_spec_file)
         PARSE_OPTION(spec_lsf_file)
-        PARSE_OPTION(fast_spec_convolve)
         PARSE_OPTION(name_zphot)
         PARSE_OPTION(spectrum)
         PARSE_OPTION(auto_scale)
@@ -1781,6 +1780,53 @@ bool read_lsf_spec(const options_t& opts, input_state_t& state) {
     if (!is_sorted(state.tpllsf_lam)) {
         error("line spread function must be sorted by increasing wavelength");
         return false;
+    }
+
+    // Apply LSF to spectrum filters
+    // Spectrum filters by default is a simple top-hat from l0-dl/2 to l0+dl/2, where
+    // l0 and dl are respectively the central wavelength and width of the spectral element.
+    // When convolved by a Gaussian LSF of sigma s, this becomes:
+    //    0.5*(erf((l0+dl/2-l)/(sqrt(2)*s)) - erf((l0-dl/2-l)/(sqrt(2)*s)))
+
+    for (uint_t s : range(state.spec_start, state.spec_end)) {
+        auto& f = state.filters[s];
+
+        double l0 = mean(f.wl);
+        double dl = max(f.wl) - min(f.wl);
+
+        double lsf = 0.0;
+        if (l0 < state.tpllsf_lam.front()) {
+            lsf = state.tpllsf_sigma.front();
+        } else if (l0 > state.tpllsf_lam.back()) {
+            lsf = state.tpllsf_sigma.back();
+        } else {
+            lsf = interpolate(state.tpllsf_sigma, state.tpllsf_lam, l0);
+        }
+
+        if (lsf < 0) {
+            error("line spread function cannot be negative (around lambda=", l0, " Angstroms)");
+            return false;
+        }
+
+        // Increasing width by 7*lsf brings us reliably to ~ zero transmission.
+        double dll = dl + 7*lsf;
+        // 81 uniform samples provides a good sampling in all cases.
+        // Maximum error is when lsf >> dl, and reaches at most ~0.1%.
+        uint_t npt = 81;
+        vec1d l = rgen(l0-dll/2, l0+dll/2, npt);
+
+        f.wl = l;
+        f.tr = 0.5*(erf((l0+dl/2-l)/(sqrt(2)*s)) - erf((l0-dl/2-l)/(sqrt(2)*s)));
+
+        double ttot = integrate(f.wl, f.tr);
+        if (!is_finite(ttot) || ttot == 0) {
+            error("LSF-convolved synthetic filter ", s - state.spec_start,
+                " for spectral data (wavelength ", f.wl[0], " to ",
+                f.wl[1], " A) has zero or invalid througput");
+            return false;
+        }
+
+        f.tr /= ttot;
     }
 
     return true;

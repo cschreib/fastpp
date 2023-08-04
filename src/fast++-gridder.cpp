@@ -189,13 +189,6 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
         output_z = max(cz, 0.00001);
     }
 
-    if (opts.fast_spec_convolve) {
-        double dz = (max(output_z) - min(output_z))/(1.0 + mean(output_z));
-        if (dz > 0.05) {
-            warning("delta_z/(1+z) is large (", dz, "); consider turning off FAST_SPEC_CONVOLVE");
-        }
-    }
-
     // Pre-compute distances (galaxev templates are in Lsun/A)
     {
         const double dist_Mpc_to_cgs = 3.0856e24; // [cm/Mpc]
@@ -284,6 +277,10 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
             input.lambda, opts.dust_noll_eb, opts.dust_noll_delta, opts.sfr_avg, opts.lambda_ion,
             opts.cosmo.H0, opts.cosmo.wm, opts.cosmo.wL, opts.apply_vdisp, opts.no_igm,
             opts.log_bc_age_max);
+
+        if (!opts.spec_lsf_file.empty()) {
+            grid_hash = hash(grid_hash, input.tpllsf_lam, input.tpllsf_sigma);
+        }
 
         // Additional grid parameter
         switch (opts.sfh) {
@@ -709,9 +706,6 @@ void gridder_t::redshift_and_send(fitter_t& fitter, progress_t& pg,
             tpl_att_z_lam.safe[il] *= (1.0 + output_z.safe[iz]);
         }
 
-        // Apply LSF
-        convolve_obs(tpl_att_z_lam, tpl_att_z_flux);
-
         // Integrate
         for (uint_t il : range(input.lambda)) {
             model.flux.safe[il] = astro::sed2flux(
@@ -1026,9 +1020,6 @@ bool gridder_t::build_template_impl(uint_t iflat, bool nodust,
         lam.safe[il] *= (1.0 + z);
     }
 
-    // Apply LSF
-    // convolve_obs(lam, flux);
-
     // Integrate
     iflux.resize(input.lambda.size());
     for (uint_t il : range(input.lambda)) {
@@ -1120,48 +1111,11 @@ vec2d gridder_t::convolve_function(const vec1d& lam, const vec2d& osed, uint_t n
     return sed;
 }
 
-void gridder_t::convolve_obs(const vec1f& lam, vec1f& osed) const {
-    // We can't use multi-threading if 'generators' is chosen as parallel mode, since
-    // we will already be generating multiple models in different threads.
-    uint_t nthread = (opts.parallel == parallel_choice::generators ? 1 : opts.n_thread);
-
-    if (!input.tpllsf_sigma.empty() && !opts.fast_spec_convolve) {
-        osed = flatten(convolve_function(lam, reform(osed, 1, osed.size()), nthread, [&](double lobs) {
-            if (lobs < input.tpllsf_lam.front()) {
-                return input.tpllsf_sigma.front();
-            } else if (lobs > input.tpllsf_lam.back()) {
-                return input.tpllsf_sigma.back();
-            } else {
-                return interpolate(input.tpllsf_sigma, input.tpllsf_lam, lobs);
-            }
-        }));
-    }
-}
-
 void gridder_t::convolve_rest(const vec1d& lam, vec2d& osed) const {
-    if (!input.tpllsf_sigma.empty() && opts.fast_spec_convolve) {
-        // Approximation: convolve LSF + velocity dispersion in one go for speed
-        double vdisp = is_finite(opts.apply_vdisp) ? opts.apply_vdisp : 0.0;
-        double z = mean(output.grid[grid_id::z]);
+    if (is_finite(opts.apply_vdisp)) {
         osed = convolve_function(lam, osed, opts.n_thread, [&](double lrest) {
-            double lobs = lrest*(1.0 + z);
-            double lsf = 0.0;
-            if (lobs < input.tpllsf_lam.front()) {
-                lsf = input.tpllsf_sigma.front();
-            } else if (lobs > input.tpllsf_lam.back()) {
-                lsf = input.tpllsf_sigma.back();
-            } else {
-                lsf = interpolate(input.tpllsf_sigma, input.tpllsf_lam, lobs);
-            }
-
-            return std::sqrt(sqr(lsf/(1.0 + z)) + sqr(lrest*vdisp/2.99792e5));
+            return lrest*opts.apply_vdisp/2.99792e5;
         });
-    } else {
-        if (is_finite(opts.apply_vdisp)) {
-            osed = convolve_function(lam, osed, opts.n_thread, [&](double lrest) {
-                return lrest*opts.apply_vdisp/2.99792e5;
-            });
-        }
     }
 }
 
