@@ -239,7 +239,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         return;
     }
 
-    vec1f lam, sed, sed_nodust, flx;
+    vec1f lam, sed, sed_nodust, sed_lsf, flx;
     auto pg = progress_start(input.id.size());
     for (uint_t is : range(input.id)) {
         float scale = finf;
@@ -289,19 +289,29 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         sed *= scale;
         flx *= scale;
 
+        if (!opts.spec_lsf_file.empty()) {
+            sed_lsf = gridder.apply_lsf(lam, sed);
+        }
+
         // Save model
         std::ofstream fout(odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".fit");
+        fout << "# wl fl";
         if (opts.intrinsic_best_fit) {
-            fout << "# wl fl fl_nodust (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
-        } else {
-            fout << "# wl fl (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
+            fout << " fl_nodust";
         }
+        if (!opts.spec_lsf_file.empty()) {
+            fout << " fl_lsf";
+        }
+        fout << " (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
 
         for (uint_t il : range(lam)) {
             fout << std::setw(13) << lam.safe[il] << std::setw(13) << sed.safe[il];
 
             if (opts.intrinsic_best_fit) {
-            fout << std::setw(13) << sed_nodust.safe[il];
+                fout << std::setw(13) << sed_nodust.safe[il];
+            }
+            if (!opts.spec_lsf_file.empty()) {
+                fout << std::setw(13) << sed_lsf.safe[il];
             }
 
             fout << "\n";

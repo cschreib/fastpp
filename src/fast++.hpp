@@ -374,6 +374,7 @@ struct gridder_t {
     bool build_and_send(fitter_t& fitter);
     bool build_template(uint_t igrid, vec1f& lam, vec1f& flux, vec1f& iflux) const;
     bool build_template_nodust(uint_t igrid, vec1f& lam, vec1f& flux, vec1f& iflux) const;
+    vec1f apply_lsf(const vec1f& lam, const vec1f& flux) const;
     bool get_sfh(uint_t iflat, const vec1d& t, vec1d& sfh) const;
     bool write_seds() const;
 

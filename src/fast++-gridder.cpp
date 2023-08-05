@@ -1040,6 +1040,25 @@ bool gridder_t::build_template_nodust(uint_t igrid, vec1f& lam, vec1f& flux, vec
     return build_template_impl(igrid, true, lam, flux, iflux);
 }
 
+vec1f gridder_t::apply_lsf(const vec1f& lam, const vec1f& flux) const {
+    if (opts.spec_lsf_file.empty()) {
+        return flux;
+    }
+
+    return flatten(convolve_function(lam,
+        reform(flux, 1, flux.size()), 1,
+        [&](double l) {
+            if (l < input.tpllsf_lam.front()) {
+                return input.tpllsf_sigma.front();
+            } else if (l > input.tpllsf_lam.back()) {
+                return input.tpllsf_sigma.back();
+            } else {
+                return interpolate(input.tpllsf_sigma, input.tpllsf_lam, l);
+            }
+        }
+    ));
+}
+
 bool gridder_t::get_sfh(uint_t igrid, const vec1d& t, vec1d& sfh) const {
     switch (opts.sfh) {
     case sfh_type::gridded:
