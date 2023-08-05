@@ -289,7 +289,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         sed *= scale;
         flx *= scale;
 
-        if (!opts.spec_lsf_file.empty()) {
+        if (opts.lsf_best_fit) {
             sed_lsf = gridder.apply_lsf(lam, sed);
         }
 
@@ -299,7 +299,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         if (opts.intrinsic_best_fit) {
             fout << " fl_nodust";
         }
-        if (!opts.spec_lsf_file.empty()) {
+        if (opts.lsf_best_fit) {
             fout << " fl_lsf";
         }
         fout << " (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
@@ -310,7 +310,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
             if (opts.intrinsic_best_fit) {
                 fout << std::setw(13) << sed_nodust.safe[il];
             }
-            if (!opts.spec_lsf_file.empty()) {
+            if (opts.lsf_best_fit) {
                 fout << std::setw(13) << sed_lsf.safe[il];
             }
 

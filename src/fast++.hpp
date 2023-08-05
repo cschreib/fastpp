@@ -127,6 +127,7 @@ struct options_t {
     vec1s output_columns;
     float sfr_avg = 0.0;
     bool  intrinsic_best_fit = false;
+    bool  lsf_best_fit = false;
     std::string make_seds;
     float lambda_ion = 912.0;
     float save_bestchi = 0.0;

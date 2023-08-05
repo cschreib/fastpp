@@ -238,6 +238,12 @@ SPEC_LSF_FILE       = ''
 #   without dust obscuration. This intrinsic SED is saved as a third
 #   column in the best-fit SED file.
 #
+# o LSF_BEST_FIT: if BEST_FIT=1, setting this option to 1 will also
+#   output the LSF-convolved best-fit SED of the galaxy, as it would be
+#   seen by the spectrograph. This intrinsic SED is saved as an extra
+#   column in the best-fit SED file, after the intrinsic best fit (if
+#   also requested). See SPEC_LSF_FILE.
+#
 # o BEST_SFHS: if set to 1, the program will output the best-fit star
 #   formation history along with the best fit SEDs. If Monte Carlo
 #   simulations are enabled, the confidence intervals of the SFH will
@@ -294,6 +300,7 @@ INTERVAL_FROM_CHI2 = 0             # 0 / 1
 SAVE_SIM           = 0             # 0 / 1
 SFR_AVG            = 0             # 0, 100 Myr, 300 Myr etc
 INTRINSIC_BEST_FIT = 0             # 0 / 1
+LSF_BEST_FIT       = 0             # 0 / 1
 BEST_SFHS          = 0             # 0 / 1
 SFH_OUTPUT_STEP    = 10            # 10 Myr, 100 Myr etc
 SFH_OUTPUT         = 'sfr'         # 'sfr' or 'mass'
