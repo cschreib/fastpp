@@ -365,7 +365,7 @@ OUTPUT_COLUMNS     = []            # ['id','Av','lmass','lsfr', ...]
 #   composite models from "csp_galaxev". You can therefore fit any
 #   star formation history. The SFH must be a mathematical expression
 #   which returns the SFR as a function of the time 't' since the galaxy
-#   was born (the unit of the SFR doest not matter). Custom grid parameters
+#   was born (the unit of the SFR does not matter). Custom grid parameters
 #   can be referenced in this function (see below) but not the age or the
 #   dust attenuation.
 #

@@ -365,7 +365,7 @@ OUTPUT_COLUMNS     = []            # ['id','Av','lmass','lsfr', ...]
 #   composite models from "csp_galaxev". You can therefore fit any
 #   star formation history. The SFH must be a mathematical expression
 #   which returns the SFR as a function of the time 't' since the galaxy
-#   was born (the unit of the SFR doest not matter). Custom grid parameters
+#   was born (the unit of the SFR does not matter). Custom grid parameters
 #   can be referenced in this function (see below) but not the age or the
 #   dust attenuation.
 #
@@ -391,8 +391,8 @@ DUST_LAW            = 'calzetti'     # 'calzetti' / 'mw' / 'kc' / 'noll'
 # E_B               = 1              # only define for 'noll' dust law
 # delta             = -0.2           # only define for 'noll' dust law
 MY_SFH              = ''
-CUSTOM_SFH         = '((t > 10^ltburst)*exp(-(t - 10^ltburst)/10^ltrise) + (t < 10^ltburst)*exp((t - 10^ltburst)/10^ltdecl))*10^(lrsfr*(t < 10^ltfree))'
-CUSTOM_PARAMS      = ['ltburst','ltrise','ltdecl','lrsfr','ltfree']
+CUSTOM_SFH          = '((t > 10^ltburst)*exp(-(t - 10^ltburst)/10^ltrise) + (t < 10^ltburst)*exp((t - 10^ltburst)/10^ltdecl))*10^(lrsfr*(t < 10^ltfree))'
+CUSTOM_PARAMS       = ['ltburst','ltrise','ltdecl','lrsfr','ltfree']
 CUSTOM_SFH_LOOKBACK = 1              # 0 / 1
 
 
