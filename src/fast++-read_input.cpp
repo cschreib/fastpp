@@ -1809,6 +1809,11 @@ bool read_lsf_spec(const options_t& opts, input_state_t& state) {
             return false;
         }
 
+        if (lsf == 0.0) {
+            // Nothing to do.
+            continue;
+        }
+
         // Increasing width by 7*lsf brings us reliably to ~ zero transmission.
         double dll = dl + 7*lsf;
         // 81 uniform samples provides a good sampling in all cases.
