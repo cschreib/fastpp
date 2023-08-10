@@ -175,8 +175,6 @@ USE_LIR             = 0          # 0 / 1
 #   model, but still participates in the chi2. This can account for
 #   uncertain flux calibration of the spectrum, and will emphasize more
 #   the features of the spectrum rather than it's absolute flux level.
-#   Note that when this feature is enabled, the template error function,
-#   if used, will not be applied to the spectral data.
 #
 # o APPLY_VDISP: Velocity dispersion of the spectral templates. Setting
 #   this parameter to a non-zero value will broaden the templates with
