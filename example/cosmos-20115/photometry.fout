@@ -1,4 +1,4 @@
-# FAST++ version: 1.2
+# FAST++ version: 1.4.0-1c21e42
 # Photometric catalog file: photometry.cat
 # Spectrum file: spectrum
 # Template error function: ../../share/TEMPLATE_ERROR.fast.v0.2
@@ -14,7 +14,7 @@
 # lrsfr:       -2      - 5       in steps of 0.2
 # ltfree:      7       - 8.5     in steps of 0.5
 # log(age/yr): 9.22    - 9.22    in steps of 0.05
-# A_V:         0       - 6       in steps of 0.1
+# A_V:         0       - 1       in steps of 0.1
 # z:           3.7145  - 3.7145  in steps of 0.1 (linear)
 # Filters:     4  6  18  19  20  21  78  79  82  81  83  258  257  259  256  203  205  254  253  249  250  251  255
 # lage: log[age/yr], lmass: log[mass/Msol], lsfr: log[sfr/(Msol/yr)], lssfr: log[ssfr*yr], tform50: log[yr], tsf: log[yr], past_sfr: log[Msol/yr], tquench10: log[yr], sfr10: log[Msol/yr]
