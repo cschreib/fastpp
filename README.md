@@ -76,7 +76,13 @@ cmake ../
 make install
 ```
 
-This will create an executable called ```fast++``` in the ```fastpp/bin``` directory, which you can use immediately to replace FAST. If you have not installed FAST, you will have to download some template libraries from [the FAST website](http://w.astro.berkeley.edu/~mariska/FAST_Download.html) before you can start fitting galaxies (note that some libraries can only be obtained by downloading FAST itself, such as ```ised_exp.pr```). The latest FAST template error function and EAzY filter response database are provided with FAST++ in the ```fastpp/share``` directory.
+This will create an executable called ```fast++``` in the ```fastpp/bin``` directory, which you can use immediately to replace FAST. If you have not installed FAST, you will have to download some template libraries from [the FAST website](http://w.astro.berkeley.edu/~mariska/FAST_Download.html) before you can start fitting galaxies (note that some libraries can only be obtained by downloading FAST itself, such as ```ised_exp.pr```). _Update 10/08/2023_: The FAST website seem to have been taken down, but the download links to the following template libraries still appear to work:
+ - [ised_del.lr](http://pepper.astro.berkeley.edu/~mariska/FAST_Libraries/ised_del.lr.tar.gz)
+ - [ised_del.hr](http://pepper.astro.berkeley.edu/~mariska/FAST_Libraries/ised_del.hr.tar.gz)
+ - [ised_tru.hr](http://pepper.astro.berkeley.edu/~mariska/FAST_Libraries/ised_tru.hr.tar.gz)
+ - [ised_exp.hr](http://pepper.astro.berkeley.edu/~mariska/FAST_Libraries/ised_exp.hr.tar.gz)
+
+The latest (as of June 2019) FAST template error function and EAzY filter response database are provided with FAST++ in the ```fastpp/share``` directory for convenience.
 
 If you want to use arbitrary star formation histories beyond what the original FAST supports, you will have to download the single stellar populations libraries from Bruzual & Charlot (2003). To simplify this task for you, a script is provided in the ```fastpp/share/libraries``` folder. This script will download the libraries and rename the files to FAST++ convention for you, all you have to do is run this script and it will take care of the rest. You will need about 400 MB of free disk space.
 
@@ -221,15 +227,15 @@ While the implementation of FAST++ was designed to resemble FAST-IDL as much as 
  * The way FAST++ computes uncertainties using the Monte Carlo simulations is different from FAST-IDL, and this can lead to small differences in the resulting confidence intervals. In particular, the Monte Carlo simulations always use the same constraints on the redshift as the best-fit solution (unless ```BEST_AT_ZPHOT``` is set). Second, uncertainties are derived directly from the scatter of the best-fitting values in the Monte Carlo simulations, rather than from their chi2 distribution in the observed grid. This should not be significant, and the accuracy of the uncertainties computed by FAST++ was verified using mock catalogs with known physical parameters.
 
 ## Chi2 grid
- * FAST-IDL uses the IDL "save" format to write the chi2 grid on the disk. This format is proprietary and can only be opened by IDL itself. Instead, FAST++ uses a custom, open binary format, described below. In addition, a convenience tool called ``fast++-grid2fits`` is provided to convert the grid file into a FITS table.
+ * FAST-IDL uses the IDL "save" format to write the chi2 grid on the disk when ```SAVE_CHI_GRID=1```. This format is proprietary and can only be opened by IDL itself. Instead, FAST++ uses a custom, open binary format, described below. In addition, a convenience tool called ``fast++-grid2fits`` is provided to convert the grid file into a FITS table.
 
 The binary grid format is the following. The file starts with a header, and then lists the chi2 data for each model of the grid. In addition to the chi2, the model's best-fitting properties are also saved.
 ```
 # Begin header
 # ------------
 [uint32]: number of bytes in header
-[uchar]:  'C' (identifies the file type)
-[uint32]: number of galaxies
+[uchar]:  'D' (identifies the file type)
+[uint64]: number of galaxies
 [uint32]: number of properties (mass, sfr, etc)
   # For each property:
   [char*]: name of the property ("lmass", "lsfr", etc)
@@ -328,7 +334,7 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
 # Begin header
 # ------------
 [uint32]: number of bytes in header
-[uchar]:  'B' (identifies the file type)
+[uchar]:  'E' (identifies the file type)
 [uint32]: number of properties (mass, sfr, etc)
   # For each property:
   [char*]: name of the property ("lmass", "lsfr", etc)
@@ -343,7 +349,7 @@ To get the closest behavior to that of FAST-IDL, you should set ```C_INTERVAL=68
 # Begin data
 # ----------
 # For each good model
-[uint32]: ID of the model in the grid (= modelID, see description of SAVE_CHI_GRID)
+[uint64]: ID of the model in the grid (= modelID, see description of SAVE_CHI_GRID)
 [float]: chi2 of the model
 [float*]: values of the properties of this model
 # --------

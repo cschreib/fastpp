@@ -10,6 +10,7 @@ Features:
 
 Bug fixes:
  - Fixed crash when saving extra outputs and using an absolute path in CATALOG
+ - Fixed invalid cache and grid files if using extremely large number of models or galaxies
 
 
 v1.3.2 (16/07/2022)

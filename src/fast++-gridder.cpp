@@ -4,7 +4,7 @@ void gridder_t::cache_manager_t::write_model(const model_t& model) {
     if (!cache_file.is_open()) return;
 
     // TODO: Consider doing this in a worker thread if it slows down execution
-    file::write_as<std::uint32_t>(cache_file, model.igrid);
+    file::write_as<std::uint64_t>(cache_file, model.igrid);
     file::write(cache_file, model.props);
     file::write(cache_file, model.flux);
 
@@ -21,7 +21,7 @@ void gridder_t::cache_manager_t::write_model(const model_t& model) {
 bool gridder_t::cache_manager_t::read_model(model_t& model) {
     if (!cache_file.is_open()) return false;
 
-    file::read_as<std::uint32_t>(cache_file, model.igrid);
+    file::read_as<std::uint64_t>(cache_file, model.igrid);
     file::read(cache_file, model.props);
     file::read(cache_file, model.flux);
 
@@ -319,7 +319,7 @@ gridder_t::gridder_t(const options_t& opt, const input_state_t& inp, output_stat
             cache.cache_file.seekg(0, std::ios_base::end);
             uint_t size = cache.cache_file.tellg();
             uint_t size_expected = nmodel*(
-                sizeof(std::uint32_t)+sizeof(float)*(nprop+input.lambda.size())
+                sizeof(std::uint64_t)+sizeof(float)*(nprop+input.lambda.size())
             );
 
             if (size != size_expected) {

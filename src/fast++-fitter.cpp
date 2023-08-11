@@ -154,9 +154,9 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
             try {
                 // Write header
                 // Format:
-                // char:   file type ('C' = chi2 grid)
+                // char:   file type ('D' = chi2 grid v2)
                 // uint32: size of header in bytes (to skip it)
-                // uint32: number of galaxies
+                // uint64: number of galaxies
                 // uint32: number of properties
                 // for each property:
                 //     char[*]: name
@@ -165,10 +165,10 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
                 //     char[*]: name
                 //     uint32: number of values
                 //     float[*]: grid values
-                const unsigned char ftype_chi2grid = 'C';
+                const unsigned char ftype_chi2grid = 'D';
                 file::write_as<std::uint32_t>(ochi2.out_file, 0);
                 file::write(ochi2.out_file, ftype_chi2grid);
-                file::write_as<std::uint32_t>(ochi2.out_file, input.id.size());
+                file::write_as<std::uint64_t>(ochi2.out_file, input.id.size());
 
                 file::write_as<std::uint32_t>(ochi2.out_file, gridder.nprop);
                 for (uint_t i : range(gridder.nprop)) {
@@ -241,7 +241,7 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
                 try {
                     if (is == 0) {
                         // Format:
-                        // char:   file type ('B' = best chi2)
+                        // char:   file type ('E' = best chi2 v2)
                         // uint32: size of header in bytes (to skip it)
                         // uint32: number of properties
                         // for each property:
@@ -251,7 +251,7 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
                         //     char[*]: name
                         //     uint32: number of values
                         //     float[*]: grid values
-                        const unsigned char ftype_bestchi2 = 'B';
+                        const unsigned char ftype_bestchi2 = 'E';
                         file::write_as<std::uint32_t>(out, 0);
                         file::write(out, ftype_bestchi2);
                         file::write_as<std::uint32_t>(out, gridder.nprop);
@@ -366,8 +366,8 @@ void fitter_t::write_chi2(uint_t igrid, const vec1f& chi2, const vec2f& props, u
                 file::write(out, obchi2.header);
 
                 while (in) {
-                    uint32_t id;
-                    float chi2;
+                    std::uint64_t id = 0;
+                    float chi2 = 0.0f;
                     vec1f p(gridder.nprop);
 
                     if (file::read(in, id) && file::read(in, chi2) && file::read(in, p)) {
@@ -381,13 +381,13 @@ void fitter_t::write_chi2(uint_t igrid, const vec1f& chi2, const vec2f& props, u
                 in.close();
                 file::remove(chi2_filename.safe[is]+".old");
 
-                file::write_as<std::uint32_t>(out, igrid);
+                file::write_as<std::uint64_t>(out, igrid);
                 file::write(out, chi2.safe[cis]);
                 file::write(out, vec1f(props.safe(cis,_)));
                 out.close();
             } else {
                 out.open(chi2_filename.safe[is], std::ios::binary | std::ios::out | std::ios::app);
-                file::write_as<std::uint32_t>(out, igrid);
+                file::write_as<std::uint64_t>(out, igrid);
                 file::write(out, chi2.safe[cis]);
                 file::write(out, vec1f(props.safe(cis,_)));
                 out.close();

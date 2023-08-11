@@ -500,8 +500,8 @@ struct fitter_t {
         in.seekg(obchi2.hpos);
 
         while (in) {
-            uint32_t id;
-            float chi2;
+            std::uint64_t id = 0;
+            float chi2 = 0.0f;
             vec1f p(gridder.nprop);
 
             if (file::read(in, id) && file::read(in, chi2) && file::read(in, p)) {

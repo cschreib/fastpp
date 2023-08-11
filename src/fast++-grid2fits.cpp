@@ -54,6 +54,275 @@ struct file_wrapper {
     }
 };
 
+std::string main_state = "";
+std::string state = "";
+std::string reason = "";
+
+template<typename NumGalType>
+void read_chi_grid(file_wrapper& in, const std::string& outfile) {
+    NumGalType ngal = 0;
+    std::uint32_t ngrid = 0, nprop = 0;
+    vec<1,vec1f> grid;
+    vec1u grid_dims;
+    vec1s grid_names;
+    vec1s prop_names;
+    uint_t nmodel = 0;
+
+    vec2f chi2;
+    vec3f props;
+
+    // Read header
+    main_state = "read header from file";
+    if (debug) note(main_state);
+
+    // Format:
+    // uint32: number of galaxies
+    state = "reading number of galaxies";
+    if (debug) note(state);
+    in.read(ngal);
+
+    // uint32: number of properties
+    state = "reading number of properties";
+    if (debug) note(state);
+    in.read(nprop);
+
+    // Check number
+    if (nprop > 1000) {
+        reason = "number of properties is > 1000 ("+to_string(nprop)+")";
+        throw std::exception();
+    }
+
+    prop_names.resize(nprop);
+    for (uint_t i : range(nprop)) {
+        in.read(prop_names[i]);
+    }
+
+    // uint32: number of grid axis
+    state = "reading number of grid parameters";
+    if (debug) note(state);
+    in.read(ngrid);
+
+    // Check number
+    if (nprop > 1000) {
+        reason = "number of grid parameter is > 1000 ("+to_string(ngrid)+")";
+        throw std::exception();
+    }
+
+    // for each grid axis:
+    //     uint32: number of values
+    //     float[*]: grid values
+    nmodel = 1;
+    grid.resize(ngrid);
+    grid_dims.resize(ngrid);
+    grid_names.resize(ngrid);
+    for (uint_t i : range(grid)) {
+        state = "reading grid for parameter "+to_string(i);
+        if (debug) note(state);
+        in.read(grid_names[i]);
+
+        std::uint32_t gsize;
+        in.read(gsize);
+
+        grid_dims[i] = gsize;
+        nmodel *= grid_dims[i];
+        grid[i].resize(gsize);
+        in.read(grid[i]);
+    }
+
+    print("found ", ngal, " galaxies, with ", nprop, " properties, ", ngrid,
+        " grid parameters and ", nmodel, " models");
+    print("grid names: ", collapse(grid_names, ", "));
+    print("prop names: ", collapse(prop_names, ", "));
+
+    main_state = "read data";
+
+    state = "properties";
+    props.resize(nmodel, 1+nprop, ngal);
+    in.read(props);
+
+    main_state = "write output";
+    state = "initialise";
+
+    prepend(prop_names, vec1s{"chi2"});
+
+    vec3f vgrid(nmodel, ngrid, ngal);
+    vec1u idm(ngrid);
+    for (uint_t im = 0; im < nmodel; ++im) {
+        for (uint_t ig : range(ngrid)) {
+            vgrid.safe(im,ig,_) = grid.safe[ig].safe[idm.safe[ig]];
+        }
+
+        increment_index_list(idm, grid_dims);
+    }
+
+    print("writing ", outfile);
+    state = "create file";
+
+    fits::output_table otbl(outfile);
+    otbl.reach_hdu(1);
+
+    state = "write data";
+
+    for (uint_t i : range(prop_names)) {
+        otbl.write_column(prop_names[i], props(_,i,_));
+    }
+    for (uint_t i : range(grid_names)) {
+        otbl.write_column(grid_names[i], vgrid(_,i,_));
+    }
+}
+
+template<typename ModelIDType>
+void read_best_chi(file_wrapper& in, const std::string& outfile) {
+    std::uint32_t ngrid = 0, nprop = 0;
+    vec<1,vec1f> grid;
+    vec1u grid_dims;
+    vec1s grid_names;
+    vec1s prop_names;
+    uint_t nmodel = 0;
+
+    vec1u id_model;
+    vec1f chi2;
+    vec2f props;
+
+    // Read header
+    main_state = "read header from file";
+
+    // Format:
+    // uint32: number of properties
+    state = "reading number of properties";
+    if (debug) note(state);
+    in.read(nprop);
+
+    // Check number
+    if (nprop > 1000) {
+        reason = "number of properties is > 1000 ("+to_string(nprop)+")";
+        throw std::exception();
+    }
+
+    prop_names.resize(nprop);
+    for (uint_t i : range(nprop)) {
+        in.read(prop_names[i]);
+    }
+
+    // uint32: number of grid axis
+    state = "reading number of grid parameters";
+    if (debug) note(state);
+    in.read(ngrid);
+
+    // Check number
+    if (nprop > 1000) {
+        reason = "number of grid parameter is > 1000 ("+to_string(ngrid)+")";
+        throw std::exception();
+    }
+
+    // for each grid axis:
+    //     uint32: number of values
+    //     float[*]: grid values
+    grid.resize(ngrid);
+    grid_dims.resize(ngrid);
+    grid_names.resize(ngrid);
+    for (uint_t i : range(grid)) {
+        state = "reading grid for parameter "+to_string(i);
+        if (debug) note(state);
+        in.read(grid_names[i]);
+        std::uint32_t gsize = 0; in.read(gsize);
+
+        // Check number
+        if (gsize > 100000) {
+            reason = "size of grid for "+grid_names[i]+" is > 100000 ("+to_string(gsize)+")";
+            throw std::exception();
+        }
+
+        grid_dims[i] = gsize;
+        grid[i].resize(gsize);
+        in.read(grid[i]);
+    }
+
+    main_state = "read data";
+    state = "";
+
+    // As a failsafe, compute maximum possible iterations
+    uint_t max_iter = 0; {
+        auto opos = in.in.tellg();
+        in.in.seekg(0, std::ios::end);
+        uint_t flen = in.in.tellg() - opos;
+        in.in.seekg(opos);
+        uint_t data_size = sizeof(ModelIDType) + sizeof(float) + sizeof(float)*nprop;
+        max_iter = flen/data_size + 2;
+    }
+
+    // Try to read as much as we can, writing may have been interrupted in the middle
+    // of the computations, and we want to salvage whatever is available
+    uint_t iter = 0;
+    while (iter < max_iter) {
+        ModelIDType id = 0;
+        float tchi2 = 0.0f;
+        vec1f p(nprop);
+
+        try {
+            in.read(id);
+            in.read(tchi2);
+            in.read(p);
+
+            id_model.push_back(id);
+            chi2.push_back(tchi2);
+            props.push_back(p);
+        } catch (...) {
+            break;
+        }
+
+        ++iter;
+    }
+
+    if (iter == max_iter) {
+        reason = "maximum number of iteration reached, that's a bug...";
+        throw std::exception();
+    }
+
+    nmodel = id_model.size();
+
+    print("found ", nprop, " properties, ", ngrid, " grid parameters and ", nmodel, " models");
+    print("grid names: ", collapse(grid_names, ", "));
+    print("prop names: ", collapse(prop_names, ", "));
+
+    main_state = "write output";
+    state = "initialise";
+
+    vec2f vgrid(nmodel, ngrid);
+
+    for (uint_t im : range(nmodel)) {
+        vec1u idm(ngrid); {
+            uint_t i = id_model[im];
+            for (uint_t j : range(ngrid)) {
+                idm[ngrid-1-j] = i % grid_dims[ngrid-1-j];
+                i /= grid_dims[ngrid-1-j];
+            }
+        }
+
+        for (uint_t ig : range(ngrid)) {
+            vgrid.safe(im,ig) = grid.safe[ig].safe[idm.safe[ig]];
+        }
+    }
+
+    print("writing ", outfile);
+    state = "create file";
+
+    fits::output_table otbl(outfile);
+    otbl.reach_hdu(1);
+
+    state = "write data";
+
+    otbl.write_column("chi2", chi2);
+    otbl.write_column("model", id_model);
+
+    for (uint_t i : range(prop_names)) {
+        otbl.write_column(prop_names[i], props(_,i));
+    }
+    for (uint_t i : range(grid_names)) {
+        otbl.write_column(grid_names[i], vgrid(_,i));
+    }
+}
+
 int vif_main(int argc, char* argv[]) {
     if (argc <= 1) {
         print("usage: fast++-grid2fits file.grid");
@@ -68,17 +337,6 @@ int vif_main(int argc, char* argv[]) {
         note("reading ", filename);
         note("writing ", outfile);
     }
-
-    std::uint32_t ngal = 0, ngrid = 0, nprop = 0;
-    vec<1,vec1f> grid;
-    vec1u grid_dims;
-    vec1s grid_names;
-    vec1s prop_names;
-    uint_t nmodel = 0;
-
-    std::string main_state = "";
-    std::string state = "";
-    std::string reason = "";
 
     if (!file::exists(filename)) {
         error("file ", filename, " doest no exist");
@@ -103,272 +361,44 @@ int vif_main(int argc, char* argv[]) {
 
     // uint32: size of header in bytes (unused here)
     std::uint32_t hpos = 0; in.read(hpos);
-    // unsigned char: file type (C: chi2 grid, B: best chi2)
-    unsigned char ftype;
-    in.read(ftype);
+    // unsigned char: file type (C: chi2 grid, B: best chi2, etc.)
+    unsigned char ftype = '\0'; in.read(ftype);
 
-    if (ftype == 'C') {
-        if (debug) {
-            note("this is a chi2 grid binary file");
-        }
-
-        vec2f chi2;
-        vec3f props;
-
-        try {
-            // Read header
-            main_state = "read header from file";
-            if (debug) note(main_state);
-
-            // Format:
-            // uint32: number of galaxies
-            state = "reading number of galaxies";
-            if (debug) note(state);
-            in.read(ngal);
-
-            // Check number
-            if (ngal > 1e8) {
-                reason = "number of galaxies is > 1e8 ("+to_string(ngrid)+")";
-                throw std::exception();
+    try {
+        if (ftype == 'C') {
+            if (debug) {
+                note("this is a chi2 grid binary file (v1)");
             }
 
-            // uint32: number of properties
-            state = "reading number of properties";
-            if (debug) note(state);
-            in.read(nprop);
-
-            // Check number
-            if (nprop > 1000) {
-                reason = "number of properties is > 1000 ("+to_string(nprop)+")";
-                throw std::exception();
+            read_chi_grid<std::uint32_t>(in, outfile);
+        } else if (ftype == 'D') {
+            if (debug) {
+                note("this is a chi2 grid binary file (v2)");
             }
 
-            prop_names.resize(nprop);
-            for (uint_t i : range(nprop)) {
-                in.read(prop_names[i]);
+            read_chi_grid<std::uint64_t>(in, outfile);
+        } else if (ftype == 'B') {
+            if (debug) {
+                note("this is a best chi2 binary file (v1)");
             }
 
-            // uint32: number of grid axis
-            state = "reading number of grid parameters";
-            if (debug) note(state);
-            in.read(ngrid);
-
-            // Check number
-            if (nprop > 1000) {
-                reason = "number of grid parameter is > 1000 ("+to_string(ngrid)+")";
-                throw std::exception();
+            read_best_chi<std::uint32_t>(in, outfile);
+        } else if (ftype == 'D') {
+            if (debug) {
+                note("this is a best chi2 binary file (v2)");
             }
 
-            // for each grid axis:
-            //     uint32: number of values
-            //     float[*]: grid values
-            nmodel = 1;
-            grid.resize(ngrid);
-            grid_dims.resize(ngrid);
-            grid_names.resize(ngrid);
-            for (uint_t i : range(grid)) {
-                state = "reading grid for parameter "+to_string(i);
-                if (debug) note(state);
-                in.read(grid_names[i]);
-
-                std::uint32_t gsize;
-                in.read(gsize);
-
-                grid_dims[i] = gsize;
-                nmodel *= grid_dims[i];
-                grid[i].resize(gsize);
-                in.read(grid[i]);
-            }
-
-            print("found ", ngal, " galaxies, with ", nprop, " properties, ", ngrid,
-                " grid parameters and ", nmodel, " models");
-            print("grid names: ", collapse(grid_names, ", "));
-            print("prop names: ", collapse(prop_names, ", "));
-
-            main_state = "read data";
-
-            state = "properties";
-            props.resize(nmodel, 1+nprop, ngal);
-            in.read(props);
-
-            prepend(prop_names, vec1s{"chi2"});
-        } catch (...) {
-            error("\n\ncould not ", main_state, " (", state, ")");
+            read_best_chi<std::uint64_t>(in, outfile);
+        } else {
+            error("unknown file type '", ftype, "'; are you sure this is a *.grid file from FAST++?");
             return 1;
         }
-
-        vec3f vgrid(nmodel, ngrid, ngal);
-        vec1u idm(ngrid);
-        for (uint_t im = 0; im < nmodel; ++im) {
-            for (uint_t ig : range(ngrid)) {
-                vgrid.safe(im,ig,_) = grid.safe[ig].safe[idm.safe[ig]];
-            }
-
-            increment_index_list(idm, grid_dims);
+    } catch (...) {
+        print("\n\n");
+        error("could not ", main_state, " (", state, ")");
+        if (!reason.empty()) {
+            error(reason);
         }
-
-        print("writing ", outfile);
-
-        fits::output_table otbl(outfile);
-        otbl.reach_hdu(1);
-
-        for (uint_t i : range(prop_names)) {
-            otbl.write_column(prop_names[i], props(_,i,_));
-        }
-        for (uint_t i : range(grid_names)) {
-            otbl.write_column(grid_names[i], vgrid(_,i,_));
-        }
-    } else if (ftype == 'B') {
-        if (debug) {
-            note("this is a best chi2 binary file");
-        }
-
-        vec1u id_model;
-        vec1f chi2;
-        vec2f props;
-
-        try {
-            // Read header
-            main_state = "read header from file";
-
-            // Format:
-            // uint32: number of properties
-            state = "reading number of properties";
-            if (debug) note(state);
-            in.read(nprop);
-
-            // Check number
-            if (nprop > 1000) {
-                reason = "number of properties is > 1000 ("+to_string(nprop)+")";
-                throw std::exception();
-            }
-
-            prop_names.resize(nprop);
-            for (uint_t i : range(nprop)) {
-                in.read(prop_names[i]);
-            }
-
-            // uint32: number of grid axis
-            state = "reading number of grid parameters";
-            if (debug) note(state);
-            in.read(ngrid);
-
-            // Check number
-            if (nprop > 1000) {
-                reason = "number of grid parameter is > 1000 ("+to_string(ngrid)+")";
-                throw std::exception();
-            }
-
-            // for each grid axis:
-            //     uint32: number of values
-            //     float[*]: grid values
-            grid.resize(ngrid);
-            grid_dims.resize(ngrid);
-            grid_names.resize(ngrid);
-            for (uint_t i : range(grid)) {
-                state = "reading grid for parameter "+to_string(i);
-                if (debug) note(state);
-                in.read(grid_names[i]);
-                std::uint32_t gsize; in.read(gsize);
-
-                // Check number
-                if (gsize > 100000) {
-                    reason = "size of grid for "+grid_names[i]+" is > 100000 ("+to_string(gsize)+")";
-                    throw std::exception();
-                }
-
-                grid_dims[i] = gsize;
-                grid[i].resize(gsize);
-                in.read(grid[i]);
-            }
-
-            main_state = "read data";
-            state = "";
-
-            // As a failsafe, compute maximum possible iterations
-            uint_t max_iter; {
-                auto opos = in.in.tellg();
-                in.in.seekg(0, std::ios::end);
-                uint_t flen = in.in.tellg() - opos;
-                in.in.seekg(opos);
-                uint_t data_size = sizeof(uint32_t) + sizeof(float) + sizeof(float)*nprop;
-                max_iter = flen/data_size + 2;
-            }
-
-            // Try to read as much as we can, writing may have been interrupted in the middle
-            // of the computations, and we want to salvage whatever is available
-            uint_t iter = 0;
-            while (iter < max_iter) {
-                uint32_t id;
-                float tchi2;
-                vec1f p(nprop);
-
-                try {
-                    in.read(id);
-                    in.read(tchi2);
-                    in.read(p);
-
-                    id_model.push_back(id);
-                    chi2.push_back(tchi2);
-                    props.push_back(p);
-                } catch (...) {
-                    break;
-                }
-
-                ++iter;
-            }
-
-            if (iter == max_iter) {
-                reason = "maximum number of iteration reached, that's a bug...";
-                throw std::exception();
-            }
-
-            nmodel = id_model.size();
-
-            print("found ", nprop, " properties, ", ngrid, " grid parameters and ", nmodel, " models");
-            print("grid names: ", collapse(grid_names, ", "));
-            print("prop names: ", collapse(prop_names, ", "));
-        } catch (...) {
-            print("\n\n");
-            error("could not ", main_state, " (", state, ")");
-            if (!reason.empty()) {
-                error(reason);
-            }
-            return 1;
-        }
-
-        vec2f vgrid(nmodel, ngrid);
-
-        for (uint_t im : range(nmodel)) {
-            vec1u idm(ngrid); {
-                uint_t i = id_model[im];
-                for (uint_t j : range(ngrid)) {
-                    idm[ngrid-1-j] = i % grid_dims[ngrid-1-j];
-                    i /= grid_dims[ngrid-1-j];
-                }
-            }
-
-            for (uint_t ig : range(ngrid)) {
-                vgrid.safe(im,ig) = grid.safe[ig].safe[idm.safe[ig]];
-            }
-        }
-
-        print("writing ", outfile);
-
-        fits::output_table otbl(outfile);
-        otbl.reach_hdu(1);
-
-        otbl.write_column("chi2", chi2);
-        otbl.write_column("model", id_model);
-
-        for (uint_t i : range(prop_names)) {
-            otbl.write_column(prop_names[i], props(_,i));
-        }
-        for (uint_t i : range(grid_names)) {
-            otbl.write_column(grid_names[i], vgrid(_,i));
-        }
-    } else {
-        error("unknown file type '", ftype, "'; are you sure this is a *.grid file from FAST++?");
         return 1;
     }
 
