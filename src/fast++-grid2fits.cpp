@@ -383,7 +383,7 @@ int vif_main(int argc, char* argv[]) {
             }
 
             read_best_chi<std::uint32_t>(in, outfile);
-        } else if (ftype == 'D') {
+        } else if (ftype == 'E') {
             if (debug) {
                 note("this is a best chi2 binary file (v2)");
             }
