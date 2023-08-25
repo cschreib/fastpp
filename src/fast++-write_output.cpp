@@ -156,7 +156,9 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
         } else if (cname == "nmodel") {
             cwidth.push_back(15);
         } else {
-            uint_t ocwidth = 10;
+            uint_t ocwidth = opts.output_precision > 0 && opts.output_precision < 1e-6 ?
+                4 - round(log10(opts.output_precision)) : 10;
+
             // Make sure we use the right format
             cname = output.param_names[idp[ic]];
             param.back() = cname;
