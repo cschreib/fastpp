@@ -286,6 +286,15 @@ SPEC_LSF_FILE       = ''
 #   an empty array (default), then all available parameters are written
 #   in the file (except lldust, llion, and lmform).
 #
+# o OUTPUT_PRECISION: define the numerical precision to use when printing
+#   values in the output catalog. The default (0) means to use the
+#   standard precision, which is 1e-4 for the redshift and metallicity,
+#   and 1e-2 for everything else. If set to any other power of ten
+#   between zero and one (excluded), this value will be used to round
+#   the outputs. Note, this only affects the output catalog (.fout);
+#   all other outputs (including grid files) are always stored in full
+#   precision.
+#
 #-----------------------------------------------------------------------
 
 OUTPUT_DIR         = ''
@@ -306,6 +315,7 @@ REST_MAG           = []            # [140,142,161] for UVJ colors
 CONTINUUM_INDICES  = ''
 SFH_QUANTITIES     = ['tsf','past_sfr','sfr10','brate10','tquench10','tform50']
 OUTPUT_COLUMNS     = []            # ['id','Av','lmass','lsfr', ...]
+OUTPUT_PRECISION   = 0             # 0 / 0.01 / 0.0001 / 1e-6
 
 
 #--- CHOOSE STELLAR POPULATIONS LIBRARY --------------------------------

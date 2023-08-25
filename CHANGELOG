@@ -1,3 +1,10 @@
+v1.x.0 (25/08/2023)
+======
+
+Features:
+ - Added option OUTPUT_PRECISION to control the numerical precision in the output catalog
+
+
 v1.4.0 (11/08/2023)
 ======
 

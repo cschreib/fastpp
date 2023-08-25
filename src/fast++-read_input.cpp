@@ -168,6 +168,7 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
         PARSE_OPTION(continuum_indices)
         PARSE_OPTION(sfh_quantities)
         PARSE_OPTION(interval_from_chi2)
+        PARSE_OPTION(output_precision)
         PARSE_OPTION(a_v_bc_min)
         PARSE_OPTION(a_v_bc_max)
         PARSE_OPTION(a_v_bc_step)
@@ -354,6 +355,17 @@ bool read_params(options_t& opts, input_state_t& state, const std::string& filen
             warning("forcing 'SAVE_BESTCHI=", max_chi2, "'");
             opts.save_bestchi = max_chi2;
         }
+    }
+
+    if (opts.output_precision < 0.0 || opts.output_precision >= 0.5) {
+        warning("'OUTPUT_PRECISION' must be between zero and one; using default precision (0)");
+        opts.output_precision = 0.0;
+    }
+
+    double nearest_precision = e10(round(log10(opts.output_precision)));
+    if (opts.output_precision > 0.0 && abs(log10(opts.output_precision) - log10(nearest_precision)) > 1e-3) {
+        warning("'OUTPUT_PRECISION' must be an exact power of ten (e.g., 0.1, 0.01); using nearest (", nearest_precision, ")");
+        opts.output_precision = nearest_precision;
     }
 
     if (!opts.best_from_sim && opts.interval_from_chi2 && !opts.save_sim && opts.n_sim != 0) {

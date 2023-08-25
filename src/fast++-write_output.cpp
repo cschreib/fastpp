@@ -208,7 +208,9 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
                     value = -2.5*log10(value) + 23.9;
                 }
 
-                float precision = output.param_precision.safe[iparam[ic]];
+                float precision = opts.output_precision > 0 ?
+                    opts.output_precision : output.param_precision.safe[iparam[ic]];
+
                 value = round(value/precision)*precision;
                 if (!is_nan(value) && !is_finite(value)) {
                     if (value < 0) {

@@ -134,6 +134,7 @@ struct options_t {
     vec1u rest_mag;
     std::string continuum_indices;
     bool interval_from_chi2 = false;
+    float output_precision = 0.0;
 
     // Custom SFH
     std::string custom_sfh;
