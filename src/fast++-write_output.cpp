@@ -183,6 +183,10 @@ void write_catalog(const options_t& opts, const input_state_t& input, const grid
     }
     fout << std::endl;
 
+    if (opts.output_precision > 0) {
+        fout << std::setprecision(-log10(opts.output_precision));
+    }
+
     // Print data
     for (uint_t is : range(input.id)) {
         fout << " ";
