@@ -1087,14 +1087,14 @@ vec2d gridder_t::convolve_function(const vec1d& lam, const vec2d& osed, uint_t n
             // Find bounds
             uint_t i0 = l, i1 = l;
             double l0 = lam.safe[l] - max_sigma*sigma;
-            while (i0 > 1 && lam.safe[i0] > l0) --i0;
+            while (i0 > 0 && lam.safe[i0] > l0) --i0;
             double l1 = lam.safe[l] + max_sigma*sigma;
-            while (i1 < nlam-2 && lam.safe[i1] < l1) ++i1;
+            while (i1 < nlam-1 && lam.safe[i1] < l1) ++i1;
 
             // Integrate
             for (uint_t tl = i0; tl <= i1; ++tl) {
-                l0 = 0.5*(lam.safe[tl] + lam.safe[tl-1]);
-                l1 = 0.5*(lam.safe[tl] + lam.safe[tl+1]);
+                l0 = tl > 0 ? 0.5*(lam.safe[tl] + lam.safe[tl-1]) : lam.safe[tl];
+                l1 = tl < nlam-1 ? 0.5*(lam.safe[tl] + lam.safe[tl+1]) : lam.safe[tl];
 
                 double k = (l1 - l0)*integrate_gauss(l0, l1, lam.safe[l], sigma);
                 for (uint_t s : range(osed.dims[0])) {
