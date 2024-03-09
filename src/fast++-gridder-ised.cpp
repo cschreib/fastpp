@@ -410,29 +410,26 @@ bool gridder_t::build_template_ised(uint_t iflat, vec1f& lam, vec1f& flux) const
     uint_t it = idm[grid_id::custom+0];
     uint_t im = idm[grid_id::metal];
 
+    auto lock = (opts.n_thread > 1 ?
+        std::unique_lock<std::mutex>(sed_mutex) : std::unique_lock<std::mutex>());
+
+    if (!cached_galaxev_ised) {
+        cached_galaxev_ised = std::unique_ptr<galaxev_ised>(new galaxev_ised());
+    }
+
     galaxev_ised* ised = cached_galaxev_ised.get();
 
-    {
-        auto lock = (opts.n_thread > 1 ?
-            std::unique_lock<std::mutex>(sed_mutex) : std::unique_lock<std::mutex>());
-
-        if (!cached_galaxev_ised) {
-            cached_galaxev_ised = std::unique_ptr<galaxev_ised>(new galaxev_ised());
-            ised = cached_galaxev_ised.get();
+    // Load CSP
+    std::string filename = get_library_file_ised(im, it);
+    if (filename != cached_library) {
+        if (!ised->read(filename)) {
+            return false;
         }
 
-        // Load CSP
-        std::string filename = get_library_file_ised(im, it);
-        if (filename != cached_library) {
-            if (!ised->read(filename)) {
-                return false;
-            }
+        cached_library = filename;
 
-            cached_library = filename;
-
-            // Apply velocity dispersion
-            convolve_rest(ised->lambda, ised->fluxes);
-        }
+        // Apply velocity dispersion
+        convolve_rest(ised->lambda, ised->fluxes);
     }
 
     // Interpolate the galaxev grid at the requested age
