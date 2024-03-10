@@ -450,7 +450,7 @@ struct fitter_workspace {
     fitter_workspace& operator=(fitter_workspace&&) = delete;
 
     ~fitter_workspace() {
-        delete pool;
+        delete[] pool;
     }
 };
 
