@@ -844,11 +844,16 @@ void fitter_t::find_best_fits() {
     if (opts.verbose) note("finding best fits...");
 
     for (uint_t is : range(input.id)) {
-        if (!silence_invalid_chi2 && !is_finite(output.best_chi2[is])) {
-            warning("galaxy ", input.id[is], " has no best fit solution");
-            warning("there is probably a problem with the models, please re-run FAST++ with DEBUG=1");
-            warning("(further occurences of this warning for other galaxies will be suppressed)");
-            silence_invalid_chi2 = true;
+        if (!is_finite(output.best_chi2[is])) {
+            if (!silence_invalid_chi2) {
+                warning("galaxy ", input.id[is], " has no best fit solution");
+                warning("there is probably a problem with the models, please re-run FAST++ with DEBUG=1");
+                warning("(further occurences of this warning for other galaxies will be suppressed)");
+                silence_invalid_chi2 = true;
+            }
+
+            output.best_params(is,_,_) = dnan;
+            continue;
         }
 
         if (!opts.best_from_sim) {
