@@ -49,9 +49,10 @@ std::string pretty_grid(T x0, T x1, T step, uint_t ndecimal) {
 void write_catalog(const options_t& opts, const input_state_t& input, const gridder_t& gridder,
     const output_state_t& output) {
 
-    if (opts.verbose) note("saving catalog");
+    std::string output_path = opts.output_dir+opts.output_file+".fout";
+    if (opts.verbose) note("saving catalog at ", output_path);
 
-    std::ofstream fout(opts.output_dir+opts.output_file+".fout");
+    std::ofstream fout(output_path);
 
     // Print header
     if (std::string(fastpp_git_hash).empty()) {
