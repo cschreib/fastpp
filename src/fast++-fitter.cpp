@@ -227,6 +227,12 @@ fitter_t::fitter_t(const options_t& opt, const input_state_t& inp, const gridder
 
             for (uint_t is : range(input.id)) {
                 chi2_filename[is] = odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".chi2.grid";
+
+                if (!input.good[is]) {
+                    file::remove(chi2_filename[is]);
+                    continue;
+                }
+
                 std::ofstream out;
                 out.open(chi2_filename[is], std::ios::binary | std::ios::out | std::ios::trunc);
                 if (!out.is_open()) {
@@ -352,6 +358,8 @@ void fitter_t::write_chi2(uint_t igrid, const vec1f& chi2, const vec2f& props, u
         for (uint_t cis : range(chi2)) {
             uint_t is = cis + i0;
 
+            if (!input.good.safe[is]) continue;
+
             if (chi2.safe[cis] > best_chi2.safe[is] + opts.save_bestchi) continue;
 
             if (chi2.safe[cis] < best_chi2.safe[is]) {
@@ -476,6 +484,11 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
     for (uint_t i : range(i1-i0)) {
         uint_t is = i + i0;
+
+        if (!input.good.safe[is]) {
+            // Skip this galaxy
+            continue;
+        }
 
         // Apply constraints on redshift
         bool dofit = (idzl.safe[is] <= iz && iz <= idzu.safe[is]);
@@ -729,6 +742,11 @@ void fitter_t::fit_galaxies(const model_t& model, uint_t i0, uint_t i1) {
 
         for (uint_t i : range(i1-i0)) {
             uint_t is = i + i0;
+            if (!input.good.safe[is]) {
+                // Skip this galaxy
+                continue;
+            }
+
             ++output.num_models[is];
             if (output.best_chi2.safe[is]  > wsp.chi2[i]) {
                 output.best_chi2.safe[is]  = wsp.chi2[i];
@@ -843,9 +861,22 @@ void fitter_t::find_best_fits() {
 
     if (opts.verbose) note("finding best fits...");
 
+    std::string best_fits_odir = opts.output_dir+"best_fits/";
+    bool save_sim = opts.save_sim;
+    if (save_sim) {
+        if (!file::mkdir(best_fits_odir)) {
+            warning("could not save simulations");
+            warning("the output directory '", best_fits_odir, "' could not be created");
+            save_sim = false;
+        }
+    }
+
     for (uint_t is : range(input.id)) {
+        std::string best_fits_output_file =
+            best_fits_odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".sims.fits";
+
         if (!is_finite(output.best_chi2[is])) {
-            if (!silence_invalid_chi2) {
+            if (input.good[is] && !silence_invalid_chi2) {
                 warning("galaxy ", input.id[is], " has no best fit solution");
                 warning("there is probably a problem with the models, please re-run FAST++ with DEBUG=1");
                 warning("(further occurences of this warning for other galaxies will be suppressed)");
@@ -853,6 +884,11 @@ void fitter_t::find_best_fits() {
             }
 
             output.best_params(is,_,_) = dnan;
+
+            if (save_sim) {
+                file::remove(best_fits_output_file);
+            }
+
             continue;
         }
 
@@ -881,17 +917,11 @@ void fitter_t::find_best_fits() {
                 bparams.safe(gridder.nparam+ip,_) = output.mc_best_props.safe(is,ip,_);
             }
 
-            if (opts.save_sim) {
-                std::string odir = opts.output_dir+"best_fits/";
-                if (!file::mkdir(odir)) {
-                    warning("could not save simulations");
-                    warning("the output directory '", odir, "' could not be created");
-                } else {
-                    fits::write_table(odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".sims.fits",
-                        "result", bparams, "params", output.param_names,
-                        "chi2", output.mc_best_chi2(is,_)
-                    );
-                }
+            if (save_sim) {
+                fits::write_table(best_fits_output_file,
+                    "result", bparams, "params", output.param_names,
+                    "chi2", output.mc_best_chi2(is,_)
+                );
             }
 
             if (!opts.interval_from_chi2) {

@@ -980,6 +980,7 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
     state.zspec = replicate(fnan, ngal);
     state.flux = replicate(fnan, ngal, state.no_filt.size());
     state.eflux = replicate(fnan, ngal, state.no_filt.size());
+    state.good = replicate(true, ngal);
 
     // Now read the catalog itself, only keeping the columns we are interested in
     uint_t l = 0;
@@ -1053,12 +1054,20 @@ bool read_fluxes(const options_t& opts, input_state_t& state) {
             err *= totcor;
         }
 
+        // Check for zero uncertainty (ambiguous; could mean no data or no uncertainty)
+        for (uint_t idz : where(err == 0)) {
+            state.good.safe[gid] = false;
+            warning("object ", state.id.safe[gid], " (l.", l, ") has zero uncertainty for ",
+                header[col_eflux[idz]], "; will not fit");
+        }
+
         // Flag bad values
         vec1u idb = where(err < 0 || !is_finite(flx) || !is_finite(err));
         err.safe[idb] = finf; flx.safe[idb] = 0;
 
         if (idb.size() == flx.size()) {
-            warning("object ", state.id.safe[gid], " (l.", l, ") has no valid photometry");
+            state.good.safe[gid] = false;
+            warning("object ", state.id.safe[gid], " (l.", l, ") has no valid photometry; will not fit");
         }
 
         // Save flux and uncertainties in the input state

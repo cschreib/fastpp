@@ -251,6 +251,16 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
     vec1f lam, sed, sed_nodust, sed_lsf, flx;
     auto pg = progress_start(input.id.size());
     for (uint_t is : range(input.id)) {
+        std::string output_file_tpl = odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".fit";
+        std::string output_file_flx = odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".input_res.fit";
+
+        if (!input.good[is]) {
+            file::remove(output_file_tpl);
+            file::remove(output_file_flx);
+            if (opts.verbose) progress(pg, 13);
+            continue;
+        }
+
         float scale = finf;
         uint_t model = npos;
 
@@ -303,7 +313,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         }
 
         // Save model
-        std::ofstream fout(odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".fit");
+        std::ofstream fout(output_file_tpl);
         fout << "# wl fl";
         if (opts.intrinsic_best_fit) {
             fout << " fl_nodust";
@@ -328,7 +338,7 @@ void write_best_fits(const options_t& opts, const input_state_t& input, const gr
         fout.close();
 
         // Save fluxes
-        fout.open(odir+file::get_basename(opts.catalog)+"_"+input.id[is]+".input_res.fit");
+        fout.open(output_file_flx);
         fout << "# wl fl_model fl_obs unc_obs (x 10^-19 ergs s^-1 cm^-2 Angstrom^-1)\n";
         for (uint_t il : range(input.lambda)) {
             fout << std::setw(13) << float(input.lambda[il])
@@ -386,6 +396,14 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
 
     auto pg = progress_start(input.id.size());
     for (uint_t is : range(input.id)) {
+        std::string output_file = odir+opts.catalog+"_"+input.id[is]+".sfh";
+
+        if (!input.good[is]) {
+            file::remove(output_file);
+            if (opts.verbose) progress(pg, 13);
+            continue;
+        }
+
         vec1u idm = gridder.grid_ids(output.best_model[is]);
         vec1d t = rgen_step(1e6, e10(gridder.auniv[idm[grid_id::z]]), opts.sfh_output_step);
         vec2f sfh = replicate(fnan, t.size(), 1+nconf);
@@ -459,7 +477,7 @@ void write_sfhs(const options_t& opts, const input_state_t& input, const gridder
         }
 
         // Save SFH
-        std::ofstream fout(odir+opts.catalog+"_"+input.id[is]+".sfh");
+        std::ofstream fout(output_file);
         fout << header;
 
         for (uint_t it : range(t)) {

@@ -220,6 +220,7 @@ struct input_state_t {
     vec1b lir_log;                      // [ngal]
     vec1u lir_comp;                     // [ngal]
     vec2f flux, eflux;                  // [ngal,nfilt+nspec]
+    vec1b good;                         // [ngal]
     vec1f conf_interval;                // [nconf]
     vec1f delta_chi2;                   // [nconf]
 
