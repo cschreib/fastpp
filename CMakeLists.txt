@@ -46,7 +46,7 @@ ExternalProject_Add(vif
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/vif
     DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/vif
     GIT_REPOSITORY https://github.com/cschreib/vif.git
-    GIT_TAG 3ae152c37c95bd920e48249deb804f5f905166c4
+    GIT_TAG e70e703b40e1536dce00c8598611e69fc5d45d54
     CMAKE_ARGS
         -DNO_REFLECTION=ON
         -DNO_FFTW=ON
