@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6...4.0)
+cmake_minimum_required(VERSION 3.8...4.0)
 project(fast++ C CXX)
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -23,20 +23,6 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-if (GIT_COMMAND_SUCCESS EQUAL 0)
-    add_definitions(-DFASTPP_GIT_HASH="${GIT_COMMIT_HASH}")
-else()
-    add_definitions(-DFASTPP_GIT_HASH="")
-endif()
-
-# Setup share directory
-add_definitions(-DFASTPP_SHARE_DIR="${FASTPP_SHARE_DIR}")
-
-# Include dependencies
-message(STATUS ${VIF_INCLUDE_DIRS})
-include_directories(${VIF_INCLUDE_DIRS})
-include_directories(${TINYEXPR_INCLUDE_DIR})
-
 # Build FAST++
 add_executable(fast++
     fast++-read_input.cpp
@@ -47,15 +33,29 @@ add_executable(fast++
     fast++-fitter.cpp
     fast++-write_output.cpp
     fast++.cpp)
-target_link_libraries(fast++ ${VIF_LIBRARIES})
-target_link_libraries(fast++ ${TINYEXPR_LIBRARY})
+
+if (GIT_COMMAND_SUCCESS EQUAL 0)
+    target_compile_options(fast++ PRIVATE -DFASTPP_GIT_HASH="${GIT_COMMIT_HASH}")
+else()
+    target_compile_options(fast++ PRIVATE -DFASTPP_GIT_HASH="")
+endif()
+target_compile_options(fast++ PRIVATE -DFASTPP_SHARE_DIR="${FASTPP_SHARE_DIR}")
+target_compile_features(fast++ PRIVATE cxx_std_11)
+target_include_directories(fast++ PRIVATE ${VIF_INCLUDE_DIRS})
+target_include_directories(fast++ PRIVATE ${TINYEXPR_INCLUDE_DIR})
+target_link_libraries(fast++ PRIVATE ${VIF_LIBRARIES})
+target_link_libraries(fast++ PRIVATE ${TINYEXPR_LIBRARY})
 install(TARGETS fast++ DESTINATION bin)
 
 # Build FAST++ helper tools
 add_executable(fast++-grid2fits fast++-grid2fits.cpp)
+target_compile_features(fast++-grid2fits PRIVATE cxx_std_11)
+target_include_directories(fast++-grid2fits PRIVATE ${VIF_INCLUDE_DIRS})
 target_link_libraries(fast++-grid2fits ${VIF_LIBRARIES})
 install(TARGETS fast++-grid2fits DESTINATION bin)
 
 add_executable(fast++-sfh2sed fast++-sfh2sed.cpp fast++-ssp.cpp)
+target_compile_features(fast++-sfh2sed PRIVATE cxx_std_11)
+target_include_directories(fast++-sfh2sed PRIVATE ${VIF_INCLUDE_DIRS})
 target_link_libraries(fast++-sfh2sed ${VIF_LIBRARIES})
 install(TARGETS fast++-sfh2sed DESTINATION bin)
